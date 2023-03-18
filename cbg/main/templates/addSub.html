@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load tags %}
+{% load static %}
+
+{% block page_content %}
+
+<br>
+
+<div class="container">
+    <form action="/addsub/" method="POST">
+        <legend>Add Sub:</legend>
+        <div class="row">
+            <div class="col-12">
+                <div class="form-group">
+                  {% csrf_token %}
+                  {{ form.week }}
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <div class="form-group">
+                    Absent
+                    {% csrf_token %}
+                    {{ form.absent }}
+                </div>
+                <div class="form-group">
+                    Sub
+                    {% csrf_token %}
+                    {{ form.sub }}
+                </div>
+                <div class="form-group">
+                    {% csrf_token %}
+                    {{ form.year }}
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <div class="form-group">
+                    <input class="btn btn-primary btn-lg btn-block" type="submit" value="Submit">
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

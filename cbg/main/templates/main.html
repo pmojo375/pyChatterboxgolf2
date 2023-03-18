@@ -1,0 +1,217 @@
+
+{% load static %}
+
+{% block page_content %}
+
+<a class="weatherwidget-io" href="https://forecast7.com/en/42d12n86d45/benton-harbor/?unit=us" data-label_1="Lake Michigan Hills" data-label_2="Chatterbox Golf League" data-theme="original">Lake Michigan Hills Chatterbox Golf League</a>
+<script>
+  ! function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (!d.getElementById(id)) {
+      js = d.createElement(s);
+      js.id = id;
+      js.src = 'https://weatherwidget.io/js/widget.min.js';
+      fjs.parentNode.insertBefore(js, fjs);
+    }
+  }(document, 'script', 'weatherwidget-io-js');
+</script>
+
+{% if new %}
+    <h2 class="text-center">New Content</h2>
+    {% for message in new_messages %}
+        <h4 class="text-center">{{ message }}</h4>
+    {% endfor %}
+{% endif %}
+
+<div class="container">
+
+  <br>
+  <h1 class="text-center">The Official Chatterbox Golf League Site</h1>
+  <br>
+  <a class="text-center" data-toggle="collapse" href="#collapsePlayoff">The Playoff Format</a>
+  <br>
+  <div class="collapse" id="collapsePlayoff">
+    <br>
+    <div class="card card-body">
+      <p class="card-text">The league champion will be decided by a 4 team playoff consisting of the top scores for each of the two 9 week halves and the next two teams with the highest total season points. In an effort to prevent 'sandbagging', the
+        lower of the two half handicaps will be used in the playoffs. For example, if you were an 8 handicap going into week 10 and finished the season as an 11, you would play as an 8 in the playoffs. If any clarifications are needed, please ask
+        Ryan.</p>
+    </div>
+  </div>
+  <br>
+  <div class="container">
+
+    {% if unestablished|length > 0 %}
+    <p>Scores are subject to change when all league members post three rounds of scores. Current scores use one or two rounds of scores to compute handicaps for those who have yet to post three or more rounds.</p>
+
+    <br>
+
+    <p>These are the golfers whos handicaps will change after they play 3 weeks</p>
+
+    <ul>
+      {% for golfer in unestablished %}
+      <li>{{ golfer.name }}</li>
+      {% endfor %}
+    </ul>
+
+    {% endif %}
+
+    {% if secondHalf %}
+    <div class='row'>
+      <div id="bracket">
+      </div>
+    </div>
+    {% endif %}
+
+    <br>
+
+    
+    <h2 class="text-center">Week {{ week }}'s Game: {{ currentGame.name }}</h2>
+    <br>
+
+    <div class="row">
+
+      {% if secondHalf %}
+      <div class="col">
+        <p class="text-center">Full Season Standings</p>
+
+        <table id='standings'>
+          <thead>
+            <tr>
+              <th rowspan="2">Team</th>
+              <th colspan="2">2nd Half</th>
+            </tr>
+            <tr>
+              <th>Points</th>
+              <th>Hcp</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            {% for team in fullStandings %}
+            <tr>
+              <td class="name">{{ team.golfer1 }}</td>
+              <td class="score" rowspan="2">{{ team.total }}</td>
+              <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
+            </tr>
+
+            <tr>
+              <td class="name">{{ team.golfer2 }}</td>
+              <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+      <div class="col">
+        <p class="text-center">First Half Standings</p>
+
+        <table id='standings'>
+          <thead>
+            <tr>
+              <th rowspan="2">Team</th>
+              <th colspan="2">1st Half</th>
+            </tr>
+            <tr>
+              <th>Points</th>
+              <th>Hcp</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            {% for team in firstHalfStandings %}
+            <tr>
+              <td class="name">{{ team.golfer1 }}</td>
+              <td class="score" rowspan="2">{{ team.first }}</td>
+              <td class="hcp">{{ team.golfer1FirstHcp|floatformat:2 }}</td>
+            </tr>
+
+            <tr>
+              <td class="name">{{ team.golfer2 }}</td>
+              <td class="hcp">{{ team.golfer2FirstHcp|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if secondHalf %} 
+      <div class="col">
+        <p class="text-center"> Second Half Standings</p>
+
+        <table id='standings'>
+          <thead>
+            <tr>
+              <th rowspan="2">Team</th>
+              <th colspan="2">2nd Half</th>
+            </tr>
+            <tr>
+              <th>Points</th>
+              <th>Hcp</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            {% for team in secondHalfStandings %}
+            <tr>
+              <td class="name">{{ team.golfer1 }}</td>
+              <td class="score" rowspan="2">{{ team.second }}</td>
+              <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
+            </tr>
+
+            <tr>
+              <td class="name">{{ team.golfer2 }}</td>
+              <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <br>
+    <h4>Week {{ lastweek }} Skins Winner{{ lastSkinWinner|pluralize }}:</h4>
+    <ul>
+      {% for skinWinner in lastSkinWinner %}
+      <li>{{ skinWinner.golfer }} - ${{ skinWinner.winnings|floatformat:2 }}</li>
+      {% endfor %}
+    </ul>
+    <br>
+    <h4>Week {{ lastweek }} Game Winner:</h4>
+    <ul>
+	{% for gameWinner in lastGameWinner %}
+      <li>{{ gameWinner }} - ${{ game_pot|floatformat:2 }}</li>
+    	{% endfor %}
+	</ul>
+    <br>
+  <p class="text-center">Schedule</p>
+  <table id="schedule">
+    <thead>
+      <tr>
+        <th>Team #</th>
+        <th>Golfers</th>
+        <th>Opponent</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for matchup in schedule %}
+      <tr>
+        <td class="team" rowspan="2">{{ forloop.counter }}</td>
+        <td class="name">{{ matchup.0.0 }}</td>
+        <td class="name">{{ matchup.0.1 }}</td>
+      </tr>
+      <tr>
+        <td class="name">{{ matchup.1.0 }}</td>
+        <td class="name">{{ matchup.1.1 }}</td>
+      </tr>
+      {% endfor %}
+
+    </tbody>
+  </table>
+  <br>
+</div
+
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+{% load tags %}
+{% block page_content %}
+<br>
+	<div class="container">
+		<h2>Week {{ week }}'s Game: {{ currentGame.name }}</h2>
+		<br>
+		<h4>Week {{ lastweek }} Skins Winner{{ lastSkinWinner|pluralize }}:</h4>
+		<ul>
+			{% for skinWinner in lastSkinWinner %}
+			<li>{{ skinWinner.golfer }} - ${{ skinWinner.winnings|floatformat:2 }}</li>
+			{% endfor %}
+		</ul>
+		<br>
+		<h4>Week {{ lastweek }} Game Winner:</h4>
+		<ul>
+			{% for gameWinner in lastGameWinner %}
+				<li>{{ gameWinner }} - ${{ game_pot|floatformat:2 }}</li>
+			{% endfor %}
+		</ul>
+		<br>
+		<form action="/games/" method="POST">
+			<h3>Golfer In Game Entry Form</h3>
+			<div class="row">
+				<div class="col-4">
+					<div class="form-group">
+						{% csrf_token %}
+						{{ gameForm.week }}
+					</div>
+				</div>
+				<div class="col-5">
+					<div class="form-group">
+						{% csrf_token %}
+						{{ gameForm.golfer_game }}
+					</div>
+				</div>
+				<div class="col-3">
+					<div class="form-group">
+						<input class="btn btn-primary btn-block" type="submit" value="Submit">
+					</div>
+				</div>
+			</div>
+		</form>
+		<h5>Golfers In {{ currentGame.name }}</h5>
+		<ul>
+			{% for golfer in gameEntries %}
+			<li>{{ golfer }}</li>
+			{% endfor %}
+		</ul>
+		<form action="/games/" method="POST">
+			<h3>Golfer In Skins Entry Form</h3>
+			<div class="row">
+				<div class="col-4">
+					<div class="form-group">
+						{% csrf_token %}
+						{{ skinsForm.week }}
+					</div>
+				</div>
+				<div class="col-5">
+					<div class="form-group">
+						{% csrf_token %}
+						{{ skinsForm.golfer_skins }}
+					</div>
+				</div>
+				<div class="col-3">
+					<div class="form-group">
+						<input class="btn btn-primary btn-block" type="submit" value="Submit">
+					</div>
+				</div>
+			</div>
+		</form>
+		<h5>Golfers In This Week</h5>
+		<ul>
+			{% for golfer in skinEntries %}
+			<li>{{ golfer }}</li>
+			{% endfor %}
+		</ul>
+		<div class="table-responsive">
+			<br>
+			<table class='table table-dark table-striped'>
+				<thead>
+					<tr>
+						<th scope="col">Week</th>
+						<th scope="col">Game</th>
+						<th scope="col">Description</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for game in games %}
+						<tr>
+							<th scope="row">{{ game.week }}</th>
+							<td>{{ game.name }}</td>
+							<td>{{ game.desc }}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+		<form action="/games/" method="POST">
+			<h3>Week {{ lastweek }} Game Winner Entry Form</h3>
+			<div class="row">
+				<div class="col-6">
+					<div class="form-group">
+						{% csrf_token %}
+						{{ gameWinnerForm.game_winner }}
+					</div>
+				</div>
+				<div class="col-6">
+					<div class="form-group">
+						<input class="btn btn-primary btn-block" type="submit" value="Submit">
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+{% endblock %}

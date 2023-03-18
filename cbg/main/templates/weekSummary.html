@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% load static %}
+{% load tags %}
+
+{% block page_content %}
+
+{% autoescape off %}
+{{ plot_div }}
+{% endautoescape %}
+
+{% autoescape off %}
+{{ table_div }}
+{% endautoescape %}
+
+<table id="legend">
+    <tr>
+        <td id="eagle">Eagle</td>
+        <td id="birdie">Birdie</td>
+        <td id="par">Par</td>
+        <td id="bogey">Bogey</td>
+        <td id="worst">Double or Worse</td>
+    </tr>
+</table>
+<br>
+
+{% for team, opp in data %}
+
+<div class="table-responsive">
+  <table class="scorecard" style="undefined;table-layout: fixed; width: 568px">
+    <colgroup>
+      <col style="width: 139px">
+      <col style="width: 32px">
+      <col style="width: 35px">
+      <col style="width: 35px">
+      <col style="width: 33px">
+      <col style="width: 35px">
+      <col style="width: 35px">
+      <col style="width: 35px">
+      <col style="width: 35px">
+      <col style="width: 35px">
+      <col style="width: 35px">
+      <col style="width: 43px">
+      <col style="width: 41px">
+    </colgroup>
+    <tr class="data">
+      <th class="descriptor" colspan="2">Week {{ week }}</th>
+      <th class="descriptor" colspan="9">{{ string }}</th>
+      <th class="descriptor" colspan="2">{{ year }}</th>
+    </tr>
+    <tr class="scores">
+      <td class="descriptor">{{ team.A.name }}</td>
+      <td class="hcp">{{ team.A_Hcp|floatformat:0 }}</td>
+      <td class="score" id="{% css team.A.id week 1 is_front %}">{% hole_score team.A.id week 1 %}</td>
+      <td class="score" id="{% css team.A.id week 2 is_front %}">{% hole_score team.A.id week 2 %}</td>
+      <td class="score" id="{% css team.A.id week 3 is_front %}">{% hole_score team.A.id week 3 %}</td>
+      <td class="score" id="{% css team.A.id week 4 is_front %}">{% hole_score team.A.id week 4 %}</td>
+      <td class="score" id="{% css team.A.id week 5 is_front %}">{% hole_score team.A.id week 5 %}</td>
+      <td class="score" id="{% css team.A.id week 6 is_front %}">{% hole_score team.A.id week 6 %}</td>
+      <td class="score" id="{% css team.A.id week 7 is_front %}">{% hole_score team.A.id week 7 %}</td>
+      <td class="score" id="{% css team.A.id week 8 is_front %}">{% hole_score team.A.id week 8 %}</td>
+      <td class="score" id="{% css team.A.id week 9 is_front %}">{% hole_score team.A.id week 9 %}</td>
+      <td class="score" style="background-color:#97A2A2">{% gross team.A.id week %}</td>
+      <td class="total" style="background-color:#97A2A2">{% net team.A.id week %}</td>
+    </tr>
+    <tr class="points">
+      <td class="descriptor" colspan="2">POINTS:</td>
+      <td class="points">{% hole_point team.A.id week 1 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% hole_point team.A.id week 2 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% hole_point team.A.id week 3 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% hole_point team.A.id week 4 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% hole_point team.A.id week 5 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% hole_point team.A.id week 6 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% hole_point team.A.id week 7 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% hole_point team.A.id week 8 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% hole_point team.A.id week 9 is_front opp.A.team opp team.A.team team %}</td>
+      <td class="points">{% round_points team.A.id week is_front opp.A.team opp team.A.team team %}</td>
+      <td class="total">{% total_points team.A.id week is_front opp.A.team opp team.A.team team %}</td>
+    </tr>
+    <tr class="scores">
+      <td class="descriptor">{{ opp.A.name }}</td>
+      <td class="hcp">{{ opp.A_Hcp|floatformat:0 }}</td>
+      <td class="score" id="{% css opp.A.id week 1 is_front %}">{% hole_score opp.A.id week 1 %}</td>
+      <td class="score" id="{% css opp.A.id week 2 is_front %}">{% hole_score opp.A.id week 2 %}</td>
+      <td class="score" id="{% css opp.A.id week 3 is_front %}">{% hole_score opp.A.id week 3 %}</td>
+      <td class="score" id="{% css opp.A.id week 4 is_front %}">{% hole_score opp.A.id week 4 %}</td>
+      <td class="score" id="{% css opp.A.id week 5 is_front %}">{% hole_score opp.A.id week 5 %}</td>
+      <td class="score" id="{% css opp.A.id week 6 is_front %}">{% hole_score opp.A.id week 6 %}</td>
+      <td class="score" id="{% css opp.A.id week 7 is_front %}">{% hole_score opp.A.id week 7 %}</td>
+      <td class="score" id="{% css opp.A.id week 8 is_front %}">{% hole_score opp.A.id week 8 %}</td>
+      <td class="score" id="{% css opp.A.id week 9 is_front %}">{% hole_score opp.A.id week 9 %}</td>
+      <td class="score" style="background-color:#97A2A2">{% gross opp.A.id week %}</td>
+      <td class="total" style="background-color:#97A2A2">{% net opp.A.id week %}</td>
+    </tr>
+    <tr class="points">
+      <td class="descriptor" colspan="2">POINTS:</td>
+      <td class="points">{% hole_point opp.A.id week 1 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% hole_point opp.A.id week 2 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% hole_point opp.A.id week 3 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% hole_point opp.A.id week 4 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% hole_point opp.A.id week 5 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% hole_point opp.A.id week 6 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% hole_point opp.A.id week 7 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% hole_point opp.A.id week 8 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% hole_point opp.A.id week 9 is_front team.A.team team opp.A.team opp %}</td>
+      <td class="points">{% round_points opp.A.id week is_front team.A.team team opp.A.team opp %}</td>
+      <td class="total">{% total_points opp.A.id week is_front team.A.team team opp.A.team opp %}</td>
+    </tr>
+    <tr class="data">
+      <td class="hole-data left-align" colspan="2">HOLE</td>
+      {% for hole in holeData %}
+      <td class="hole-data center-align">{{ hole.hole }}</td>
+      {% endfor %}
+      <td class="hole-data center-align" rowspan="2">IN</td>
+      <td class="score"></td>
+    </tr>
+    <tr class="data">
+      <td class="hole-data left-align" colspan="2">HANDICAP</td>
+      {% for hole in holeData %}
+      <td class="hole-data center-align">{{ hole.handicap }}</td>
+      {% endfor %}
+      <td class="score"></td>
+    </tr>
+    <tr class="data">
+      <td class="hole-data left-align" colspan="2">YARDS</td>
+      {% for hole in holeData %}
+      <td class="hole-data center-align">{{ hole.yards }}</td>
+      {% endfor %}
+      <td class="hole-data center-align">{{ total }}</td>
+      <td class="score"></td>
+    </tr>
+    <tr class="data">
+      <td class="hole-data left-align" colspan="2">PAR</td>
+      {% for hole in holeData %}
+      <td class="hole-data center-align">{{ hole.par }}</td>
+      {% endfor %}
+      <td class="hole-data center-align">36</td>
+      <td class="score"></td>
+    </tr>
+    <tr class="scores">
+      <td class="descriptor">{{ team.B.name }}</td>
+      <td class="hcp">{{ team.B_Hcp|floatformat:0 }}</td>
+      <td class="score" id="{% css team.B.id week 1 is_front %}">{% hole_score team.B.id week 1 %}</td>
+      <td class="score" id="{% css team.B.id week 2 is_front %}">{% hole_score team.B.id week 2 %}</td>
+      <td class="score" id="{% css team.B.id week 3 is_front %}">{% hole_score team.B.id week 3 %}</td>
+      <td class="score" id="{% css team.B.id week 4 is_front %}">{% hole_score team.B.id week 4 %}</td>
+      <td class="score" id="{% css team.B.id week 5 is_front %}">{% hole_score team.B.id week 5 %}</td>
+      <td class="score" id="{% css team.B.id week 6 is_front %}">{% hole_score team.B.id week 6 %}</td>
+      <td class="score" id="{% css team.B.id week 7 is_front %}">{% hole_score team.B.id week 7 %}</td>
+      <td class="score" id="{% css team.B.id week 8 is_front %}">{% hole_score team.B.id week 8 %}</td>
+      <td class="score" id="{% css team.B.id week 9 is_front %}">{% hole_score team.B.id week 9 %}</td>
+      <td class="score" style="background-color:#97A2A2">{% gross team.B.id week %}</td>
+      <td class="total" style="background-color:#97A2A2">{% net team.B.id week %}</td>
+    </tr>
+    <tr class="points">
+      <td class="descriptor" colspan="2">POINTS:</td>
+      <td class="points">{% hole_point team.B.id week 1 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% hole_point team.B.id week 2 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% hole_point team.B.id week 3 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% hole_point team.B.id week 4 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% hole_point team.B.id week 5 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% hole_point team.B.id week 6 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% hole_point team.B.id week 7 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% hole_point team.B.id week 8 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% hole_point team.B.id week 9 is_front opp.B.team opp team.B.team team %}</td>
+      <td class="points">{% round_points team.B.id week is_front opp.B.team opp team.B.team team %}</td>
+      <td class="total">{% total_points team.B.id week is_front opp.B.team opp team.B.team team %}</td>
+    </tr>
+    <tr class="scores">
+      <td class="descriptor">{{ opp.B.name }}</td>
+      <td class="hcp">{{ opp.B_Hcp|floatformat:0 }}</td>
+      <td class="score" id="{% css opp.B.id week 1 is_front %}">{% hole_score opp.B.id week 1 %}</td>
+      <td class="score" id="{% css opp.B.id week 2 is_front %}">{% hole_score opp.B.id week 2 %}</td>
+      <td class="score" id="{% css opp.B.id week 3 is_front %}">{% hole_score opp.B.id week 3 %}</td>
+      <td class="score" id="{% css opp.B.id week 4 is_front %}">{% hole_score opp.B.id week 4 %}</td>
+      <td class="score" id="{% css opp.B.id week 5 is_front %}">{% hole_score opp.B.id week 5 %}</td>
+      <td class="score" id="{% css opp.B.id week 6 is_front %}">{% hole_score opp.B.id week 6 %}</td>
+      <td class="score" id="{% css opp.B.id week 7 is_front %}">{% hole_score opp.B.id week 7 %}</td>
+      <td class="score" id="{% css opp.B.id week 8 is_front %}">{% hole_score opp.B.id week 8 %}</td>
+      <td class="score" id="{% css opp.B.id week 9 is_front %}">{% hole_score opp.B.id week 9 %}</td>
+      <td class="score" style="background-color:#97A2A2">{% gross opp.B.id week %}</td>
+      <td class="total" style="background-color:#97A2A2">{% net opp.B.id week %}</td>
+    </tr>
+    <tr class="points">
+      <td class="descriptor" colspan="2">POINTS:</td>
+      <td class="points">{% hole_point opp.B.id week 1 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% hole_point opp.B.id week 2 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% hole_point opp.B.id week 3 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% hole_point opp.B.id week 4 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% hole_point opp.B.id week 5 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% hole_point opp.B.id week 6 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% hole_point opp.B.id week 7 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% hole_point opp.B.id week 8 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% hole_point opp.B.id week 9 is_front team.B.team team opp.B.team opp %}</td>
+      <td class="points">{% round_points opp.B.id week is_front team.B.team team opp.B.team opp %}</td>
+      <td class="total">{% total_points opp.B.id week is_front team.B.team team opp.B.team opp %}</td>
+    </tr>
+  </table>
+</div>
+<br>
+{% endfor %}
+{% endblock %}
