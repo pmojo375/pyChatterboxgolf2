@@ -1,102 +1,35 @@
-{% load static %}
+{% extends "base.html" %}
 
-{% block page_content %}
+{% block content %}
+  <h1>Enter Golfer's 9-Hole Round</h1>
+  <form method="post">
+    {% csrf_token %}
 
-<br>
+    <div>
+      <label for="golfer">Golfer:</label>
+      <select name="golfer" id="golfer">
+        {% for golfer in golfers %}
+          <option value="{{ golfer.id }}">{{ golfer.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-<div class="container">
-    <form action="/add_round/" method="POST"
-        <legend>Add Round:</legend>
-        <div class="row">
-            <div class="col-12">
-                <div class="form-group">
-                    <p>After selecting a golfer and week, enter the scores below. Check the box on the right of the
-                        score entry to indicate that the golfer shot max and picked up.</p>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-12">
-                <div class="form-group">
-                  {% csrf_token %}
-                  {{ form.week }}
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-12">
-                <div class="form-group">
-                    {% csrf_token %}
-                    {{ form.golfer }}
-                </div>
-                <div class="form-group">
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole1 }}
-                    </div>
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole2 }}
-                    </div>
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole3 }}
-                    </div>
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole4 }}
-                    </div>
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole5 }}
-                    </div>
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole6 }}
-                    </div>
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole7 }}
-                    </div>
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole8 }}
-                    </div>
-                    <div class="input-group mb-2 mr-sm-2">
-                      {% csrf_token %}
-                      {{ form.hole9 }}
-                    </div>
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="form-group">
-                              {% csrf_token %}
-                              {{ form.season }}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="input-group-text">
-                              {% csrf_token %}
-                                {{ form.self_sub }}
-                                <label class="form-check-label" style="padding-left:5px">Golfer Played Alone</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-12">
-                <div class="form-group">
-                    <input class="btn btn-primary btn-lg btn-block" type="submit" value="Submit">
-                </div>
-            </div>
-        </div>
-    </form>
-</div>
+    <div>
+      <label for="week">Week:</label>
+      <select name="week" id="week">
+        {% for week in current_season_weeks %}
+          <option value="{{ week.id }}" {% if week.id == current_week.id %}selected{% endif %}>{{ week.date|date:"Y-m-d" }} (Week {{ week.number }})</option>
+        {% endfor %}
+      </select>
+    </div>
 
-<form action="{% url 'updateHcp'%}">
-    <input class="btn btn-primary btn-lg btn-block" type="submit" value="Update Hcp">
-</form>
+    {% for hole in holes %}
+      <div>
+        <label for="hole{{ hole }}">Hole {{ hole }}:</label>
+        <input type="number" name="hole{{ hole }}" id="hole{{ hole }}" min="1" max="10" required>
+      </div>
+    {% endfor %}
+
+    <button type="submit">Submit</button>
+  </form>
 {% endblock %}

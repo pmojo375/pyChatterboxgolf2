@@ -1,4 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.utils import timezone
 from main.models import *
 from main.helper import *
 from main.forms import *
@@ -88,6 +90,58 @@ def main(request):
 
 
 def add_round(request):
+    if request.method == 'POST':
+        golfer_id = request.POST['golfer']
+        week_id = request.POST['week']
+
+        golfer = Golfer.objects.get(id=golfer_id)
+        week = Week.objects.get(id=week_id)
+
+        if week.is_front:
+            holes = range(1,10)
+        else:
+            holes = range(10,19)
+        
+        scores = []
+
+        for i in holes:
+            hole_number = i
+            score_value = int(request.POST[f'hole{i}'])
+
+            # Assuming holes are unique per season and week
+            hole = Hole.objects.get(number=hole_number, season=week.season)
+
+            score = Score(golfer=golfer, week=week, hole=hole, score=score_value)
+            scores.append(score)
+
+        # Save all score entries at once
+        Score.objects.bulk_create(scores)
+
+        messages.success(request, '9-hole round entry saved successfully.')
+        return redirect('addRound')
+
+    else:
+        golfers = Golfer.objects.all()
+        current_season = Season.objects.latest('year')
+        current_season_weeks = Week.objects.filter(season=current_season)
+        current_week = Week.objects.filter(season=current_season, date__lte=timezone.now()).latest('date')
+
+        if current_week.is_front:
+            holes = range(1,10)
+        else:
+            holes = range(10,19)
+
+        context = {
+            'golfers': golfers,
+            'current_season_weeks': current_season_weeks,
+            'current_week': current_week,
+            'holes': holes
+        }
+        return render(request, 'addRound.html', context)
+
+
+"""
+def add_round(request):
     # if this is a POST request we need to process the form data
     if request.method == 'POST':
         # create a form instance and populate it with data from the request:
@@ -172,7 +226,7 @@ def add_round(request):
                     score=form.cleaned_data['hole9'],
                     week=form.cleaned_data['week']
                 )
-            """
+            
             if self_sub:
                 # the golfer with playing as both partners
                 golfer_main = Golfer.objects.get(id=form.cleaned_data['golfer'])
@@ -296,7 +350,7 @@ def add_round(request):
 
                 Subrecord(week=form.cleaned_data['week'], absent_id=partner.id, sub_id=golfer.id, year=form.cleaned_data['year']).save()
 
-            """
+            
             # redirect to a new URL:
             return HttpResponseRedirect('/addround/')
             pass
@@ -306,3 +360,4 @@ def add_round(request):
         form = RoundForm()
 
     return render(request, 'addRound.html', {'form': form})
+"""

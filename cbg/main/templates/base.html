@@ -23,9 +23,9 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-      <!-- <div class="navbar-nav">
-        <a class="nav-item nav-link" href="{% url 'addRound' %}">Add Scores</a>
-        <a class="nav-item nav-link" href="{% url 'addSub' %}">Set Sub</a>
+      <div class="navbar-nav">
+        <a class="nav-item nav-link" href="{% url 'add_round' %}">Add Scores</a>
+        {% comment %}<a class="nav-item nav-link" href="{% url 'addSub' %}">Set Sub</a>
         <a class="nav-item nav-link" href="{% url 'createGolfer' %}">Create Golfer</a>
         <a class="nav-item nav-link" href="{% url 'games' %}">Games</a>
         <a class="nav-item nav-link" href="{% url 'enterSchedule' %}">Enter Schedule</a>
@@ -51,8 +51,7 @@
             <a class="dropdown-item" href="{% url 'golferSummary' golfer.id %}">{{ golfer.name }}</a>
             {% endfor %}
           </div>
-        </div>-->
-        <!--
+        </div>
         <div class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Subs</a>
           <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
@@ -60,9 +59,9 @@
             <a class="dropdown-item" href="{% url 'golferSummary' sub.id %}">{{ sub.name }} in {{ sub.year }}</a>
             {% endfor %}
           </div>
-        </div>
+        </div>{% endcomment %}
         
-      </div>-->
+      </div>
     </div>
   </nav>
   <!-- Optional JavaScript -->
@@ -74,7 +73,7 @@
   <script type="text/javascript" charset="utf8" src="cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
 
 
-    {% block page_content %}
+  {% block page_content %}
 
   {% endblock %}
 </body>
