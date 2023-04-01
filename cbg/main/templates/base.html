@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
   <link rel="stylesheet" type="text/css" href='cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css'>
   <title>Chatterbox Golf League</title>
+
+  
 </head>
 
 <body>
@@ -25,8 +27,9 @@
     <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
       <div class="navbar-nav">
         <a class="nav-item nav-link" href="{% url 'add_round' %}">Add Scores</a>
-        {% comment %}<a class="nav-item nav-link" href="{% url 'addSub' %}">Set Sub</a>
-        <a class="nav-item nav-link" href="{% url 'createGolfer' %}">Create Golfer</a>
+        <a class="nav-item nav-link" href="{% url 'add_golfer' %}">Create Golfer</a>
+        <a class="nav-item nav-link" href="{% url 'add_sub' %}">Set Sub</a>
+        {% comment %}
         <a class="nav-item nav-link" href="{% url 'games' %}">Games</a>
         <a class="nav-item nav-link" href="{% url 'enterSchedule' %}">Enter Schedule</a>
         <div class="nav-item dropdown">

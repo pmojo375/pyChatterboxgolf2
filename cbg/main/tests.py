@@ -143,8 +143,6 @@ class PointsTestCase(TestCase):
         self.team2_golfer1_pts = get_golfer_points(self.week1, self.team2_golfer1, detail=True)
         self.team2_golfer2_pts = get_golfer_points(self.week1, self.team2_golfer2, detail=True)
 
-        print(self.team1_golfer1_pts)
-
         # Assert that the points are correct
         self.assertEqual(self.team1_golfer1_pts['golfer_points'], 3.5)
         self.assertEqual(self.team1_golfer2_pts['golfer_points'], 9)
@@ -152,3 +150,90 @@ class PointsTestCase(TestCase):
         self.assertEqual(self.team2_golfer2_pts['golfer_points'], 8.5)
 
         self.assertEqual(self.team1_golfer1_pts['golfer_points'] + self.team1_golfer2_pts['golfer_points'] + self.team2_golfer1_pts['golfer_points'] + self.team2_golfer2_pts['golfer_points'], 24)
+
+from django.urls import reverse
+
+class AddRoundViewTests(TestCase):
+
+    def setUp(self):
+        self.current_date = timezone.now().date()
+        self.season = Season.objects.create(year=self.current_date.year)
+        self.golfer = Golfer.objects.create(name='John Doe')
+        self.week = Week.objects.create(date=self.current_date, season=self.season, number=1, rained_out=False, is_front=True)
+        for i in range(1, 19):
+            Hole.objects.create(number=i, par=random.uniform(3, 5), handicap=i, handicap9=(i if i<= 9 else i-9), yards=250, season=self.season) 
+
+
+    def test_add_round_view_uses_correct_template(self):
+        response = self.client.get(reverse('add_round'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'add_round.html')
+
+    def test_add_round_view_creates_new_round(self):
+        post_data = {
+            'golfer': self.golfer.id,
+            'week': self.week.id,
+            'hole1': 4,
+            'hole2': 5,
+            'hole3': 3,
+            'hole4': 4,
+            'hole5': 5,
+            'hole6': 6,
+            'hole7': 5,
+            'hole8': 8,
+            'hole9': 4
+        }
+
+        response = self.client.post(reverse('add_round'), data=post_data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Score.objects.filter(golfer=self.golfer, week=self.week).count(), 9)
+
+class AddGolferViewTests(TestCase):
+
+    def setUp(self):
+        self.golfer = Golfer.objects.create(name='John Doe')
+
+    def test_add_golfer_view_uses_correct_template(self):
+        response = self.client.get(reverse('add_golfer'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'add_golfer.html')
+
+    def test_add_golfer_view_creates_new_golfer(self):
+        post_data = {
+            'name': self.golfer.name
+        }
+
+        response = self.client.post(reverse('add_golfer'), data=post_data)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Golfer.objects.get(id=self.golfer.id), self.golfer)
+
+class AddSubViewTests(TestCase):
+
+    def setUp(self):
+        self.current_date = timezone.now().date()
+        self.season = Season.objects.create(year=self.current_date.year)
+        self.week = Week.objects.create(date=self.current_date, season=self.season, number=1, rained_out=False, is_front=True)
+        self.absent_golfer = Golfer.objects.create(name='John Doe')
+        self.sub_golfer = Golfer.objects.create(name='Jim Doe')
+
+    def test_add_sub_view_uses_correct_template(self):
+        response = self.client.get(reverse('add_sub'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'add_sub.html')
+
+    def test_add_sub_view_creates_new_golfer(self):
+        post_data = {
+            'absent_golfer': self.absent_golfer.id,
+            'sub_golfer': self.sub_golfer.id,
+            'week': self.week.id
+        }
+
+        response = self.client.post(reverse('add_sub'), data=post_data)
+
+        self.assertEqual(response.status_code, 302)
+        sub = Sub.objects.get(absent_golfer=self.absent_golfer, sub_golfer=self.sub_golfer, week=self.week)
+        self.assertEqual(sub.absent_golfer, self.absent_golfer)
+        self.assertEqual(sub.sub_golfer, self.sub_golfer)
+        self.assertEqual(sub.week, self.week)

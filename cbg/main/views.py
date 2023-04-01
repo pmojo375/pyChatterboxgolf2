@@ -118,7 +118,7 @@ def add_round(request):
         Score.objects.bulk_create(scores)
 
         messages.success(request, '9-hole round entry saved successfully.')
-        return redirect('addRound')
+        return redirect('add_round')
 
     else:
         golfers = Golfer.objects.all()
@@ -137,227 +137,61 @@ def add_round(request):
             'current_week': current_week,
             'holes': holes
         }
-        return render(request, 'addRound.html', context)
+        return render(request, 'add_round.html', context)
+    
 
-
-"""
-def add_round(request):
-    # if this is a POST request we need to process the form data
+def add_golfer(request):
     if request.method == 'POST':
-        # create a form instance and populate it with data from the request:
-        form = RoundForm(request.POST)
+        name = request.POST['name']
 
-        if form.is_valid():
+        # Validate form data
+        if not name:
+            messages.error(request, 'All fields are required.')
+            return redirect('add_golfer')
 
-            # determine if playing front or back
-            isFront = week=form.cleaned_data['week'].is_front
+        # Save golfer data to the database
+        golfer = Golfer(
+            name=name,
+        )
+        golfer.save()
+        messages.success(request, 'Golfer added successfully.')
+        return redirect('add_golfer')
 
-            # set the appropriate hole array
-            if isFront:
-                hole_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-            else:
-                hole_nums = [10, 11, 12, 13, 14, 15, 16, 17, 18]
-                
-            holes = Hole.objects.filter(number__in=hole_nums)
+    return render(request, 'add_golfer.html')
 
-            # golfer played alone and had no partner
-            self_sub = form.cleaned_data['self_sub']
 
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(1, 10))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(1, 10)),
-                    score=form.cleaned_data['hole1'],
-                    week=form.cleaned_data['week']
-                )
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(2, 11))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(2, 11)),
-                    score=form.cleaned_data['hole2'],
-                    week=form.cleaned_data['week']
-                )
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(3, 12))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(3, 12)),
-                    score=form.cleaned_data['hole3'],
-                    week=form.cleaned_data['week']
-                )
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(4, 13))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(4, 13)),
-                    score=form.cleaned_data['hole4'],
-                    week=form.cleaned_data['week']
-                )
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(5, 14))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(5, 14)),
-                    score=form.cleaned_data['hole5'],
-                    week=form.cleaned_data['week']
-                )
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(6, 15))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(6, 15)),
-                    score=form.cleaned_data['hole6'],
-                    week=form.cleaned_data['week']
-                )
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(7, 16))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(7, 16)),
-                    score=form.cleaned_data['hole7'],
-                    week=form.cleaned_data['week']
-                )
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(8, 17))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(8, 17)),
-                    score=form.cleaned_data['hole8'],
-                    week=form.cleaned_data['week']
-                )
-            if not Score.objects.all().filter(golfer=form.cleaned_data['golfer'], week=form.cleaned_data['week'], hole=holes.get(number__in=(9, 18))).exists():
-                Score.objects.update_or_create(
-                    golfer=form.cleaned_data['golfer'],
-                    hole=holes.get(number__in=(9, 18)),
-                    score=form.cleaned_data['hole9'],
-                    week=form.cleaned_data['week']
-                )
-            
-            if self_sub:
-                # the golfer with playing as both partners
-                golfer_main = Golfer.objects.get(id=form.cleaned_data['golfer'])
-                golfer_name = golfer_main.name
+def add_sub(request):
 
-                # if the golfer playing solo is a sub already
-                if golfer_main.team <= 0:
+    if request.method == 'POST':
+        absent_golfer_id = request.POST['absent_golfer']
+        sub_golfer_id = request.POST['sub_golfer']
+        week_id = request.POST['week']
 
-                    golfers = get_team_golfers(get_absents_team(golfer_main.id, form.cleaned_data['week'], year=form.cleaned_data['year']), week=form.cleaned_data['week'])
+        if absent_golfer_id == sub_golfer_id:
+            messages.error(request, 'The absent golfer and the sub golfer cannot be the same person.')
+            return redirect('add_sub')
 
-                    try:
-                        golfer = Golfer.objects.get(name=golfer_name, year=form.cleaned_data['year'], team=golfer_main.team-1)
-                    except Golfer.DoesNotExist:
-                        golfer = Golfer(name=golfer_name, year=form.cleaned_data['year'], team=golfer_main.team-1)
-                        golfer.save()
-                else:
+        absent_golfer = Golfer.objects.get(id=absent_golfer_id)
+        sub_golfer = Golfer.objects.get(id=sub_golfer_id)
+        week = Week.objects.get(id=week_id)
+        sub = Sub(
+            absent_golfer=absent_golfer,
+            sub_golfer=sub_golfer,
+            week=week
+        )
+        sub.save()
+        messages.success(request, 'Sub added successfully.')
+        return redirect('add_sub')
 
-                    golfers = get_team_golfers(golfer_main.team, week=form.cleaned_data['week'])
-
-                    try:
-                        golfer = Golfer.objects.get(name=golfer_name, year=form.cleaned_data['year'], team=0)
-                    except Golfer.DoesNotExist:
-                        golfer = Golfer(name=golfer_name, year=form.cleaned_data['year'], team=0)
-                        golfer.save()
-
-                if not Score.objects.all().filter(golfer=golfer, week=form.cleaned_data['week'],
-                                                  hole=holes[0], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[0],
-                        score=form.cleaned_data['hole1'],
-                        tookMax=form.cleaned_data['tookMax1'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-                if not Score.objects.all().filter(golfer=golfer, week=form.cleaned_data['week'],
-                                                  hole=holes[1], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[1],
-                        score=form.cleaned_data['hole2'],
-                        tookMax=form.cleaned_data['tookMax2'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-                if not Score.objects.all().filter(golfer=golfer.id, week=form.cleaned_data['week'],
-                                                  hole=holes[2], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[2],
-                        score=form.cleaned_data['hole3'],
-                        tookMax=form.cleaned_data['tookMax3'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-                if not Score.objects.all().filter(golfer=golfer.id, week=form.cleaned_data['week'],
-                                                  hole=holes[3], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[3],
-                        score=form.cleaned_data['hole4'],
-                        tookMax=form.cleaned_data['tookMax4'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-                if not Score.objects.all().filter(golfer=golfer.id, week=form.cleaned_data['week'],
-                                                  hole=holes[4], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[4],
-                        score=form.cleaned_data['hole5'],
-                        tookMax=form.cleaned_data['tookMax5'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-                if not Score.objects.all().filter(golfer=golfer.id, week=form.cleaned_data['week'],
-                                                  hole=holes[5], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[5],
-                        score=form.cleaned_data['hole6'],
-                        tookMax=form.cleaned_data['tookMax6'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-                if not Score.objects.all().filter(golfer=golfer.id, week=form.cleaned_data['week'],
-                                                  hole=holes[6], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[6],
-                        score=form.cleaned_data['hole7'],
-                        tookMax=form.cleaned_data['tookMax7'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-                if not Score.objects.all().filter(golfer=golfer.id, week=form.cleaned_data['week'],
-                                                  hole=holes[7], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[7],
-                        score=form.cleaned_data['hole8'],
-                        tookMax=form.cleaned_data['tookMax8'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-                if not Score.objects.all().filter(golfer=golfer.id, week=form.cleaned_data['week'],
-                                                  hole=holes[8], year=form.cleaned_data['year']).exists():
-                    Score.objects.update_or_create(
-                        golfer=golfer.id,
-                        hole=holes[8],
-                        score=form.cleaned_data['hole9'],
-                        tookMax=form.cleaned_data['tookMax9'],
-                        week=form.cleaned_data['week'],
-                        year=form.cleaned_data['year']
-                    )
-
-                if golfers['A'].id == golfer_main.id:
-                    partner = golfers['B']
-                else:
-                    partner = golfers['A']
-
-                Subrecord(week=form.cleaned_data['week'], absent_id=partner.id, sub_id=golfer.id, year=form.cleaned_data['year']).save()
-
-            
-            # redirect to a new URL:
-            return HttpResponseRedirect('/addround/')
-            pass
-
-    # if a GET (or any other method) we'll create a blank form
     else:
-        form = RoundForm()
+        golfers = Golfer.objects.all()
+        current_season = Season.objects.latest('year')
+        current_season_weeks = Week.objects.filter(season=current_season)
+        current_week = Week.objects.filter(season=current_season, date__lte=timezone.now()).latest('date')
 
-    return render(request, 'addRound.html', {'form': form})
-"""
+        context = {
+            'golfers': golfers,
+            'current_season_weeks': current_season_weeks,
+            'current_week': current_week
+        }  
+        return render(request, 'add_sub.html', context)

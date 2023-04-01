@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+  <div class="container">
+    <h1>Add Sub</h1>
+    <form method="post">
+      {% csrf_token %}
+      <div class="row mb-3">
+        <div class="col-md-6 offset-md-3">
+          <label for="absent_golfer" class="col-form-label">Absent Golfer:</label>
+          <select id="absent_golfer" name="absent_golfer" class="form-control">
+            {% for golfer in golfers %}
+              <option value="{{ golfer.id }}">{{ golfer.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6 offset-md-3">
+          <label for="sub_golfer" class="col-form-label">Sub Golfer:</label>
+          <select id="sub_golfer" name="sub_golfer" class="form-control">
+            {% for golfer in golfers %}
+              <option value="{{ golfer.id }}">{{ golfer.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6 offset-md-3">
+            <label for="week" class="form-label">Week:</label>
+            <select name="week" id="week" class="form-control">
+              {% for week in current_season_weeks %}
+                <option value="{{ week.id }}" {% if week.id == current_week.id %}selected{% endif %}>{{ week.date|date:"Y-m-d" }} (Week {{ week.number }})</option>
+              {% endfor %}
+            </select>
+          </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 offset-md-3">
+          <button type="submit" class="btn btn-primary">Add Sub</button>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endblock %}
