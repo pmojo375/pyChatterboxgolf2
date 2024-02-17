@@ -2,26 +2,14 @@
 
 {% block page_content %}
   <div class="container">
-    <div class="row">
-      <div class="col-md-6 offset-md-3">
-        <h2 class="mb-4">Add New Golfer</h2>
-        <form method="POST" action="{% url 'add_golfer' %}">
-          {% csrf_token %}
-          <div class="row mb-3">
-            <div class="col-md-8">
-              <div class="input-group">
-                <label for="first_name" class="col-md-4 col-form-label">Name:</label>
-                <div class="col-md-8">
-                  <input type="text" name="name" id="name" required class="form-control">
-                </div>
-              </div>
-            </div>
-            <div class="col-md-2">
-              <button type="submit" class="btn btn-primary float-end">Add Golfer</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+    <h1 class="text-center my-4">Add New Golfer</h1>
+    <form method="post" class="col-md-6 offset-md-3">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="name" class="form-label">Name:</label>
+            <input type="text" class="form-control" id="name" name="name" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Golfer</button>
+    </form>
   </div>
 {% endblock %}

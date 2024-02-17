@@ -2,8 +2,13 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils import timezone
 from main.models import *
+from main.signals import *
 from main.helper import *
 from main.forms import *
+from django.contrib import messages
+from django.db.models import Q
+from datetime import datetime
+from django.http import HttpResponseRedirect
 
 # Create your views here.
 def main(request):
@@ -88,110 +93,333 @@ def main(request):
     }
     return render(request, 'main.html', context)
 
+def add_scores(request):
+    golfers = Golfer.objects.all()
+    weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
 
-def add_round(request):
     if request.method == 'POST':
-        golfer_id = request.POST['golfer']
-        week_id = request.POST['week']
-
-        golfer = Golfer.objects.get(id=golfer_id)
-        week = Week.objects.get(id=week_id)
-
-        if week.is_front:
-            holes = range(1,10)
+        form = ScoresForm(golfers, weeks, request.POST)
+        if form.is_valid():
+            print('Valid Form\n')
+            
+            # Get form data
+            golfer_id = form.cleaned_data['golfer']
+            week_id = form.cleaned_data['week']
+            scores = []
+            for hole in range(1, 10):
+                scores.append(form.cleaned_data[f'hole{hole}'])
+                
+            # Get the golfer and week objects
+            golfer = Golfer.objects.get(id=golfer_id)
+            week = Week.objects.get(id=week_id)
+            
+            # Get the holes for the week
+            if week.is_front:
+                holes_nums = range(1,10)
+            else:
+                holes_nums = range(10,19)
+            
+            # Create the score objects
+            for index, score in enumerate(scores):
+                hole = Hole.objects.get(number=holes_nums[index], season=week.season)
+                score = Score(
+                    golfer=golfer,
+                    week=week,
+                    hole=hole,
+                    score=score
+                )
+                
+                # Print info for debugging
+                print(f'Golfer: {golfer.name}')
+                print(f'Week: {week}')
+                print(f'Hole: {hole.number}')
+                print(f'Score: {score.score}')
+                
+                #score.save()
         else:
-            holes = range(10,19)
-        
-        scores = []
-
-        for i in holes:
-            hole_number = i
-            score_value = int(request.POST[f'hole{i}'])
-
-            # Assuming holes are unique per season and week
-            hole = Hole.objects.get(number=hole_number, season=week.season)
-
-            score = Score(golfer=golfer, week=week, hole=hole, score=score_value)
-            scores.append(score)
-
-        # Save all score entries at once
-        Score.objects.bulk_create(scores)
-
-        messages.success(request, '9-hole round entry saved successfully.')
-        return redirect('add_round')
-
+            print('Invalid Form\n')
+            print(form.errors)
+            
     else:
-        golfers = Golfer.objects.all()
-        current_season = Season.objects.latest('year')
-        current_season_weeks = Week.objects.filter(season=current_season)
-        current_week = Week.objects.filter(season=current_season, date__lte=timezone.now()).latest('date')
+        form = ScoresForm(golfers, weeks)
 
-        if current_week.is_front:
-            holes = range(1,10)
-        else:
-            holes = range(10,19)
-
-        context = {
-            'golfers': golfers,
-            'current_season_weeks': current_season_weeks,
-            'current_week': current_week,
-            'holes': holes
-        }
-        return render(request, 'add_round.html', context)
-    
+    return render(request, 'add_round.html', {'form': form})
 
 def add_golfer(request):
     if request.method == 'POST':
-        name = request.POST['name']
-
-        # Validate form data
-        if not name:
-            messages.error(request, 'All fields are required.')
-            return redirect('add_golfer')
-
-        # Save golfer data to the database
-        golfer = Golfer(
-            name=name,
-        )
-        golfer.save()
-        messages.success(request, 'Golfer added successfully.')
-        return redirect('add_golfer')
-
-    return render(request, 'add_golfer.html')
-
+        form = GolferForm(request.POST)
+        if form.is_valid():
+            print('Valid Form\n')
+            
+            # Get form data
+            name = form.cleaned_data['name']
+            
+            # Create the golfer object
+            golfer = Golfer(
+                name=name,
+            )
+            
+            # Print info for debugging
+            print(f'Name: {name}')
+            
+            #golfer.save()
+        else:
+            print('Invalid Form\n')
+            print(form.errors)
+    else:
+        form = GolferForm()
+    
+    return render(request, 'add_golfer.html', {'form': form})
 
 def add_sub(request):
-
+    absent_golfers = Golfer.objects.filter(team__season=Season.objects.order_by('-year').first())
+    sub_golfers = Golfer.objects.exclude(team__season=Season.objects.order_by('-year').first())
+    weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
+    
     if request.method == 'POST':
-        absent_golfer_id = request.POST['absent_golfer']
-        sub_golfer_id = request.POST['sub_golfer']
-        week_id = request.POST['week']
-
-        if absent_golfer_id == sub_golfer_id:
-            messages.error(request, 'The absent golfer and the sub golfer cannot be the same person.')
-            return redirect('add_sub')
-
-        absent_golfer = Golfer.objects.get(id=absent_golfer_id)
-        sub_golfer = Golfer.objects.get(id=sub_golfer_id)
-        week = Week.objects.get(id=week_id)
-        sub = Sub(
-            absent_golfer=absent_golfer,
-            sub_golfer=sub_golfer,
-            week=week
-        )
-        sub.save()
-        messages.success(request, 'Sub added successfully.')
-        return redirect('add_sub')
-
+        form = SubForm(absent_golfers, sub_golfers, weeks, request.POST)
+        if form.is_valid():
+            print('Valid Form\n')
+            
+            # Get form data
+            absent_golfer_id = form.cleaned_data['absent_golfer']
+            sub_golfer_id = form.cleaned_data['sub_golfer']
+            week_id = form.cleaned_data['week']
+            
+            # Get the golfer and week objects
+            absent_golfer = Golfer.objects.get(id=absent_golfer_id)
+            sub_golfer = Golfer.objects.get(id=sub_golfer_id)
+            week = Week.objects.get(id=week_id)
+            
+            # Create the sub object
+            sub = Sub(
+                absent_golfer=absent_golfer,
+                sub_golfer=sub_golfer,
+                week=week
+            )
+            
+            # Print info for debugging
+            print(f'Absent Golfer: {absent_golfer.name}')
+            print(f'Sub Golfer: {sub_golfer.name}')
+            print(f'Week: {week}')
+            
+            #sub.save()
+        else:
+            print('Invalid Form\n')
+            print(form.errors)
+    
     else:
-        golfers = Golfer.objects.all()
-        current_season = Season.objects.latest('year')
-        current_season_weeks = Week.objects.filter(season=current_season)
-        current_week = Week.objects.filter(season=current_season, date__lte=timezone.now()).latest('date')
+        form = SubForm(absent_golfers, sub_golfers, weeks)
+    
+    return render(request, 'add_sub.html', {'form': form})
 
-        context = {
-            'golfers': golfers,
-            'current_season_weeks': current_season_weeks,
-            'current_week': current_week
-        }  
-        return render(request, 'add_sub.html', context)
+def enter_schedule(request):
+    weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
+    teams = Team.objects.filter(season=Season.objects.order_by('-year').first())
+    
+    if request.method == 'POST':
+        form = ScheduleForm(weeks, teams, request.POST)
+        if form.is_valid():
+            print('Valid Form\n')
+            
+            # Get form data
+            week_id = form.cleaned_data['week']
+            team1_id = form.cleaned_data['team1']
+            team2_id = form.cleaned_data['team2']
+            
+            # Get the week and team objects
+            week = Week.objects.get(id=week_id)
+            team1 = Team.objects.get(id=team1_id)
+            team2 = Team.objects.get(id=team2_id)
+            
+            # Create the matchup object
+            matchup = Matchup(
+                week=week
+            )
+            matchup.save()
+            
+            matchup.teams.add(team1)
+            matchup.teams.add(team2)
+            
+            # Print info for debugging
+            print(f'Week: {week}')
+            print(f'Team 1: {team1}')
+            print(f'Team 2: {team2}')
+            
+        else:
+            print('Invalid Form\n')
+            print(form.errors)
+    else:
+        form = ScheduleForm(weeks, teams)
+
+    return render(request, 'enter_schedule.html', {'form': form})
+
+
+def scorecards(request, week):
+    # Retrieve necessary data from the models
+    week_number = week
+    week = Week.objects.get(number=week, season=Season.objects.latest('year'))
+    teams = Team.objects.all()
+    hole_data = Hole.objects.all()
+    matchups = Matchup.objects.filter(week=week)
+    
+    if week.is_front:
+        holes_nums = range(1,10)
+        hole_string = 'Front 9'
+    else:
+        holes_nums = range(10,19)
+        hole_string = 'Back 9'
+        
+    holes = Hole.objects.filter(number__in=holes_nums, season=week.season)
+    
+    cards = []
+    
+    for matchup in matchups:
+        teams = matchup.teams.all()
+        team1 = teams[0]
+        team2 = teams[1]
+        
+        team1_golfers = team1.golfers.all()
+        team2_golfers = team2.golfers.all()
+        
+        team1_golfer1 = team1_golfers[0]
+        team1_golfer2 = team1_golfers[1]
+        team2_golfer1 = team2_golfers[0]
+        team2_golfer2 = team2_golfers[1]
+        
+        team1_golfer1 = get_sub(team1_golfer1, week)
+        team1_golfer2 = get_sub(team1_golfer2, week)
+        team2_golfer1 = get_sub(team2_golfer1, week)
+        team2_golfer2 = get_sub(team2_golfer2, week)
+        
+        team1_golfer1_hcp = get_hcp(team1_golfer1, week)
+        team1_golfer2_hcp = get_hcp(team1_golfer2, week)
+        team2_golfer1_hcp = get_hcp(team2_golfer1, week)
+        team2_golfer2_hcp = get_hcp(team2_golfer2, week)
+        
+        # team 1 golfer 1 has a higher handicap than team 1 golfer 2, designate the A and B golfers
+        if team1_golfer1_hcp >= team1_golfer2_hcp:
+            team1_golferA = team1_golfer2
+            team1_golferB = team1_golfer1
+            team1_golferA_hcp = team1_golfer2_hcp
+            team1_golferB_hcp = team1_golfer1_hcp
+        else:
+            team1_golferA = team1_golfer1
+            team1_golferB = team1_golfer2
+            team1_golferA_hcp = team1_golfer1_hcp
+            team1_golferB_hcp = team1_golfer2_hcp
+            
+        # team 2 golfer 1 has a higher handicap than team 2 golfer 2, designate the A and B golfers
+        if team2_golfer1_hcp >= team2_golfer2_hcp:
+            team2_golferA = team2_golfer2
+            team2_golferB = team2_golfer1
+            team2_golferA_hcp = team2_golfer2_hcp
+            team2_golferB_hcp = team2_golfer1_hcp
+        else:
+            team2_golferA = team2_golfer1
+            team2_golferB = team2_golfer2
+            team2_golferA_hcp = team2_golfer1_hcp
+            team2_golferB_hcp = team2_golfer2_hcp
+            
+        team1_golferA_scores_query = Score.objects.filter(golfer=team1_golferA, week=week).order_by('hole__number')
+        team1_golferB_scores_query = Score.objects.filter(golfer=team1_golferB, week=week).order_by('hole__number')
+        team2_golferA_scores_query = Score.objects.filter(golfer=team2_golferA, week=week).order_by('hole__number')
+        team2_golferB_scores_query = Score.objects.filter(golfer=team2_golferB, week=week).order_by('hole__number')
+        
+        team1_golferA_scores = []
+        team1_golferB_scores = []
+        team2_golferA_scores = []
+        team2_golferB_scores = []
+        
+        team1_golferA_css = []
+        team1_golferB_css = []
+        team2_golferA_css = []
+        team2_golferB_css = []
+        
+        matchupA_point_data = get_golfer_points(week, team1_golferA, detail=True)
+        matchupB_point_data = get_golfer_points(week, team1_golferB, detail=True)
+        
+        team1_golferA_hole_points = matchupA_point_data['hole_data']
+        team2_golferA_hole_points = matchupA_point_data['opponents_hole_data']
+        team1_golferB_hole_points = matchupB_point_data['hole_data']
+        team2_golferB_hole_points = matchupB_point_data['opponents_hole_data']
+        
+        for index, score in enumerate(team1_golferA_scores_query):
+            team1_golferA_scores.append(score.score)
+            team1_golferA_css.append(get_score_string(team1_golferA_hole_points[index], holes))
+        for index, score in enumerate(team1_golferB_scores_query):
+            team1_golferB_scores.append(score.score)
+            team1_golferB_css.append(get_score_string(team1_golferB_hole_points[index], holes))
+        for index, score in enumerate(team2_golferA_scores_query):
+            team2_golferA_scores.append(score.score)
+            team2_golferA_css.append(get_score_string(team2_golferA_hole_points[index], holes))
+        for index, score in enumerate(team2_golferB_scores_query):
+            team2_golferB_scores.append(score.score)
+            team2_golferB_css.append(get_score_string(team2_golferB_hole_points[index], holes))
+            
+        team1_golferA_total = sum(team1_golferA_scores)
+        team1_golferB_total = sum(team1_golferB_scores)
+        team2_golferA_total = sum(team2_golferA_scores)
+        team2_golferB_total = sum(team2_golferB_scores)
+        
+        team1_golferA_net = team1_golferA_total - team1_golferA_hcp
+        team1_golferB_net = team1_golferB_total - team1_golferB_hcp
+        team2_golferA_net = team2_golferA_total - team2_golferA_hcp
+        team2_golferB_net = team2_golferB_total - team2_golferB_hcp
+        
+        
+        team1_golferA_round_points = matchupA_point_data['round_points']
+        team2_golferA_round_points = matchupA_point_data['opponents_round_points']
+        team1_golferB_round_points = matchupB_point_data['round_points']
+        team2_golferB_round_points = matchupB_point_data['opponents_round_points']
+        
+        team1_golferA_total_points = matchupA_point_data['golfer_points']
+        team2_golferA_total_points = matchupA_point_data['opponent_points']
+        team1_golferB_total_points = matchupB_point_data['golfer_points']
+        team2_golferB_total_points = matchupB_point_data['opponent_points']
+        
+        cards.append({
+        'team1_golferA': team1_golferA,
+        'team1_golferB': team1_golferB,
+        'team2_golferA': team2_golferA,
+        'team2_golferB': team2_golferB,
+        'team1_golferA_hcp': team1_golferA_hcp,
+        'team1_golferB_hcp': team1_golferB_hcp,
+        'team2_golferA_hcp': team2_golferA_hcp,
+        'team2_golferB_hcp': team2_golferB_hcp,
+        'team1_golferA_total': team1_golferA_total,
+        'team1_golferB_total': team1_golferB_total,
+        'team2_golferA_total': team2_golferA_total,
+        'team2_golferB_total': team2_golferB_total,
+        'team1_golferA_net': team1_golferA_net,
+        'team1_golferB_net': team1_golferB_net,
+        'team2_golferA_net': team2_golferA_net,
+        'team2_golferB_net': team2_golferB_net,
+        'team1_golferA_scores': zip(team1_golferA_scores, team1_golferA_css),
+        'team1_golferB_scores': zip(team1_golferB_scores, team1_golferB_css),
+        'team2_golferA_scores': zip(team2_golferA_scores, team2_golferA_css),
+        'team2_golferB_scores': zip(team2_golferB_scores, team2_golferB_css),
+        'team1_golferA_hole_points': team1_golferA_hole_points,
+        'team1_golferB_hole_points': team1_golferB_hole_points,
+        'team2_golferA_hole_points': team2_golferA_hole_points,
+        'team2_golferB_hole_points': team2_golferB_hole_points,
+        'team1_golferA_round_points': team1_golferA_round_points,
+        'team1_golferB_round_points': team1_golferB_round_points,
+        'team2_golferA_round_points': team2_golferA_round_points,
+        'team2_golferB_round_points': team2_golferB_round_points,
+        'team1_golferA_total_points': team1_golferA_total_points,
+        'team1_golferB_total_points': team1_golferB_total_points,
+        'team2_golferA_total_points': team2_golferA_total_points,
+        'team2_golferB_total_points': team2_golferB_total_points,})
+        
+    
+    # Render the template with the context
+    context = {
+        'week_number': week_number,
+        'holes': holes,
+        'hole_string': hole_string,
+        'cards': cards,
+    }
+    
+    return render(request, 'scorecards.html', context)
+

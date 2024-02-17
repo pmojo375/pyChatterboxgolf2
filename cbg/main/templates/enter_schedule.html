@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+<div class="container">
+    <h1 class="text-center my-4">Enter Golfer's 9-Hole Round</h1>
+    <form method="post" class="col-md-6 offset-md-3">
+        {% csrf_token %}
+
+        <!-- Week Dropdown -->
+        <div class="form-group mb-3">
+          <label for="{{ form.week.id_for_label }}" class="form-label">{{ form.week.label }}</label>
+          <select name="{{ form.week.name }}" id="{{ form.week.id_for_label }}" class="form-control">
+              {% for choice in form.week.field.choices %}
+                  <option value="{{ choice.0 }}" {% if choice.0 == form.week.value %}selected{% endif %}>{{ choice.1 }}</option>
+              {% endfor %}
+          </select>
+        </div>
+
+        <!-- Team 1 Dropdown -->
+        <div class="form-group mb-3">
+          <label for="{{ form.team1.id_for_label }}" class="form-label">{{ form.team1.label }}</label>
+          <select name="{{ form.team1.name }}" id="{{ form.team1.id_for_label }}" class="form-control">
+              {% for choice in form.team1.field.choices %}
+                  <option value="{{ choice.0 }}" {% if choice.0 == form.team1.value %}selected{% endif %}>{{ choice.1 }}</option>
+              {% endfor %}
+          </select>
+        </div>
+        
+        <!-- Team 2 Dropdown -->
+        <div class="form-group mb-3">
+          <label for="{{ form.team2.id_for_label }}" class="form-label">{{ form.team2.label }}</label>
+          <select name="{{ form.team2.name }}" id="{{ form.team2.id_for_label }}" class="form-control">
+              {% for choice in form.team2.field.choices %}
+                  <option value="{{ choice.0 }}" {% if choice.0 == form.team2.value %}selected{% endif %}>{{ choice.1 }}</option>
+              {% endfor %}
+          </select>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="row">
+            <div class="col">
+            <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+            <div class="col">
+                <!-- Display Errors -->
+                {% if form.non_field_errors %}
+                <div class="error">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+
+    {% block extra_js %}
+    <script>
+        // JavaScript to handle dynamic dropdown behavior
+        document.getElementById('{{ form.team1.id_for_label }}').addEventListener('change', function () {
+          var team1Value = this.value;
+          var team2Dropdown = document.getElementById('{{ form.team2.id_for_label }}');
+
+          console.log(team1Value)
+
+          
+          // Enable all options
+          Array.from(team2Dropdown.options).forEach(function(option) {
+            option.disabled = false;
+          });
+        
+          // Disable the selected team in team1 in team2
+          if (team1Value !== '') {
+            var selectedOption = team2Dropdown.querySelector('option[value="' + team1Value + '"]');
+            
+            console.log(selectedOption)
+            if (selectedOption) {
+              selectedOption.setAttribute("disabled", true);
+            }
+          }
+
+          // if the team2 is already the same element, change it to the next in the list
+            if (team1Value === team2Dropdown.value) {
+                var nextOption = team2Dropdown.querySelector('option:not([disabled]):not([value="' + team1Value + '"])');
+                if (nextOption) {
+                nextOption.setAttribute("selected", true);
+                }
+            }
+        });
+        </script>
+
+{% endblock %}
+{% endblock %}

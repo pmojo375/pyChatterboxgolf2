@@ -88,9 +88,9 @@ def get_sub(golfer, week, **kwargs):
         The sub's Golfer object or the original golfer object if there is no sub found
     """
 
-    try:
+    if Sub.objects.filter(absent_golfer=golfer, week=week).exists():
         return Sub.objects.get(absent_golfer=golfer, week=week).sub_golfer
-    except Sub.DoesNotExist:
+    else:
         return golfer
 
 
@@ -113,7 +113,7 @@ def get_absent_team_from_sub(sub_golfer, week):
     return sub_golfer.sub.get(week=week).absent_golfer.team_set.get(season=week.season)
 
 
-def golferPlayed(golfer, week, **kwargs):
+def golfer_played(golfer, week, **kwargs):
     """Checks if a golfer played in a given week and year
 
     Parameters
@@ -133,7 +133,7 @@ def golferPlayed(golfer, week, **kwargs):
     return Score.objects.filter(golfer=golfer, week=week).exists()
 
 
-def getHcp(golfer, week):
+def get_hcp(golfer, week):
     """Gets a golfers handicap for a specific week
 
     Parameters
@@ -171,33 +171,37 @@ def calculate_handicap(golfer, season, week):
     """
 
     # Get the 10 most recent weeks in which the golfer played
-    subquery = Score.objects.filter(golfer=golfer, week__season=season, week__date__lte=week.date).order_by('-week__date').values('week').distinct()[:10]
+    subquery = Score.objects.filter(golfer=golfer, week__season=season, week__date__lt=week.date).order_by('-week__date').values('week').distinct()[:10]
 
     # Get all the scores for the golfer in those 10 weeks
     scores = Score.objects.filter(golfer=golfer, week__in=subquery).order_by('-week__date')
 
-    # Group the scores by week
-    scores_by_week = {}
-    for score in scores:
-        if score.week not in scores_by_week:
-            scores_by_week[score.week] = []
-        scores_by_week[score.week].append(score.score)
 
-    # Sort the weeks by the sum of scores for each week
-    weeks = sorted(scores_by_week.keys(), key=lambda week: sum(scores_by_week[week]))
+    if len(scores) != 0:
+        # Group the scores by week
+        scores_by_week = {}
+        for score in scores:
+            if score.week not in scores_by_week:
+                scores_by_week[score.week] = []
+            scores_by_week[score.week].append(score.score)
 
-    # Compute the handicap based on the number of weeks and whether to drop any
-    num_weeks = len(weeks)
-    if num_weeks < 5:
-        # If there are fewer than 5 weeks, use all the scores and subtract 36 (par) from each score
-        handicap = (sum(score for scores in scores_by_week.values() for score in scores) / num_weeks - 36) * 0.8
+        # Sort the weeks by the sum of scores for each week
+        weeks = sorted(scores_by_week.keys(), key=lambda week: sum(scores_by_week[week]))
+
+        # Compute the handicap based on the number of weeks and whether to drop any
+        num_weeks = len(weeks)
+        if num_weeks < 5:
+            # If there are fewer than 5 weeks, use all the scores and subtract 36 (par) from each score
+            handicap = (sum(score for scores in scores_by_week.values() for score in scores) / num_weeks - 36) * 0.8
+        else:
+            # If there are 5 or more weeks, drop the highest- and lowest-scoring weeks and use the remaining scores
+            drop_weeks = [weeks[0], weeks[-1]]
+            scores = [score for week in weeks if week not in drop_weeks for score in scores_by_week[week]]
+            handicap = (sum(scores) / (num_weeks - len(drop_weeks)) - 36) * 0.8
+
+        return round(handicap, 5)
     else:
-        # If there are 5 or more weeks, drop the highest- and lowest-scoring weeks and use the remaining scores
-        drop_weeks = [weeks[0], weeks[-1]]
-        scores = [score for week in weeks if week not in drop_weeks for score in scores_by_week[week]]
-        handicap = (sum(scores) / (num_weeks - len(drop_weeks)) - 36) * 0.8
-
-    return round(handicap, 2)
+        return 0
 
 def get_schedule(week_model):
     """
@@ -244,6 +248,41 @@ def get_schedule(week_model):
     return schedule
 
 
+from django.db.models import Sum
+
+def calculate_team_points(current_week):
+    # Get the current season
+    current_season = current_week.season
+
+    # Get all the weeks for the current season up to the given week
+    weeks = Week.objects.filter(season=current_season, number__lte=current_week.number)
+
+    # Get all the teams in the current season
+    teams = Team.objects.filter(season=current_season)
+
+    # Initialize a dictionary to store team points
+    team_points = {}
+
+    # Iterate through the teams and calculate the total points for each team
+    for team in teams:
+        team_golfers = team.golfers.all()
+        total_points = 0
+
+        # Iterate through the weeks and calculate golfer points for each week
+        for week in weeks:
+            for golfer in team_golfers:
+                golfer_points = get_golfer_points(week, golfer)
+                if isinstance(golfer_points, (int, float)):  # Only add points if the function returns a number
+                    total_points += golfer_points
+
+        # Store the team points in the dictionary
+        team_points[team.id] = total_points
+
+    return team_points
+
+
+    
+
 from django.db.models import Q
 
 def get_golfer_points(week_model, golfer_model, **kwargs):
@@ -265,59 +304,80 @@ def get_golfer_points(week_model, golfer_model, **kwargs):
         If no opponent team found for the given matchup, returns "No opponent team found for the given matchup".
 
     """
+    
+    weeks_subs = Sub.objects.filter(week=week_model)
+    
+    subs = []
+    
+    # Get all subs for the inputed week
+    for sub in weeks_subs:
+        subs.append(sub.sub_golfer)
 
     detail = kwargs.get('detail', False)
 
-    # Get all scores for the inputed week and golfer
-    scores = Score.objects.filter(golfer=golfer_model, week=week_model)
-
-    # Check if there are any scores for the week and golfer
-    if not scores:
-        return "No scores found for golfer for this week"
-
-    # Check if there are any matchups for the week
-    matchups = week_model.matchup_set.all()
-    if not matchups:
-        return "No matchups found for this week"
 
     # Get the golfers on the same team as the inputed golfer
-    golfer_team = golfer_model.team_set.first()
+    try:
+        golfer_team = golfer_model.team_set.get(season=week_model.season)
+    except Team.DoesNotExist:
+        golfer_team = get_absent_team_from_sub(golfer_model, week_model)
+        
+    # Gets the teams golfers. If the golfer is a sub, the team will be the absent team.
     team_golfers = golfer_team.golfers.all()
 
-    # Get golfers partner
+    if golfer_model in subs:
+        absent_golfer = weeks_subs.get(sub_golfer=golfer_model).absent_golfer
+    else:
+        absent_golfer = golfer_model
+        
+    # Get golfers partner this will not work if the golfer is a sub need to fix.
     for golfer in team_golfers:
-        if golfer != golfer_model:
+        if golfer != absent_golfer:
             partner = golfer
+    
+    # Get the matchup for the inputed week and golfer's team
+    matchup = Matchup.objects.get(week=week_model, teams=golfer_team)
+    
+    # Get both teams from the matchup
+    teams = matchup.teams.all()
 
-    # Try to get opponents team and return messege if not found
-    for matchup in matchups:
-        opponent_team = matchup.teams.exclude(id=golfer_team.id).first()
-        if not opponent_team:
-            return "No opponent team found for the given matchup"
+    # Get the opponents team
+    opponent_team = teams.exclude(id=golfer_team.id).first()
 
     # Get opponent teams golfers
     opponent_golfers = opponent_team.golfers.all()
+    
+    # Get subs if any were needed for the 4 golfers in the matchup
+    golfer_model = get_sub(golfer_model, week_model)
+    partner = get_sub(partner, week_model)
+    opponent_golfers1 = get_sub(opponent_golfers[0], week_model)
+    opponent_golfers2 = get_sub(opponent_golfers[1], week_model)
+    
+    # Get all scores for the inputed week and golfer
+    scores = Score.objects.filter(golfer=golfer_model, week=week_model)
+    
+    golfer_hcp = get_hcp(golfer_model, week_model)
+    partner_hcp = get_hcp(partner, week_model)
+    opp_golfer1_hcp = get_hcp(opponent_golfers1, week_model)
+    opp_golfer2_hcp = get_hcp(opponent_golfers2, week_model)
 
-    golfer_hcp = getHcp(golfer_model, week_model)
-    partner_hcp = getHcp(partner, week_model)
-    opp_golfer1_hcp = getHcp(opponent_golfers[0], week_model)
-    opp_golfer2_hcp = getHcp(opponent_golfers[1], week_model)
 
-    if golfer_hcp > partner_hcp:
-        if opp_golfer1_hcp > opp_golfer2_hcp:
-            opponent = opponent_golfers[0]
+    # BUG: if the two golfers have the same handicap they both play the same opponent. This is not correct.
+    if golfer_hcp >= partner_hcp:
+        if opp_golfer1_hcp >= opp_golfer2_hcp:
+            opponent = opponent_golfers1
             opponent_hcp = opp_golfer1_hcp
         else:
-            opponent = opponent_golfers[1]
+            opponent = opponent_golfers2
             opponent_hcp = opp_golfer2_hcp
     else:
         if opp_golfer1_hcp < opp_golfer2_hcp:
-            opponent = opponent_golfers[0]
+            opponent = opponent_golfers1
             opponent_hcp = opp_golfer1_hcp
         else:
-            opponent = opponent_golfers[1]
+            opponent = opponent_golfers2
             opponent_hcp = opp_golfer2_hcp
-
+ 
     opp_scores = Score.objects.filter(golfer=opponent, week=week_model)
 
     # Initialize the points to 0
@@ -328,7 +388,6 @@ def get_golfer_points(week_model, golfer_model, **kwargs):
         holes = range(1, 10)
     else:
         holes = range(10, 19)
-
 
     hole_data = []
     opponents_hole_data = []
@@ -367,7 +426,10 @@ def get_golfer_points(week_model, golfer_model, **kwargs):
             rollover = 1
         else:
             rollover = 0
-
+            
+        hole_point_data['handicap'] = 0
+        opponents_hole_point_data['handicap'] = 0
+        
         # apply handicaps
         if scores.get(hole__number=hole).hole.handicap9 <= hcp_diff:
             if giving:
@@ -438,3 +500,119 @@ def get_golfer_points(week_model, golfer_model, **kwargs):
         return {'golfer': golfer_model, 'golfer_points': points, 'opponent': opponent, 'opponent_points': opponents_points, 'hole_data': hole_data, 'opponents_hole_data': opponents_hole_data, 'round_points': round_points, 'opponents_round_points': opponents_round_points}
     else:
         return points
+
+def check_hcp():
+    golfers = Golfer.objects.all()
+    weeks = Week.objects.all()
+    
+    for golfer in golfers:
+        for week in weeks:
+            count = Handicap.objects.filter(golfer=golfer, week=week).count()
+            if count > 1:
+                handicaps = Handicap.objects.filter(golfer=golfer, week=week)
+                for handicap in handicaps:
+                    calc = calculate_handicap(golfer, week.season, week)
+                    print(f'{golfer.name} has {handicap.handicap} handicap for {week.number} and calculated is {calc}')
+                    
+def calculate_and_save_handicaps_for_season(season, test_mode=False):
+    # Get all the golfers who played in the season
+    golfers = Golfer.objects.filter(score__week__season=season).distinct()
+
+    # Get all the weeks in the season
+    weeks = season.week_set.all()
+
+    # Loop through each golfer and each week in the season
+    for golfer in golfers:
+        weeks_played = 0
+        weeks_played_obj = []
+        for week in weeks:
+            # Calculate the golfer's handicap for the week
+            handicap = calculate_handicap(golfer, season, week)
+            
+            if golfer_played(week, golfer):
+                weeks_played_obj.append(week)
+                weeks_played += 1
+
+            if test_mode:
+                try:
+                    existing_handicap = Handicap.objects.get(golfer=golfer, week=week)
+                    if existing_handicap.handicap != handicap and week.number > 3 and week.number < 20:
+                        print(f"Handicap for golfer {golfer.name} in week {week.number} of {existing_handicap.handicap} does not match calculated value of {handicap}.")
+                except Handicap.DoesNotExist:
+                    if week.number > 3 and week.number < 20:
+                        print(f"No existing handicap for golfer {golfer.name} in week {week.number}. New handicap will be {handicap}.")
+            else:
+                # Save the calculated handicap in the database if it doesn't exist
+                handicap_obj, created = Handicap.objects.get_or_create(golfer=golfer, week=week, defaults={'handicap': handicap})
+
+                # Update the handicap if it already exists but has a different value
+                if not created and handicap_obj.handicap != handicap:
+                    handicap_obj.handicap = handicap
+                    handicap_obj.save()
+
+            # Update the first three weeks with the handicap calculated using the fourth week
+            if weeks_played == 4 and not test_mode:
+                first_three_weeks = weeks_played_obj[:3]
+                for prev_week in first_three_weeks:
+                    try:
+                        handicap_obj = Handicap.objects.get(golfer=golfer, week=prev_week)
+                        handicap_obj.handicap = handicap
+                        handicap_obj.save()
+                    except Handicap.DoesNotExist:
+                        Handicap.objects.create(golfer=golfer, week=prev_week, handicap=handicap)   
+        if weeks_played < 4 and not test_mode:
+            # If golfer didnt play 4 weeks yet, apply the handicap of their last round to the first 3 or less weeks of the season
+            most_recent_handicap = Handicap.objects.filter(golfer=golfer).order_by('-week__date').first()
+            for week in weeks_played_obj:
+                try:
+                    handicap_obj = Handicap.objects.get(golfer=golfer, week=week)
+                    handicap_obj.handicap = most_recent_handicap.handicap
+                    handicap_obj.save()
+                except Handicap.DoesNotExist:
+                    Handicap.objects.create(golfer=golfer, week=week, handicap=most_recent_handicap.handicap)
+            
+    if test_mode:
+        print("Test mode complete. No data was written to the database.")
+
+def get_score_string(data, holes):
+    
+    rank = data['score'] - holes.get(number=data['hole']).par
+    
+    # Getting 2 strokes
+    if data['handicap'] == -2:
+        if rank == -2:
+            rankStr = 'getting2-stroke_eagle'
+        elif rank == -1:
+            rankStr = 'getting2-stroke_birdie'
+        elif rank == 0:
+            rankStr = 'getting2-stroke_par'
+        elif rank == 1:
+            rankStr = 'getting2-stroke_bogey'
+        else:
+            rankStr = 'getting2-stroke_worst'
+    # Getting 1 stroke
+    elif data['handicap'] == -1:
+        if rank == -2:
+            rankStr = 'getting-stroke_eagle'
+        elif rank == -1:
+            rankStr = 'getting-stroke_birdie'
+        elif rank == 0:
+            rankStr = 'getting-stroke_par'
+        elif rank == 1:
+            rankStr = 'getting-stroke_bogey'
+        else:
+            rankStr = 'getting-stroke_worst'
+    # Straight up
+    else:
+        if rank == -2:
+            rankStr = 'eagle'
+        elif rank == -1:
+            rankStr = 'birdie'
+        elif rank == 0:
+            rankStr = 'par'
+        elif rank == 1:
+            rankStr = 'bogey'
+        else:
+            rankStr = 'worst'
+    
+    return rankStr

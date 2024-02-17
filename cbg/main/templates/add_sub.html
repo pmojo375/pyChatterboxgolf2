@@ -1,45 +1,43 @@
 {% extends "base.html" %}
 
 {% block page_content %}
-  <div class="container">
-    <h1>Add Sub</h1>
-    <form method="post">
-      {% csrf_token %}
-      <div class="row mb-3">
-        <div class="col-md-6 offset-md-3">
-          <label for="absent_golfer" class="col-form-label">Absent Golfer:</label>
-          <select id="absent_golfer" name="absent_golfer" class="form-control">
-            {% for golfer in golfers %}
-              <option value="{{ golfer.id }}">{{ golfer.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <div class="row mb-3">
-        <div class="col-md-6 offset-md-3">
-          <label for="sub_golfer" class="col-form-label">Sub Golfer:</label>
-          <select id="sub_golfer" name="sub_golfer" class="form-control">
-            {% for golfer in golfers %}
-              <option value="{{ golfer.id }}">{{ golfer.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <div class="row mb-3">
-        <div class="col-md-6 offset-md-3">
-            <label for="week" class="form-label">Week:</label>
-            <select name="week" id="week" class="form-control">
-              {% for week in current_season_weeks %}
-                <option value="{{ week.id }}" {% if week.id == current_week.id %}selected{% endif %}>{{ week.date|date:"Y-m-d" }} (Week {{ week.number }})</option>
+<div class="container">
+    <h1 class="text-center my-4">Enter Golfer's 9-Hole Round</h1>
+    <form method="post" class="col-md-6 offset-md-3">
+        {% csrf_token %}
+
+        <!-- Week Dropdown -->
+        <div class="form-group mb-3">
+          <label for="{{ form.week.id_for_label }}" class="form-label">{{ form.week.label }}</label>
+          <select name="{{ form.week.name }}" id="{{ form.week.id_for_label }}" class="form-control">
+              {% for choice in form.week.field.choices %}
+                  <option value="{{ choice.0 }}" {% if choice.0 == form.week.value %}selected{% endif %}>{{ choice.1 }}</option>
               {% endfor %}
-            </select>
-          </div>
-      </div>
-      <div class="row">
-        <div class="col-md-6 offset-md-3">
-          <button type="submit" class="btn btn-primary">Add Sub</button>
+          </select>
         </div>
-      </div>
+
+        <!-- Absent Golfer Dropdown -->
+        <div class="form-group mb-3">
+          <label for="{{ form.absent_golfer.id_for_label }}" class="form-label">{{ form.absent_golfer.label }}</label>
+          <select name="{{ form.absent_golfer.name }}" id="{{ form.absent_golfer.id_for_label }}" class="form-control">
+              {% for choice in form.absent_golfer.field.choices %}
+                  <option value="{{ choice.0 }}" {% if choice.0 == form.absent_golfer.value %}selected{% endif %}>{{ choice.1 }}</option>
+              {% endfor %}
+          </select>
+        </div>
+
+        <!-- Sub Golfer Dropdown -->
+        <div class="form-group mb-3">
+          <label for="{{ form.sub_golfer.id_for_label }}" class="form-label">{{ form.sub_golfer.label }}</label>
+          <select name="{{ form.sub_golfer.name }}" id="{{ form.sub_golfer.id_for_label }}" class="form-control">
+              {% for choice in form.sub_golfer.field.choices %}
+                  <option value="{{ choice.0 }}" {% if choice.0 == form.sub_golfer.value %}selected{% endif %}>{{ choice.1 }}</option>
+              {% endfor %}
+          </select>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary">Submit</button>
     </form>
   </div>
 {% endblock %}

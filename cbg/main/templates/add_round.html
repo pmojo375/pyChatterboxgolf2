@@ -1,77 +1,79 @@
 {% extends "base.html" %}
 
 {% block page_content %}
-
 <div class="container">
-  <h1 class="text-center my-4">Enter Golfer's 9-Hole Round</h1>
-  <form method="post">
-    {% csrf_token %}
-    <div class="row mb-3">
-        <div class="col-md-6 offset-md-3">
-          <label for="golfer" class="form-label">Golfer:</label>
-          <select name="golfer" id="golfer" class="form-control">
-            {% for golfer in golfers %}
-              <option value="{{ golfer.id }}">{{ golfer.name }}</option>
-            {% endfor %}
-          </select>
+    <h1 class="text-center my-4">Enter Golfer's 9-Hole Round</h1>
+    <form method="post" class="col-md-6 offset-md-3">
+        {% csrf_token %}
+
+        <!-- Golfer Dropdown -->
+        <div class="form-group mb-3">
+            <label for="{{ form.golfer.id_for_label }}" class="form-label">{{ form.golfer.label }}</label>
+            <select name="{{ form.golfer.name }}" id="{{ form.golfer.id_for_label }}" class="form-control">
+                {% for choice in form.golfer.field.choices %}
+                    <option value="{{ choice.0 }}" {% if choice.0 == form.golfer.value %}selected{% endif %}>{{ choice.1 }}</option>
+                {% endfor %}
+            </select>
         </div>
-      </div>
-      
-      <div class="row mb-3">
-        <div class="col-md-6 offset-md-3">
-          <label for="week" class="form-label">Week:</label>
-          <select name="week" id="week" class="form-control">
-            {% for week in current_season_weeks %}
-              <option value="{{ week.id }}" data-is_front="{{ week.is_front }}" {% if week.id == current_week.id %}selected{% endif %}>{{ week.date|date:"Y-m-d" }} (Week {{ week.number }})</option>
-            {% endfor %}
-          </select>
+
+        <!-- Week Dropdown -->
+        <div class="form-group mb-3">
+            <label for="{{ form.week.id_for_label }}" class="form-label">{{ form.week.label }}</label>
+            <select name="{{ form.week.name }}" id="{{ form.week.id_for_label }}" class="form-control">
+                {% for choice in form.week.field.choices %}
+                    <option value="{{ choice.0 }}" {% if choice.0 == form.week.value %}selected{% endif %}>{{ choice.1 }}</option>
+                {% endfor %}
+            </select>
         </div>
-      </div>
-      
-      {% for hole in holes %}
-        <div class="row mb-3">
-          <div class="col-md-6 offset-md-3">
-            <div class="input-group">
-              <label for="hole{{ hole }}" class="col-md-3 col-form-label">Hole {{ hole }}:</label>
-              <div class="col-md-9">
-                <input type="number" name="hole{{ hole }}" id="hole{{ hole }}" min="1" max="10" required class="form-control">
-              </div>
+
+        <!-- Hole Inputs -->
+        {% for field in form %}
+            {% if field.name|slice:":4" == 'hole' %}
+            <div class="form-group row mb-3">
+                <!-- Label -->
+                <label for="{{ field.id_for_label }}" class="col-sm-2 col-form-label">{{ field.label }}</label>
+    
+                <!-- Input Field -->
+                <div class="col-sm-10">
+                    <input type="number" name="{{ field.html_name }}" id="{{ field.id_for_label }}" class="form-control" min="1" max="10" required value="{{ field.value }}">
+                </div>
             </div>
-          </div>
-        </div>
-      {% endfor %}
-      
-      <div class="row">
-        <div class="col-md-6 offset-md-3">
-          <button type="submit" class="btn btn-primary btn-block">Submit</button>
-        </div>
-      </div>
+            {% endif %}
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 </div>
 
 {% block extra_js %}
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    const weekDropdown = document.getElementById("week");
-    const holeInputs = document.querySelectorAll("input[id^='hole']");
+    const weekDropdown = document.getElementById("id_week");
+    const holeLabels = document.querySelectorAll("label[for^='id_hole']");
+    const holeInputs = document.querySelectorAll("input[id^='id_hole']");
 
     function updateHoles() {
-      const selectedWeek = weekDropdown.options[weekDropdown.selectedIndex];
-      const isFront = selectedWeek.getAttribute("data-is_front") === "True";
-      const startingHole = isFront ? 1 : 10;
+        const selectedWeek = weekDropdown.options[weekDropdown.selectedIndex].text;
+        const isFront = selectedWeek.includes('Front');
+        const startingHole = isFront ? 1 : 10;
 
-      holeInputs.forEach((input, index) => {
-        const holeNumber = startingHole + index;
-        input.id = `hole${holeNumber}`;
-        input.name = `hole${holeNumber}`;
-        input.closest('.input-group').querySelector('label').textContent = `Hole ${holeNumber}:`;
-      });
+        holeInputs.forEach((input, index) => {
+            const holeNumber = startingHole + index;
+            //input.id = `id_hole${holeNumber}`;
+            //input.name = `hole${holeNumber}`;
+            holeLabels[index].textContent = `Hole ${holeNumber}:`;
+            //holeLabels[index].setAttribute('for', `id_hole${holeNumber}`);
+        });
     }
 
     weekDropdown.addEventListener("change", updateHoles);
-  });
+
+    // Initial update on page load
+    updateHoles();
+});
+
 </script>
 {% endblock %}
-
-
 {% endblock %}
+
+
