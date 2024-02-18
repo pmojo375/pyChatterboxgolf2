@@ -1,7 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from main.models import *
-from django.db.models import Max
-
 
 def get_week(**kwargs):
     """Gets the week object from the current date. The week
@@ -154,7 +152,6 @@ def get_hcp(golfer, week):
     except Handicap.DoesNotExist:
         return 0
 
-from typing import List
 
 def calculate_handicap(golfer, season, week):
     """
@@ -175,7 +172,6 @@ def calculate_handicap(golfer, season, week):
 
     # Get all the scores for the golfer in those 10 weeks
     scores = Score.objects.filter(golfer=golfer, week__in=subquery).order_by('-week__date')
-
 
     if len(scores) != 0:
         # Group the scores by week
@@ -202,6 +198,7 @@ def calculate_handicap(golfer, season, week):
         return round(handicap, 5)
     else:
         return 0
+
 
 def get_schedule(week_model):
     """
@@ -248,8 +245,6 @@ def get_schedule(week_model):
     return schedule
 
 
-from django.db.models import Sum
-
 def calculate_team_points(current_week):
     # Get the current season
     current_season = current_week.season
@@ -280,10 +275,6 @@ def calculate_team_points(current_week):
 
     return team_points
 
-
-    
-
-from django.db.models import Q
 
 def get_golfer_points(week_model, golfer_model, **kwargs):
     """
@@ -501,7 +492,12 @@ def get_golfer_points(week_model, golfer_model, **kwargs):
     else:
         return points
 
+
 def check_hcp():
+    """
+    Check handicap for each golfer and week combination.
+    Prints the golfer's name, their recorded handicap, and the calculated handicap.
+    """
     golfers = Golfer.objects.all()
     weeks = Week.objects.all()
     
@@ -513,7 +509,8 @@ def check_hcp():
                 for handicap in handicaps:
                     calc = calculate_handicap(golfer, week.season, week)
                     print(f'{golfer.name} has {handicap.handicap} handicap for {week.number} and calculated is {calc}')
-                    
+        
+            
 def calculate_and_save_handicaps_for_season(season, test_mode=False):
     # Get all the golfers who played in the season
     golfers = Golfer.objects.filter(score__week__season=season).distinct()
@@ -529,7 +526,7 @@ def calculate_and_save_handicaps_for_season(season, test_mode=False):
             # Calculate the golfer's handicap for the week
             handicap = calculate_handicap(golfer, season, week)
             
-            if golfer_played(week, golfer):
+            if golfer_played(golfer, week):
                 weeks_played_obj.append(week)
                 weeks_played += 1
 
@@ -573,6 +570,20 @@ def calculate_and_save_handicaps_for_season(season, test_mode=False):
             
     if test_mode:
         print("Test mode complete. No data was written to the database.")
+
+def get_standings(season, week):
+    """
+    Get the standings for a given season and week.
+
+    Args:
+        season (Season): The season for which to get the standings.
+        week (Week): The week for which to get the standings.
+
+    Returns:
+        List[Tuple[str
+    """
+    
+    
 
 def get_score_string(data, holes):
     

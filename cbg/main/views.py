@@ -6,7 +6,7 @@ from main.signals import *
 from main.helper import *
 from main.forms import *
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Q, Sum
 from datetime import datetime
 from django.http import HttpResponseRedirect
 
@@ -17,6 +17,8 @@ def main(request):
     week = Week.objects.filter(season=season)[0]
     print(week.number)
     lastGameWinner = []
+    
+    #calculate_and_save_handicaps_for_season(season)
 
     # sub records for the given year
     #subs = Subrecord.objects.filter(year=2022).values('sub_id', 'absent_id', 'week')
@@ -254,11 +256,27 @@ def enter_schedule(request):
 
     return render(request, 'enter_schedule.html', {'form': form})
 
+def golfer_stats(request, golfer_id):
+    
+    # Get the golfer object
+    golfer = Golfer.objects.get(id=golfer_id)
+    
+    # Get season
+    season = Season.objects.latest('year')
+
+    # Get the best gross week
+    best_gross_week = (Score.objects.filter(golfer=golfer, week__season=season).values('week__number').annotate(total_score=Sum('score')).order_by('total_score')).first()
+    
+    print(best_gross_week['week__number'])
+    print(best_gross_week['total_score'])
+    
+    return render(request, 'golfer_stats.html', {})
+
 
 def scorecards(request, week):
     # Retrieve necessary data from the models
     week_number = week
-    week = Week.objects.get(number=week, season=Season.objects.latest('year'))
+    week = Week.objects.get(number=week, season=Season.objects.latest('year'), rained_out=False)
     teams = Team.objects.all()
     hole_data = Hole.objects.all()
     matchups = Matchup.objects.filter(week=week)
@@ -422,4 +440,3 @@ def scorecards(request, week):
     }
     
     return render(request, 'scorecards.html', context)
-
