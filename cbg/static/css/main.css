@@ -19,7 +19,7 @@
 }
 
 #schedule {
-    alignment: center;
+    text-align: center;
     width: auto;
     border: 1px solid #444444;
     background-color: #97A2A2;

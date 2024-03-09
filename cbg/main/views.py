@@ -19,7 +19,7 @@ def main(request):
     lastGameWinner = []
     
     #calculate_and_save_handicaps_for_season(season)
-
+    #generate_rounds(season)
     # sub records for the given year
     #subs = Subrecord.objects.filter(year=2022).values('sub_id', 'absent_id', 'week')
 
@@ -265,12 +265,25 @@ def golfer_stats(request, golfer_id):
     season = Season.objects.latest('year')
 
     # Get the best gross week
-    best_gross_week = (Score.objects.filter(golfer=golfer, week__season=season).values('week__number').annotate(total_score=Sum('score')).order_by('total_score')).first()
     
-    print(best_gross_week['week__number'])
-    print(best_gross_week['total_score'])
+    score_sums = Score.objects.filter(golfer=golfer, week__season=season).values('week__number').annotate(total_score=Sum('score')).order_by('total_score')
     
-    return render(request, 'golfer_stats.html', {})
+    best_gross_week = score_sums.first()
+    worst_gross_week = score_sums.last()
+    
+    print(best_gross_week)
+    print(worst_gross_week)
+    
+    context = {
+        'golfer_name': golfer.name,
+        'best_gross_week': best_gross_week['week__number'],
+        'worst_gross_week': worst_gross_week['week__number'],
+        'best_gross_score': best_gross_week['total_score'],
+        'worst_gross_score': worst_gross_week['total_score'],
+    }
+
+    
+    return render(request, 'golfer_stats.html', context)
 
 
 def scorecards(request, week):

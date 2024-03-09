@@ -6,13 +6,11 @@ class Golfer(models.Model):
     def __str__(self):
         return self.name
 
-
 class Season(models.Model):
     year = models.IntegerField(primary_key=True)
     
     def __str__(self):
         return f'{self.year}'
-
 
 class Team(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
@@ -24,7 +22,6 @@ class Team(models.Model):
             return f"{golfers[0].name} and {golfers[1].name}"
         else:
             return f"Team {self.pk}"
-
 
 class Week(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
@@ -126,21 +123,14 @@ class Round(models.Model):
     gross = models.IntegerField()
     net = models.IntegerField()
     round_points = models.FloatField()
+    total_points = models.FloatField(null=True)
     
     class Meta:
         unique_together = ('golfer', 'week')
         
-    def calculate_gross(self):
-        return sum(score.score for score in self.scores.all())
-    
-    def calculate_net(self):
-        if self.gross is not None and self.handicap is not None:
-            handicap_value = round(self.handicap.handicap)
-            return self.gross - handicap_value
-        return None
-    
-    def save(self, *args, **kwargs):
-        self.gross = self.calculate_gross()
-        self.net = self.calculate_net()
-        super().save(*args, **kwargs)
-    
+class GolferMatchup(models.Model):
+    week = models.ForeignKey(Week, related_name='week', on_delete=models.CASCADE)
+    is_A = models.BooleanField(default=False)
+    golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
+    opponent = models.ForeignKey(Golfer, related_name='opponent', on_delete=models.CASCADE)
+        

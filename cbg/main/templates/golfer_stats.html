@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block page_content %}
+<div class="container">
+    <div class="row text-center p-4">
+        <h1>{{ golfer_name }}'s Season Stats</h1>
+    </div>
+
+    <div class="row">
+        <p>Best gross score: {{ best_gross_score }} in week {{best_gross_week}}</p>
+        <p>Worst gross score: {{ worst_gross_score }} in week {{worst_gross_week}}</p>
+    </div>
+
+
+
+{% endblock %}
