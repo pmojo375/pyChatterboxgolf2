@@ -502,12 +502,26 @@ def calculate_handicap(golfer, season, week):
     else:
         return 0
             
-def calculate_and_save_handicaps_for_season(season, test_mode=False):
-    # Get all the golfers who played in the season
-    golfers = Golfer.objects.filter(score__week__season=season).distinct()
+def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
+    """
+    Calculate and save handicaps for a given season.
 
-    # Get all the weeks in the season
-    weeks = season.week_set.all().order_by('number')
+    Args:
+        season (Season): The season for which to calculate and save handicaps.
+        weeks (QuerySet, optional): The weeks in the season. If not provided, all weeks in the season will be used.
+        golfers (QuerySet, optional): The golfers for whom to calculate and save handicaps. If not provided, all golfers who played in the season will be used.
+
+    Returns:
+        None
+    """
+
+    if golfers is None:
+        # Get all the golfers who played in the season
+        golfers = Golfer.objects.filter(score__week__season=season).distinct()
+
+    if weeks is None:
+        # Get all the weeks in the season
+        weeks = season.week_set.all().order_by('number')
 
     # Loop through each golfer and each week in the season
     for golfer in golfers:
@@ -522,25 +536,16 @@ def calculate_and_save_handicaps_for_season(season, test_mode=False):
                 weeks_played_list.append(week)
                 weeks_played += 1
 
-            if test_mode:
-                try:
-                    existing_handicap = Handicap.objects.get(golfer=golfer, week=week)
-                    if existing_handicap.handicap != handicap and week.number > 3 and week.number < 20:
-                        print(f"Handicap for golfer {golfer.name} in week {week.number} of {existing_handicap.handicap} does not match calculated value of {handicap}.")
-                except Handicap.DoesNotExist:
-                    if week.number > 3 and week.number < 20:
-                        print(f"No existing handicap for golfer {golfer.name} in week {week.number}. New handicap will be {handicap}.")
-            else:
-                # Save the calculated handicap in the database if it doesn't exist
-                handicap_obj, created = Handicap.objects.get_or_create(golfer=golfer, week=week, defaults={'handicap': handicap})
+            # Save the calculated handicap in the database if it doesn't exist
+            handicap_obj, created = Handicap.objects.get_or_create(golfer=golfer, week=week, defaults={'handicap': handicap})
 
-                # Update the handicap if it already exists but has a different value
-                if not created and handicap_obj.handicap != handicap:
-                    handicap_obj.handicap = handicap
-                    handicap_obj.save()
+            # Update the handicap if it already exists but has a different value
+            if not created and handicap_obj.handicap != handicap:
+                handicap_obj.handicap = handicap
+                handicap_obj.save()
 
             # Update the first three weeks with the handicap calculated using the fourth week
-            if weeks_played == 4 and not test_mode and not backset_first_three:
+            if weeks_played == 4 and not backset_first_three:
                 backset_first_three = True
                 first_three_weeks = weeks_played_list[:3]
                 for prev_week in first_three_weeks:
@@ -550,7 +555,7 @@ def calculate_and_save_handicaps_for_season(season, test_mode=False):
                         handicap_obj.save()
                     except Handicap.DoesNotExist:
                         Handicap.objects.create(golfer=golfer, week=prev_week, handicap=handicap)   
-        if weeks_played < 4 and not test_mode:
+        if weeks_played < 4:
             # If golfer didnt play 4 weeks yet, apply the handicap of their last round to the first 3 or less weeks of the season
             most_recent_handicap = Handicap.objects.filter(golfer=golfer).order_by('-week__date').first()
             for week in weeks_played_list:
@@ -560,9 +565,6 @@ def calculate_and_save_handicaps_for_season(season, test_mode=False):
                     handicap_obj.save()
                 except Handicap.DoesNotExist:
                     Handicap.objects.create(golfer=golfer, week=week, handicap=most_recent_handicap.handicap)
-            
-    if test_mode:
-        print("Test mode complete. No data was written to the database.")
 
 
 def get_standings(season, week):
