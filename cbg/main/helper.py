@@ -111,6 +111,7 @@ def get_absent_team_from_sub(sub_golfer, week):
 
     return sub_golfer.sub.get(week=week).absent_golfer.team_set.get(season=week.season)
 
+
 def generate_rounds(season):
     # Get all the golfers who played in a season
     golfers = get_golfers(season=season)
@@ -189,7 +190,7 @@ def get_hcp(golfer, week):
         return 0
 
 
-
+# redo with new golfer matchup data
 def get_schedule(week_model):
     """
     Given a week model, return the schedule of matches for that week.
@@ -267,6 +268,15 @@ def calculate_team_points(current_week):
 
 
 def generate_golfer_matchups(week_model):
+    """
+    Generate golfer matchups for a given week.
+
+    Args:
+        week_model (WeekModel): The week model object for which to generate the matchups.
+
+    Returns:
+        None
+    """
     matchups = week_model.matchup_set.all()
     
     for matchup in matchups:
@@ -310,14 +320,36 @@ def generate_golfer_matchups(week_model):
             GolferMatchup.objects.update_or_create(week=week_model, golfer=team1_golfer2, opponent=team2_golfer1, is_A=True)
             GolferMatchup.objects.update_or_create(week=week_model, golfer=team2_golfer1, opponent=team1_golfer2, is_A=True)
             GolferMatchup.objects.update_or_create(week=week_model, golfer=team2_golfer2, opponent=team1_golfer1)
+        elif team1_golfer1_hcp < team1_golfer2_hcp and team2_golfer1_hcp > team2_golfer2_hcp:
+            GolferMatchup.objects.update_or_create(week=week_model, golfer=team1_golfer1, opponent=team2_golfer2, is_A=True)
+            GolferMatchup.objects.update_or_create(week=week_model, golfer=team1_golfer2, opponent=team2_golfer1)
+            GolferMatchup.objects.update_or_create(week=week_model, golfer=team2_golfer1, opponent=team1_golfer2)
+            GolferMatchup.objects.update_or_create(week=week_model, golfer=team2_golfer2, opponent=team1_golfer1, is_A=True)
     
-            
 def get_front_holes(season):
+    """
+    Retrieve the front holes for a given season.
+
+    Args:
+        season (str): The season for which to retrieve the front holes.
+
+    Returns:
+        QuerySet: A queryset of Hole objects representing the front holes for the given season.
+    """
     hole_numbers = range(1, 10)
     return Hole.objects.filter(season=season, number__in=hole_numbers).order_by('number')
 
 
 def get_back_holes(season):
+    """
+    Retrieve the back holes for a given season.
+
+    Args:
+        season (str): The season for which to retrieve the back holes.
+
+    Returns:
+        QuerySet: A queryset of Hole objects representing the back holes for the given season.
+    """
     hole_numbers = range(10, 19)
     return Hole.objects.filter(season=season, number__in=hole_numbers).order_by('number')
 
@@ -343,7 +375,7 @@ def get_golfer_points(week_model, golfer_model, **kwargs):
     opp_hcp = get_hcp(opponent, week_model)
     
     gross_score = scores.aggregate(Sum('score'))['score__sum']
-    opp_gross_score = scores.aggregate(Sum('score'))['score__sum']
+    opp_gross_score = opp_scores.aggregate(Sum('score'))['score__sum']
     
     net_score = gross_score - golfer_hcp
     opp_net_score = opp_gross_score - opp_hcp
@@ -501,7 +533,8 @@ def calculate_handicap(golfer, season, week):
         return round(handicap, 5)
     else:
         return 0
-            
+
+
 def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
     """
     Calculate and save handicaps for a given season.

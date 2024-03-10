@@ -2,8 +2,9 @@ from django.test import TestCase
 from datetime import date, timedelta
 from django.utils import timezone
 from main.models import *
-from main.helper import get_week, calculate_handicap, get_golfer_points, calculate_and_save_handicaps_for_season
+from main.helper import get_week, calculate_handicap, get_golfer_points, calculate_and_save_handicaps_for_season, generate_golfer_matchups
 import random
+from django.urls import reverse
 
 class WeekTestCase(TestCase):
     def setUp(self):
@@ -162,31 +163,40 @@ class HandicapTestCase(TestCase):
         self.assertEqual(golfer5_hcp_week5, golfer5_hcp_week3)
 class PointsTestCase(TestCase):
     def setUp(self):
+        
         self.current_date = timezone.now().date()
+        
         self.season = Season.objects.create(year=self.current_date.year)
-        self.week1 = Week.objects.create(date=self.current_date - timedelta(days=35), season=self.season, number=1, rained_out=False, is_front=True)
-        self.team1_golfer1 = Golfer.objects.create(name='Team 1 Test Golfer 1')
-        self.team1_golfer2 = Golfer.objects.create(name='Team 1 Test Golfer 2')
-        self.team2_golfer1 = Golfer.objects.create(name='Team 2 Test Golfer 1')
-        self.team2_golfer2 = Golfer.objects.create(name='Team 2 Test Golfer 2')
+        
+        self.week1 = Week.objects.create(date=self.current_date, season=self.season, number=1, rained_out=False, is_front=True)
+        
+        self.team1_golfer1 = Golfer.objects.create(name='Team 1 Test Golfer 1') # Hcp 12 playing golfer 2 hcp 9 - 3 strokes gotten
+        self.team1_golfer2 = Golfer.objects.create(name='Team 1 Test Golfer 2') # Hcp 14 playing golfer 1 hcp 11 - 3 strokes gotten
+        self.team2_golfer1 = Golfer.objects.create(name='Team 2 Test Golfer 1') # Hcp 11 playing golfer 2 hcp 14 - 3 strokes given
+        self.team2_golfer2 = Golfer.objects.create(name='Team 2 Test Golfer 2') # Hcp 9 playing golfer 1 hcp 12 - 3 strokes given
+        
         self.team1_golfer1_hcp = Handicap.objects.create(golfer=self.team1_golfer1, week=self.week1, handicap=12)
         self.team1_golfer2_hcp = Handicap.objects.create(golfer=self.team1_golfer2, week=self.week1, handicap=14)
         self.team2_golfer1_hcp = Handicap.objects.create(golfer=self.team2_golfer1, week=self.week1, handicap=11)
         self.team2_golfer2_hcp = Handicap.objects.create(golfer=self.team2_golfer2, week=self.week1, handicap=9)
+        
         self.team1 = Team.objects.create(season=self.season)
         self.team1.golfers.add(self.team1_golfer1, self.team1_golfer2)
         self.team1.save()
+        
         self.team2 = Team.objects.create(season=self.season)
         self.team2.golfers.add(self.team2_golfer1, self.team2_golfer2)
         self.team2.save()
+        
         self.matchup = Matchup(week=self.week1)
         self.matchup.save()
+        
         self.matchup.teams.add(self.team1, self.team2)
         self.matchup.save()
-
+        
 
         for i in range(1, 19):
-            Hole.objects.create(number=i, par=random.uniform(3, 5), handicap=i, handicap9=(i if i<= 9 else i-9), yards=250, season=self.season) 
+            Hole.objects.create(number=i, par=random.uniform(3, 5), handicap=i, handicap9=(i if i<=9 else i-9), yards=250, season=self.season) 
 
         # Create scores for the golfer
         self.team1_golfer1_scores = [4, 6, 4, 8, 9, 5, 6, 6, 8] #56 12.3 3.5pts 44 0pts 3.5pts
@@ -198,6 +208,8 @@ class PointsTestCase(TestCase):
                                    # 4  3  4 
                                    # 1  1  1  1 .5 .5  0  0  1  
         self.team2_golfer1_scores = [6, 8, 9, 8, 7, 4, 6, 5, 5] #58 11.4 3pts 47 0pts 3pts
+        
+        
 
         for i, score in enumerate(self.team1_golfer1_scores):
             self.hole = Hole.objects.get(number=i + 1)
@@ -213,22 +225,21 @@ class PointsTestCase(TestCase):
             Score.objects.create(golfer=self.team2_golfer2, week=self.week1, score=score, hole=self.hole)
  
 
+        generate_golfer_matchups(self.week1)
+        
     def test_get_points(self):
-        self.team1_golfer1_pts = get_golfer_points(self.week1, self.team1_golfer1, detail=True)
-        self.team1_golfer2_pts = get_golfer_points(self.week1, self.team1_golfer2, detail=True)
-        self.team2_golfer1_pts = get_golfer_points(self.week1, self.team2_golfer1, detail=True)
-        self.team2_golfer2_pts = get_golfer_points(self.week1, self.team2_golfer2, detail=True)
+        self.team1_golfer1_pts = get_golfer_points(self.week1, self.team1_golfer1)
+        self.team1_golfer2_pts = get_golfer_points(self.week1, self.team1_golfer2)
+        self.team2_golfer1_pts = get_golfer_points(self.week1, self.team2_golfer1)
+        self.team2_golfer2_pts = get_golfer_points(self.week1, self.team2_golfer2)
 
         # Assert that the points are correct
-        self.assertEqual(self.team1_golfer1_pts['golfer_points'], 3.5)
-        self.assertEqual(self.team1_golfer2_pts['golfer_points'], 9)
-        self.assertEqual(self.team2_golfer1_pts['golfer_points'], 3)
-        self.assertEqual(self.team2_golfer2_pts['golfer_points'], 8.5)
+        self.assertEqual(self.team1_golfer1_pts, 3.5)
+        self.assertEqual(self.team1_golfer2_pts, 9)
+        self.assertEqual(self.team2_golfer1_pts, 3)
+        self.assertEqual(self.team2_golfer2_pts, 8.5)
 
-        self.assertEqual(self.team1_golfer1_pts['golfer_points'] + self.team1_golfer2_pts['golfer_points'] + self.team2_golfer1_pts['golfer_points'] + self.team2_golfer2_pts['golfer_points'], 24)
-
-from django.urls import reverse
-
+        self.assertEqual(self.team1_golfer1_pts + self.team1_golfer2_pts + self.team2_golfer1_pts + self.team2_golfer2_pts, 24)
 class AddRoundViewTests(TestCase):
 
     def setUp(self):
