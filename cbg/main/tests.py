@@ -163,6 +163,13 @@ class HandicapTestCase(TestCase):
         self.assertEqual(golfer5_hcp_week5, golfer5_hcp_week3)
 class PointsTestCase(TestCase):
     def setUp(self):
+        '''
+        Need to create other test cases:
+        1) Subs - DONE
+        2) Single subs
+        3) Single golfer non-sub
+        3) Handicap Ties
+        '''
         
         self.current_date = timezone.now().date()
         
@@ -170,15 +177,29 @@ class PointsTestCase(TestCase):
         
         self.week1 = Week.objects.create(date=self.current_date, season=self.season, number=1, rained_out=False, is_front=True)
         
+        # Normal Matchup
         self.team1_golfer1 = Golfer.objects.create(name='Team 1 Test Golfer 1') # Hcp 12 playing golfer 2 hcp 9 - 3 strokes gotten
         self.team1_golfer2 = Golfer.objects.create(name='Team 1 Test Golfer 2') # Hcp 14 playing golfer 1 hcp 11 - 3 strokes gotten
         self.team2_golfer1 = Golfer.objects.create(name='Team 2 Test Golfer 1') # Hcp 11 playing golfer 2 hcp 14 - 3 strokes given
         self.team2_golfer2 = Golfer.objects.create(name='Team 2 Test Golfer 2') # Hcp 9 playing golfer 1 hcp 12 - 3 strokes given
         
+        # Sub Matchup
+        self.team3_golfer1 = Golfer.objects.create(name='Team 3 Test Golfer 1') # Hcp 12 playing golfer 1 hcp 11 - 1 stroke gotten
+        self.team3_golfer2 = Golfer.objects.create(name='Team 3 Test Golfer 2') # Absent
+        self.team3_golfer2_sub = Golfer.objects.create(name='Team 3 Test Golfer 2 Sub') # Hcp 10 playing golfer 2 hcp 9 - 1 stroke gotten
+        self.team4_golfer1 = Golfer.objects.create(name='Team 4 Test Golfer 1') # Hcp 11 playing golfer 1 hcp 12 - 1 stroke given
+        self.team4_golfer2 = Golfer.objects.create(name='Team 4 Test Golfer 2') # Hcp 9 playing golfer 2 Sub hcp 10 - 1 stroke given
+        
         self.team1_golfer1_hcp = Handicap.objects.create(golfer=self.team1_golfer1, week=self.week1, handicap=12)
         self.team1_golfer2_hcp = Handicap.objects.create(golfer=self.team1_golfer2, week=self.week1, handicap=14)
         self.team2_golfer1_hcp = Handicap.objects.create(golfer=self.team2_golfer1, week=self.week1, handicap=11)
         self.team2_golfer2_hcp = Handicap.objects.create(golfer=self.team2_golfer2, week=self.week1, handicap=9)
+        
+        self.team3_golfer1_hcp = Handicap.objects.create(golfer=self.team3_golfer1, week=self.week1, handicap=12)
+        self.team3_golfer2_hcp = Handicap.objects.create(golfer=self.team3_golfer2, week=self.week1, handicap=14)
+        self.team3_golfer2_sub_hcp = Handicap.objects.create(golfer=self.team3_golfer2_sub, week=self.week1, handicap=10)
+        self.team4_golfer1_hcp = Handicap.objects.create(golfer=self.team4_golfer1, week=self.week1, handicap=11)
+        self.team4_golfer2_hcp = Handicap.objects.create(golfer=self.team4_golfer2, week=self.week1, handicap=9)
         
         self.team1 = Team.objects.create(season=self.season)
         self.team1.golfers.add(self.team1_golfer1, self.team1_golfer2)
@@ -194,12 +215,31 @@ class PointsTestCase(TestCase):
         self.matchup.teams.add(self.team1, self.team2)
         self.matchup.save()
         
+        self.team3 = Team.objects.create(season=self.season)
+        self.team3.golfers.add(self.team3_golfer1, self.team3_golfer2)
+        self.team3.save()
+        
+        self.team4 = Team.objects.create(season=self.season)
+        self.team4.golfers.add(self.team4_golfer1, self.team4_golfer2)
+        self.team4.save()
+        
+        #Create matchup for team3 and 4
+        self.matchup2 = Matchup(week=self.week1)
+        self.matchup2.save()
+        
+        self.matchup2.teams.add(self.team3, self.team4)
+        self.matchup2.save()
+        
+        
+        self.sub = Sub(week=self.week1, absent_golfer=self.team3_golfer2, sub_golfer=self.team3_golfer2_sub)
+        self.sub.save()
+        
 
         for i in range(1, 19):
             Hole.objects.create(number=i, par=random.uniform(3, 5), handicap=i, handicap9=(i if i<=9 else i-9), yards=250, season=self.season) 
 
-        # Create scores for the golfer
-        self.team1_golfer1_scores = [4, 6, 4, 8, 9, 5, 6, 6, 8] #56 12.3 3.5pts 44 0pts 3.5pts
+        # Create scores for the golfer2 on team 1 and 2
+        self.team1_golfer1_scores = [4, 6, 4, 8, 9, 5, 6, 6, 8] #56 12 3.5pts 44 0pts 3.5pts
                                    # 3  5  3 
                                    # 1  0  1  0  0 .5  0  1  0  
         self.team2_golfer2_scores = [7, 3, 6, 6, 6, 5, 4, 7, 6] #50 9 5.5pts 41 3pts 8.5pts
@@ -207,7 +247,18 @@ class PointsTestCase(TestCase):
         self.team1_golfer2_scores = [5, 4, 5, 7, 7, 4, 7, 8, 4] #51 14 6pts 37 3pts 9pts
                                    # 4  3  4 
                                    # 1  1  1  1 .5 .5  0  0  1  
-        self.team2_golfer1_scores = [6, 8, 9, 8, 7, 4, 6, 5, 5] #58 11.4 3pts 47 0pts 3pts
+        self.team2_golfer1_scores = [6, 8, 9, 8, 7, 4, 6, 5, 5] #58 11 3pts 47 0pts 3pts
+        
+        # Create scores for the golfers on team 3 and 4
+        self.team3_golfer1_scores = [4, 6, 4, 8, 9, 5, 6, 6, 8] #56 12 4pts 44 3pts 7pts
+                                   # 3   
+                                   # 1  1  1 .5  0  0 .5  0  0  
+        self.team4_golfer1_scores = [6, 8, 9, 8, 7, 4, 6, 5, 5] #58 11 5pts 47 0pts 5pts
+
+        self.team3_golfer2_sub_scores = [5, 4, 5, 7, 7, 4, 7, 8, 4] #51 10 4pts 41 1.5pts 5.5pts
+                                       # 4 
+                                       # 1  0  1  0  0  1  0  0  1  
+        self.team4_golfer2_scores =     [7, 3, 6, 6, 6, 5, 4, 7, 6] #50 9  5pts 41 1.5pts 6.5pts
         
         
 
@@ -223,8 +274,20 @@ class PointsTestCase(TestCase):
         for i, score in enumerate(self.team2_golfer2_scores):
             self.hole = Hole.objects.get(number=i + 1)
             Score.objects.create(golfer=self.team2_golfer2, week=self.week1, score=score, hole=self.hole)
- 
 
+        for i, score in enumerate(self.team3_golfer1_scores):
+            self.hole = Hole.objects.get(number=i + 1)
+            Score.objects.create(golfer=self.team3_golfer1, week=self.week1, score=score, hole=self.hole)
+        for i, score in enumerate(self.team3_golfer2_sub_scores):
+            self.hole = Hole.objects.get(number=i + 1)
+            Score.objects.create(golfer=self.team3_golfer2_sub, week=self.week1, score=score, hole=self.hole)
+        for i, score in enumerate(self.team4_golfer1_scores):
+            self.hole = Hole.objects.get(number=i + 1)
+            Score.objects.create(golfer=self.team4_golfer1, week=self.week1, score=score, hole=self.hole)
+        for i, score in enumerate(self.team4_golfer2_scores):
+            self.hole = Hole.objects.get(number=i + 1)
+            Score.objects.create(golfer=self.team4_golfer2, week=self.week1, score=score, hole=self.hole)
+ 
         generate_golfer_matchups(self.week1)
         
     def test_get_points(self):
@@ -232,14 +295,25 @@ class PointsTestCase(TestCase):
         self.team1_golfer2_pts = get_golfer_points(self.week1, self.team1_golfer2)
         self.team2_golfer1_pts = get_golfer_points(self.week1, self.team2_golfer1)
         self.team2_golfer2_pts = get_golfer_points(self.week1, self.team2_golfer2)
+        
+        self.team3_golfer1_pts = get_golfer_points(self.week1, self.team3_golfer1)
+        self.team3_golfer2_sub_pts = get_golfer_points(self.week1, self.team3_golfer2_sub)
+        self.team4_golfer1_pts = get_golfer_points(self.week1, self.team4_golfer1)
+        self.team4_golfer2_pts = get_golfer_points(self.week1, self.team4_golfer2)
 
         # Assert that the points are correct
         self.assertEqual(self.team1_golfer1_pts, 3.5)
         self.assertEqual(self.team1_golfer2_pts, 9)
         self.assertEqual(self.team2_golfer1_pts, 3)
         self.assertEqual(self.team2_golfer2_pts, 8.5)
+        
+        self.assertEqual(self.team3_golfer1_pts, 7)
+        self.assertEqual(self.team3_golfer2_sub_pts, 5.5)
+        self.assertEqual(self.team4_golfer1_pts, 5)
+        self.assertEqual(self.team4_golfer2_pts, 6.5)
 
         self.assertEqual(self.team1_golfer1_pts + self.team1_golfer2_pts + self.team2_golfer1_pts + self.team2_golfer2_pts, 24)
+        self.assertEqual(self.team3_golfer1_pts + self.team3_golfer2_sub_pts + self.team4_golfer1_pts + self.team4_golfer2_pts, 24)
 class AddRoundViewTests(TestCase):
 
     def setUp(self):

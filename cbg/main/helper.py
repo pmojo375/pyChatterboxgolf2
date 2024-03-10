@@ -71,7 +71,7 @@ def get_golfers(**kwargs):
         return Golfer.objects.filter(team__season=season)
 
 
-def get_sub(golfer, week, **kwargs):
+def get_sub(golfer, week):
     """Gets a sub object for an absent golfer
 
     Parameters
