@@ -30,16 +30,11 @@ class RoundForm(forms.Form):
         super().__init__(*args, **kwargs)
         
         season = Season.objects.get(year=2022)
-        week = Week.objects.get(season=season, number=2, rained_out=False)
+        week = Week.objects.get(season=season, number=3, rained_out=False)
         
         matchups = Matchup.objects.filter(week=week)
         
         self.golfer_data = []
-        
-        if week.is_front:
-            holes = range(1, 10)
-        else:
-            holes = range(10, 19)
         # get golfers from matchups accounting for subs
         matchup_golfers = []
         
@@ -71,11 +66,13 @@ class RoundForm(forms.Form):
         
         # I now have each matchups golfers with subs accounted for
         matchups = []
+        matchups.append((None, "Select Matchup"))
         for i, golfers in enumerate(matchup_golfers):
             display_text = f"{golfers[0].name} & {golfers[1].name} vs. {golfers[2].name} & {golfers[3].name}"
             temp = []
             for g in golfers:
-                temp.append([g.name, g.id])
+                handicap = get_hcp(g, week)
+                temp.append([g.name, g.id, handicap])
                 
             matchups.append((i, display_text))
             self.golfer_data.append(temp)

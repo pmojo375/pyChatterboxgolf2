@@ -89,58 +89,6 @@ def main(request):
     return render(request, 'main.html', context)
 
 def add_scores(request):
-    '''
-    golfers = Golfer.objects.all()
-    weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
-
-    if request.method == 'POST':
-        form = ScoresForm(golfers, weeks, request.POST)
-        if form.is_valid():
-            print('Valid Form\n')
-            
-            # Get form data
-            golfer_id = form.cleaned_data['golfer']
-            week_id = form.cleaned_data['week']
-            scores = []
-            for hole in range(1, 10):
-                scores.append(form.cleaned_data[f'hole{hole}'])
-                
-            # Get the golfer and week objects
-            golfer = Golfer.objects.get(id=golfer_id)
-            week = Week.objects.get(id=week_id)
-            
-            # Get the holes for the week
-            if week.is_front:
-                holes_nums = range(1,10)
-            else:
-                holes_nums = range(10,19)
-            
-            # Create the score objects
-            for index, score in enumerate(scores):
-                hole = Hole.objects.get(number=holes_nums[index], season=week.season)
-                score = Score(
-                    golfer=golfer,
-                    week=week,
-                    hole=hole,
-                    score=score
-                )
-                
-                # Print info for debugging
-                print(f'Golfer: {golfer.name}')
-                print(f'Week: {week}')
-                print(f'Hole: {hole.number}')
-                print(f'Score: {score.score}')
-                
-                #score.save()
-        else:
-            print('Invalid Form\n')
-            print(form.errors)
-            
-    else:
-        form = ScoresForm(golfers, weeks)
-
-    return render(request, 'add_round.html', {'form': form})
-    '''
     if request.method == 'POST':
         
         form = RoundForm(request.POST)
@@ -149,7 +97,6 @@ def add_scores(request):
             
             # Get form data
             matchup = int(form.cleaned_data['matchup'])
-            print(form.golfer_data)
             print(f"{Golfer.objects.get(id=form.golfer_data[matchup][0][1])} - Hole 1 = {form.cleaned_data['hole1_1']}")
         else:
             print('Invalid Form\n')
@@ -159,8 +106,34 @@ def add_scores(request):
         form = RoundForm()
     
     golfer_data_json = json.dumps(form.golfer_data)
+    hole_data_raw = Hole.objects.filter(season=Season.objects.order_by('-year').first())
 
-    return render(request, 'add_round.html', {'form': form, 'golfer_data_json': golfer_data_json})
+    hole_data = []
+
+    # determine if playing front or back
+    season = Season.objects.order_by('-year').first()
+    week = Week.objects.get(season=season, number=3, rained_out=False)
+    front = week.is_front
+
+    if front:
+        hole_numbers = range(1, 10)
+    else:
+        hole_numbers = range(10, 19)
+
+    for hole in hole_data_raw:
+        if front:
+            if hole.number < 10:
+                hole_data.append([hole.par, hole.handicap9, hole.yards])
+        else:
+            if hole.number > 9:
+                hole_data.append([hole.par, hole.handicap9, hole.yards])
+    
+    # get total yard for the holes
+    total_yards = 0
+    for hole in hole_data:
+        total_yards += hole[2]
+
+    return render(request, 'add_round.html', {'form': form, 'golfer_data_json': golfer_data_json, 'hole_data': hole_data, 'hole_numbers': hole_numbers, 'total_yards': total_yards})
 def add_golfer(request):
     if request.method == 'POST':
         form = GolferForm(request.POST)
