@@ -19,17 +19,38 @@
 
 <body>
 
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <a class="navbar-brand" href="{% url 'main' %}">ChatterboxGolf</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-      <div class="navbar-nav">
-        <a class="nav-item nav-link" href="{% url 'add_round' %}">Add Scores</a>
-        <a class="nav-item nav-link" href="{% url 'add_golfer' %}">Create Golfer</a>
-        <a class="nav-item nav-link" href="{% url 'add_sub' %}">Set Sub</a>
-        <a class="nav-item nav-link" href="{% url 'enter_schedule' %}">Enter Schedule</a>
+  <nav class="navbar navbar-expand-lg navbar-light bg-body-tertiary">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'main' %}">ChatterboxGolf</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-item nav-link" href="{% url 'add_round' %}">Add Scores</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-item nav-link" href="{% url 'add_golfer' %}">Create Golfer</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-item nav-link" href="{% url 'add_sub' %}">Set Sub</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-item nav-link" href="{% url 'enter_schedule' %}">Enter Schedule</a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Golfers
+            </a>
+            <ul class="dropdown-menu">
+              {% for golfer in golfer_list %}
+              <li>
+                <a class="dropdown-item" href="{% url 'golfer_stats' golfer.id %}">{{ golfer.name }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </li>
         {% comment %}
         <a class="nav-item nav-link" href="{% url 'games' %}">Games</a>
         <div class="nav-item dropdown">
@@ -41,21 +62,6 @@
           </div>
         </div>
         <div class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Stats</a>
-          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-            <a class="dropdown-item" href="{% url 'aveScores'%}">Average Scores</a>
-            <a class="dropdown-item" href="{% url 'leagueStats'%}">League Stats</a>
-          </div>
-        </div>
-        <div class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Golfers</a>
-          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-            {% for golfer in golferList %}
-            <a class="dropdown-item" href="{% url 'golferSummary' golfer.id %}">{{ golfer.name }}</a>
-            {% endfor %}
-          </div>
-        </div>
-        <div class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Subs</a>
           <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
             {% for sub in subList %}
@@ -63,7 +69,6 @@
             {% endfor %}
           </div>
         </div>{% endcomment %}
-        
       </div>
     </div>
   </nav>
@@ -73,8 +78,6 @@
   <!--<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>-->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 
   {% block page_content %}

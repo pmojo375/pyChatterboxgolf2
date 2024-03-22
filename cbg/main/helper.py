@@ -2,6 +2,12 @@ from datetime import datetime
 from main.models import *
 from django.db.models import Sum
 
+'''
+Need to run the golfer matchup generator weekly. Need to figure out trigger
+Need to figure out the handicap trigger for when the scores are posted and when to run a full generate
+Need to figure out when to run the generate_rounds function
+'''
+
 def get_week(**kwargs):
     """Gets the week object from the current date. The week
     object returned is the last week we should have played but is offset by a
@@ -43,6 +49,14 @@ def get_week(**kwargs):
 
     return week
 
+def get_active_week():
+    season = Season.objects.all().order_by('-year')[0]
+    
+    # get the week that was most recently played
+    week = Week.objects.filter(season=season, date__lt=datetime.now()).order_by('-date')[0]
+    
+    return week
+    
 
 def get_golfers(**kwargs):
     """Gets the golfer objects for a specific season
@@ -133,7 +147,7 @@ def generate_rounds(season):
                 total_points = points_detail['golfer_points']
                 points_objs = Points.objects.filter(golfer=golfer, week=week)
                 if Round.objects.filter(golfer=golfer, week=week, matchup=matchup).exists():
-                    round = Round.objects.get(golfer=golfer, week=week, matchup=matchup)
+                    round = Round.objects.get(golfer=golfer, week=week)
                     round.handicap = handicap
                     round.gross = gross_score
                     round.net = net_score
@@ -141,12 +155,14 @@ def generate_rounds(season):
                     round.total_points = total_points
                     round.points.set(points_objs)
                     round.scores.set(scores)
+                    round.save()
                 else:
                     round = Round(golfer=golfer, week=week, matchup=matchup, handicap=handicap, gross=gross_score, net=net_score, round_points=round_points, total_points=total_points)
                     round.save()
                     round.points.set(points_objs)
                     round.scores.set(scores)
                     round.save()
+
 
 def golfer_played(golfer, week, **kwargs):
     """Checks if a golfer played in a given week and year

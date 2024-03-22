@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.db.models import Q, Sum
 from datetime import datetime
 from django.http import HttpResponseRedirect
+import json
 
 # Create your views here.
 def main(request):
@@ -67,15 +68,8 @@ def main(request):
 
     game_pot = (GameEntry.objects.filter(week=week).count() * 2)/len(lastGameWinner)
 
-    if request.session.get('new', False):
-        new_messages = []
-        new = False
-    else:
-        new_messages = ['Sub Summary Pages: Now subs can see their summary pages like regular league members can!']
-        new_messages.append('Handicaps are now rounded on the main page and week scorecard page.')
-        new = True
-        request.session['new'] = True
-
+    season = Season.objects.all().order_by('-year')[0]
+    golfer_list = Golfer.objects.filter(team__season=season)
     context = {
         'lastSkinWinner': lastSkinWinner,
         'week': week.number,
@@ -90,12 +84,12 @@ def main(request):
         'schedule': schedule,
         'secondHalf': secondHalf,
         'unestablished': [],
-        'new': new,
-        'new_messages': new_messages,
+        'golfer_list': golfer_list,
     }
     return render(request, 'main.html', context)
 
 def add_scores(request):
+    '''
     golfers = Golfer.objects.all()
     weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
 
@@ -146,7 +140,27 @@ def add_scores(request):
         form = ScoresForm(golfers, weeks)
 
     return render(request, 'add_round.html', {'form': form})
+    '''
+    if request.method == 'POST':
+        
+        form = RoundForm(request.POST)
+        if form.is_valid():
+            print('Valid Form\n')
+            
+            # Get form data
+            matchup = int(form.cleaned_data['matchup'])
+            print(form.golfer_data)
+            print(f"{Golfer.objects.get(id=form.golfer_data[matchup][0][1])} - Hole 1 = {form.cleaned_data['hole1_1']}")
+        else:
+            print('Invalid Form\n')
+            print(form.errors)
+            
+    else:
+        form = RoundForm()
+    
+    golfer_data_json = json.dumps(form.golfer_data)
 
+    return render(request, 'add_round.html', {'form': form, 'golfer_data_json': golfer_data_json})
 def add_golfer(request):
     if request.method == 'POST':
         form = GolferForm(request.POST)

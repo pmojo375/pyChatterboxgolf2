@@ -73,7 +73,6 @@ class Hole(models.Model):
     def __str__(self):
         return f'Hole {self.number} season {self.season.year}'
 
-
 class Score(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
@@ -83,7 +82,6 @@ class Score(models.Model):
     def __str__(self):
         return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")} - {self.hole.number}'
 
-
 class Handicap(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
@@ -92,14 +90,12 @@ class Handicap(models.Model):
     def __str__(self):
         return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")} - {self.handicap}'
 
-
 class Matchup(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     teams = models.ManyToManyField(Team)
     
     def __str__(self):
         return f'{self.week.date.strftime("%Y-%m-%d")} - {self.teams.all()[0]} vs {self.teams.all()[1]}'
-
 
 class Sub(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)

@@ -23,6 +23,68 @@ class ScoresForm(forms.Form):
         self.fields['week'].choices = [(w.id, f"{w} - {'Front' if w.is_front else 'Back'}") for w in weeks]
         self.initial['week'] = weeks[0].id if weeks else None
         
+class RoundForm(forms.Form):
+    matchup = forms.ChoiceField(label='Matchup', choices=[])
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        season = Season.objects.get(year=2022)
+        week = Week.objects.get(season=season, number=2, rained_out=False)
+        
+        matchups = Matchup.objects.filter(week=week)
+        
+        self.golfer_data = []
+        
+        if week.is_front:
+            holes = range(1, 10)
+        else:
+            holes = range(10, 19)
+        # get golfers from matchups accounting for subs
+        matchup_golfers = []
+        
+        # Create fields for each of the 9 holes for each golfer
+        for hole in range(1, 10):
+            for golfer_num in range(1, 5):  # Assume max of 4 golfers
+                field_name = f'hole{hole}_{golfer_num}'
+                self.fields[field_name] = forms.IntegerField(
+                    label=f'Hole {hole} - Golfer {golfer_num}', 
+                    min_value=1, 
+                    max_value=10, 
+                    required=True
+                )
+        
+        for m in matchups:
+            golfers = []
+            for team in m.teams.all():
+                for golfer in team.golfers.all():
+                    try:
+                        sub = Sub.objects.filter(week=m.week).filter(absent_golfer=golfer).first()
+                        if sub:
+                            golfers.append(sub.sub_golfer)
+                        else:
+                            golfers.append(golfer)
+                    except:
+                        golfers.append(golfer)
+                        
+            matchup_golfers.append(golfers)
+        
+        # I now have each matchups golfers with subs accounted for
+        matchups = []
+        for i, golfers in enumerate(matchup_golfers):
+            display_text = f"{golfers[0].name} & {golfers[1].name} vs. {golfers[2].name} & {golfers[3].name}"
+            temp = []
+            for g in golfers:
+                temp.append([g.name, g.id])
+                
+            matchups.append((i, display_text))
+            self.golfer_data.append(temp)
+            
+            
+        self.fields['matchup'].choices = matchups
+        
+    
+        
 class GolferForm(forms.Form):
     name = forms.CharField(label='Name', max_length=100)
     
