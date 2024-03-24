@@ -94,10 +94,47 @@ def add_scores(request):
         form = RoundForm(request.POST)
         if form.is_valid():
             print('Valid Form\n')
-            
+
             # Get form data
             matchup = int(form.cleaned_data['matchup'])
-            print(f"{Golfer.objects.get(id=form.golfer_data[matchup][0][1])} - Hole 1 = {form.cleaned_data['hole1_1']}")
+
+            # create the golfer matchups
+            team1_golferA = Golfer.objects.get(id=form.golfer_data[matchup][0][1])
+            team2_golferA = Golfer.objects.get(id=form.golfer_data[matchup][1][1])
+            team1_golferB = Golfer.objects.get(id=form.golfer_data[matchup][2][1])
+            team2_golferB = Golfer.objects.get(id=form.golfer_data[matchup][3][1])
+
+            week = Week.objects.get(number=3, season=Season.objects.order_by('-year').first())
+            front = week.is_front
+
+            holes = Hole.objects.filter(season=week.season)
+
+            # Create the score objects
+            for golfer_num in range(1, 5):
+                golfer = Golfer.objects.get(id=form.golfer_data[matchup][golfer_num-1][1])
+                for hole in range(1, 10):
+                    field_name = f'hole{hole}_{golfer_num}'
+                    score = int(form.cleaned_data[field_name])
+
+                    # update hole number if playing back 9
+                    if not front:
+                        hole = hole + 9
+                        
+                    hole = holes.get(number=hole)
+                    print(f'{golfer} - Hole {hole.number} - {score}')
+                    #Score.objects.create(golfer=golfer, week=week, hole=hole, score=score)
+
+            # Create the golfer matchup objects
+            print(f'{team1_golferA} vs {team2_golferA}')
+            print(f'{team1_golferB} vs {team2_golferB}')
+            #GolferMatchup.objects.create(week=week, golfer=team1_golferA, opponent=team2_golferA, is_A=True)
+            #GolferMatchup.objects.create(week=week, golfer=team1_golferB, opponent=team2_golferB, is_A=False)
+            #GolferMatchup.objects.create(week=week, golfer=team2_golferA, opponent=team1_golferA, is_A=True)
+            #GolferMatchup.objects.create(week=week, golfer=team2_golferB, opponent=team1_golferB, is_A=False)
+
+            # generate handicaps for the next week
+
+            # calculate points for the week
         else:
             print('Invalid Form\n')
             print(form.errors)
@@ -192,7 +229,7 @@ def add_sub(request):
             print(f'Sub Golfer: {sub_golfer.name}')
             print(f'Week: {week}')
             
-            #sub.save()
+            sub.save()
         else:
             print('Invalid Form\n')
             print(form.errors)

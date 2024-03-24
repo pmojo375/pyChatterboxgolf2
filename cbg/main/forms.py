@@ -32,7 +32,7 @@ class RoundForm(forms.Form):
         season = Season.objects.get(year=2022)
         week = Week.objects.get(season=season, number=3, rained_out=False)
         
-        matchups = Matchup.objects.filter(week=week)
+        self.matchups = Matchup.objects.filter(week=week)
         
         self.golfer_data = []
         # get golfers from matchups accounting for subs
@@ -49,36 +49,56 @@ class RoundForm(forms.Form):
                     required=True
                 )
         
-        for m in matchups:
-            golfers = []
+        for m in self.matchups:
+            _teams = []
             for team in m.teams.all():
+                _golfers = []
+                # iterate though the teams golfers
                 for golfer in team.golfers.all():
+                    
                     try:
                         sub = Sub.objects.filter(week=m.week).filter(absent_golfer=golfer).first()
                         if sub:
-                            golfers.append(sub.sub_golfer)
+                            handicap = get_hcp(sub.sub_golfer, week)
+                            _golfers.append([sub.sub_golfer, handicap])
+
                         else:
-                            golfers.append(golfer)
+                            handicap = get_hcp(golfer, week)
+                            _golfers.append([golfer, handicap])
                     except:
-                        golfers.append(golfer)
-                        
+                        handicap = get_hcp(golfer, week)
+                        _golfers.append([golfer, handicap])
+                _teams.append(_golfers)
+
+            # determine which golfer on each team has the better handicap and put them as the first two in the list
+            if _teams[0][0][1] <= _teams[0][1][1]:
+                if _teams[1][0][1] <= _teams[1][1][1]:
+                    golfers = [_teams[0][0][0], _teams[1][0][0], _teams[0][1][0], _teams[1][1][0]]
+                else:
+                    golfers = [_teams[0][0][0], _teams[1][1][0], _teams[0][1][0], _teams[1][0][0]]
+            else:
+                if _teams[1][0][1] <= _teams[1][1][1]:
+                    golfers = [_teams[0][1][0], _teams[1][0][0], _teams[0][0][0], _teams[1][1][0]]
+                else:
+                    golfers = [_teams[0][1][0], _teams[1][1][0], _teams[0][0][0], _teams[1][0][0]]
+
             matchup_golfers.append(golfers)
-        
+
         # I now have each matchups golfers with subs accounted for
-        matchups = []
-        matchups.append((None, "Select Matchup"))
+        _matchups = []
+        _matchups.append((None, "Select Matchup"))
         for i, golfers in enumerate(matchup_golfers):
-            display_text = f"{golfers[0].name} & {golfers[1].name} vs. {golfers[2].name} & {golfers[3].name}"
+            display_text = f"{golfers[0].name} vs. {golfers[1].name} - {golfers[2].name} vs. {golfers[3].name}"
             temp = []
             for g in golfers:
                 handicap = get_hcp(g, week)
                 temp.append([g.name, g.id, handicap])
                 
-            matchups.append((i, display_text))
+            _matchups.append((i, display_text))
             self.golfer_data.append(temp)
             
             
-        self.fields['matchup'].choices = matchups
+        self.fields['matchup'].choices = _matchups
         
     
         
@@ -98,7 +118,7 @@ class SubForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.initial['week'] = weeks[0].id if weeks else None
         self.fields['absent_golfer'].choices = [(g.id, g.name) for g in absent_golfers]
-        self.fields['sub_golfer'].choices = [(g.id, g.name) for g in sub_golfers]
+        self.fields['sub_golfer'].choices = [(g.id, g.name) for g in absent_golfers]
         self.fields['week'].choices = [(w.id, f"{w} - {'Front' if w.is_front else 'Back'}") for w in weeks]
 
 class ScheduleForm(forms.Form):

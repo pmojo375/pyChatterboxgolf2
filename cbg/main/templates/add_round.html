@@ -151,19 +151,24 @@
         
         matchupSelect.addEventListener('change', function() {
             const selectedIndex = this.value;
+
             // Fetch golfer names from your 'golfer_data' structure
             const golfers = golferData[selectedIndex];  // Assuming first element is golfer names
 
+            // Update the golfer names in the table
             golfer1.innerHTML = golfers[0][0]
             golfer2.innerHTML = golfers[1][0]
             golfer3.innerHTML = golfers[2][0]
             golfer4.innerHTML = golfers[3][0]
 
+            // Update the golfer handicaps in the table
             golfer1_hcp.innerHTML = Math.round(golfers[0][2] * 10) / 10
             golfer2_hcp.innerHTML = Math.round(golfers[1][2] * 10) / 10
             golfer3_hcp.innerHTML = Math.round(golfers[2][2] * 10) / 10
             golfer4_hcp.innerHTML = Math.round(golfers[3][2] * 10) / 10
 
+            // Setup synchronization for duplicate golfer names
+            setupSynchronizationForDuplicates();
         });
 
         // Function to calculate the sum of all input box values
@@ -207,23 +212,51 @@
             document.getElementById('golfer3_total').textContent = total_3;
             document.getElementById('golfer4_total').textContent = total_4;
         }
-        
+
+        function setupSynchronizationForDuplicates() {
+
+            // Get the names of all golfers
+            const golferNames = [document.getElementById('golfer1').innerHTML, 
+                document.getElementById('golfer2').innerHTML, 
+                document.getElementById('golfer3').innerHTML, 
+                document.getElementById('golfer4').innerHTML];
+
+            const syncMap = {};
+    
+            // Organize golfer names into a map where each name points to an array of indices (1-based)
+            golferNames.forEach((name, index) => {
+                if (!syncMap[name]) {
+                    syncMap[name] = [];
+                }
+                syncMap[name].push(index + 1); // +1 to match naming convention (golfer1_score, golfer2_score, etc.)
+            });
+    
+            Object.keys(syncMap).forEach(name => {
+                if (syncMap[name].length > 1) { // Process only if there are duplicates
+                    syncMap[name].forEach(index => {
+                        document.querySelectorAll(`.golfer${index}_score`).forEach((input, inputIndex) => {
+                            input.addEventListener('input', function() {
+                                // Sync changes to all other instances of this golfer's scores
+                                syncMap[name].forEach(syncIndex => {
+                                    if (syncIndex !== index) { // Avoid syncing to self
+                                        const targetInput = document.getElementById(`hole${inputIndex + 1}_${syncIndex}`);
+                                        if (targetInput) {
+                                            targetInput.value = this.value;
+                                        }
+                                    }
+                                });
+                                updateTotal(); // Update the total scores after syncing
+                            });
+                        });
+                    });
+                }
+            });
+        }
+
         // Add event listeners to all input boxes to trigger the total update on value change
-        document.querySelectorAll('.golfer1_score').forEach(function(input) {
+        document.querySelectorAll('input[type="number"]').forEach(input => {
             input.addEventListener('input', updateTotal);
         });
-        document.querySelectorAll('.golfer2_score').forEach(function(input) {
-            input.addEventListener('input', updateTotal);
-        });
-        document.querySelectorAll('.golfer3_score').forEach(function(input) {
-            input.addEventListener('input', updateTotal);
-        });
-        document.querySelectorAll('.golfer4_score').forEach(function(input) {
-            input.addEventListener('input', updateTotal);
-        });
-        
-        // Initial calculation in case there are predefined values in the inputs
-        updateTotal();
     });
 </script>
 {% endblock %}
