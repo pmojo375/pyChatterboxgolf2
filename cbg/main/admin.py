@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round
+from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup
 
 
 class GolferAdmin(admin.ModelAdmin):
@@ -161,6 +161,21 @@ class RoundAdmin(admin.ModelAdmin):
     def get_golfer(self, obj):
         return obj.golfer.name
     get_golfer.short_description = 'Golfer'
+    
+class GolferMatchupAdmin(admin.ModelAdmin):
+    list_display = ('get_golfer', 'get_week', 'get_opponent', 'is_A')
+    
+    def get_week(self, obj):
+        return f"{obj.week.date.strftime('%Y-%m-%d')} (Week {obj.week.number})"
+    get_week.short_description = 'Week'
+    
+    def get_golfer(self, obj):
+        return obj.golfer.name
+    get_golfer.short_description = 'Golfer'
+    
+    def get_opponent(self, obj):
+        return obj.opponent.name
+    get_opponent.short_description = 'Opponent'
 
 
 admin.site.register(Golfer, GolferAdmin)
@@ -177,3 +192,4 @@ admin.site.register(Matchup, MatchupAdmin)
 admin.site.register(Sub, SubAdmin)
 admin.site.register(Points, PointsAdmin)
 admin.site.register(Round, RoundAdmin)
+admin.site.register(GolferMatchup, GolferMatchupAdmin)

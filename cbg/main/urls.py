@@ -10,4 +10,5 @@ urlpatterns = [
     path('enter_schedule', views.enter_schedule, name='enter_schedule'),
     path('<int:week>/', views.scorecards, name="scorecards"),
     path('stats/<int:golfer_id>/', views.golfer_stats, name="golfer_stats"),
+    path('manage_weeks', views.manage_weeks, name='manage_weeks')
 ]

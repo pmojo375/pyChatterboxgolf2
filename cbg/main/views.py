@@ -103,6 +103,18 @@ def add_scores(request):
             team2_golferA = Golfer.objects.get(id=form.golfer_data[matchup][1][1])
             team1_golferB = Golfer.objects.get(id=form.golfer_data[matchup][2][1])
             team2_golferB = Golfer.objects.get(id=form.golfer_data[matchup][3][1])
+            
+            golfers = []
+            
+            # add golfers to list and check if they are already in the list
+            if team1_golferA not in golfers:
+                golfers.append(team1_golferA)
+            if team2_golferA not in golfers:
+                golfers.append(team2_golferA)
+            if team1_golferB not in golfers:
+                golfers.append(team1_golferB)
+            if team2_golferB not in golfers:
+                golfers.append(team2_golferB)
 
             week = Week.objects.get(number=3, season=Season.objects.order_by('-year').first())
             front = week.is_front
@@ -122,19 +134,30 @@ def add_scores(request):
                         
                     hole = holes.get(number=hole)
                     print(f'{golfer} - Hole {hole.number} - {score}')
-                    #Score.objects.create(golfer=golfer, week=week, hole=hole, score=score)
+                    #Score.objects.update_or_create(golfer=golfer, week=week, hole=hole, score=score)
 
             # Create the golfer matchup objects
+            
             print(f'{team1_golferA} vs {team2_golferA}')
             print(f'{team1_golferB} vs {team2_golferB}')
-            #GolferMatchup.objects.create(week=week, golfer=team1_golferA, opponent=team2_golferA, is_A=True)
-            #GolferMatchup.objects.create(week=week, golfer=team1_golferB, opponent=team2_golferB, is_A=False)
-            #GolferMatchup.objects.create(week=week, golfer=team2_golferA, opponent=team1_golferA, is_A=True)
-            #GolferMatchup.objects.create(week=week, golfer=team2_golferB, opponent=team1_golferB, is_A=False)
+            
+            matchup1, _ = GolferMatchup.objects.update_or_create(week=week, golfer=team1_golferA, opponent=team2_golferA, is_A=True)
+            matchup2, _ = GolferMatchup.objects.update_or_create(week=week, golfer=team1_golferB, opponent=team2_golferB, is_A=False)
+            matchup3, _ = GolferMatchup.objects.update_or_create(week=week, golfer=team2_golferA, opponent=team1_golferA, is_A=True)
+            matchup4, _ = GolferMatchup.objects.update_or_create(week=week, golfer=team2_golferB, opponent=team1_golferB, is_A=False)
+
+            matchups = [matchup1, matchup2, matchup3, matchup4]
+
+            if Week.objects.filter(season=week.season, number=week.number+1).exists():
+                next_week = Week.objects.get(season=week.season, number=week.number+1)
 
             # generate handicaps for the next week
+            for golfer in golfers:
+                calculate_handicap(golfer, week.season, next_week)
 
             # calculate points for the week
+            for matchup in matchups:
+                generate_round(matchup)
         else:
             print('Invalid Form\n')
             print(form.errors)
@@ -477,3 +500,29 @@ def scorecards(request, week):
     }
     
     return render(request, 'scorecards.html', context)
+
+def manage_weeks(request):
+    if 'select_week' in request.POST:
+        selection_form = WeekSelectionForm(request.POST)
+        update_form = WeekUpdateForm()
+        if selection_form.is_valid():
+            selected_week = selection_form.cleaned_data['week']
+            update_form = WeekUpdateForm(instance=selected_week)
+    elif 'update_week' in request.POST:
+        update_form = WeekUpdateForm(request.POST)
+        if update_form.is_valid():
+            update_form.save()
+            # Adjust subsequent weeks if marked as a rainout
+            if update_form.cleaned_data['rain_out']:
+                adjust_weeks(update_form.instance)
+            return redirect('manage_weeks')
+    else:
+        selection_form = WeekSelectionForm()
+        update_form = WeekUpdateForm()
+
+    weeks = Week.objects.all()
+    return render(request, 'manage_weeks.html', {
+        'selection_form': selection_form,
+        'update_form': update_form,
+        'weeks': weeks
+    })

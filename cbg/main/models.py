@@ -31,7 +31,8 @@ class Week(models.Model):
     is_front = models.BooleanField()
     
     def __str__(self):
-        return f'{self.date.strftime("%m/%d/%Y")} (Week {self.number})'
+        #print date in format 2022-01-01 with week number
+        return f'{self.date.strftime("%Y-%m-%d")} (Week {self.number})'
 
 
 class Game(models.Model):
@@ -81,6 +82,8 @@ class Score(models.Model):
     
     def __str__(self):
         return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")} - {self.hole.number}'
+    class Meta:
+        unique_together = ('golfer', 'week', 'hole')
 
 class Handicap(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
@@ -113,6 +116,7 @@ class Round(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     matchup = models.ForeignKey(Matchup, on_delete=models.CASCADE)
+    golfer_matchup = models.ForeignKey('GolferMatchup', on_delete=models.CASCADE, null=True)
     handicap = models.ForeignKey(Handicap, on_delete=models.CASCADE)
     points = models.ManyToManyField(Points)
     scores = models.ManyToManyField(Score)
@@ -122,11 +126,14 @@ class Round(models.Model):
     total_points = models.FloatField(null=True)
     
     class Meta:
-        unique_together = ('golfer', 'week')
+        unique_together = ('golfer_matchup', 'week')
         
 class GolferMatchup(models.Model):
     week = models.ForeignKey(Week, related_name='week', on_delete=models.CASCADE)
     is_A = models.BooleanField(default=False)
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     opponent = models.ForeignKey(Golfer, related_name='opponent', on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return f'{self.week.date.strftime("%Y-%m-%d")} - {self.golfer.name} vs {self.opponent.name}'
         

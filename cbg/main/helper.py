@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from main.models import *
 from django.db.models import Sum
 
@@ -52,11 +52,18 @@ def get_week(**kwargs):
 def get_active_week():
     season = Season.objects.all().order_by('-year')[0]
     
-    # get the week that was most recently played
+    # get the latest week that was played before the current date
     week = Week.objects.filter(season=season, date__lt=datetime.now()).order_by('-date')[0]
     
     return week
+
+def get_next_week():
+    season = Season.objects.all().order_by('-year')[0]
     
+    # get the latest week that was played before the current date
+    week = Week.objects.filter(season=season, date__gt=datetime.now()).order_by('date')[0]
+    
+    return week
 
 def get_golfers(**kwargs):
     """Gets the golfer objects for a specific season
@@ -164,6 +171,40 @@ def generate_rounds(season):
                     round.save()
 
 
+def generate_round(golfer_matchup, **kwargs):
+    
+    golfer = golfer_matchup.golfer
+    week = golfer_matchup.week
+    
+    if golfer_played(golfer, week):
+        gross_score = Score.objects.filter(golfer=golfer, week=week).aggregate(Sum('score'))['score__sum']
+        handicap = Handicap.objects.get(golfer=golfer, week=week)
+        net_score = gross_score - handicap.handicap
+        scores = Score.objects.filter(golfer=golfer, week=week)
+        matchup = Matchup.objects.get(week=week, teams=golfer.team_set.get(season=week.season))
+        points_detail = get_golfer_points(golfer_matchup, detail=True)
+        round_points = points_detail['round_points']
+        total_points = points_detail['golfer_points']
+        points_objs = Points.objects.filter(golfer=golfer, week=week)
+        if Round.objects.filter(golfer=golfer, week=week, golfer_matchup=golfer_matchup).exists():
+            round = Round.objects.get(golfer=golfer, week=week, golfer_matchup=golfer_matchup)
+            round.handicap = handicap
+            round.gross = gross_score
+            round.net = net_score
+            round.golfer_matchup = golfer_matchup
+            round.round_points = round_points
+            round.total_points = total_points
+            round.points.set(points_objs)
+            round.scores.set(scores)
+            round.save()
+        else:
+            round = Round(golfer=golfer, week=week, matchup=matchup, golfer_matchup=golfer_matchup, handicap=handicap, gross=gross_score, net=net_score, round_points=round_points, total_points=total_points)
+            round.save()
+            round.points.set(points_objs)
+            round.scores.set(scores)
+            round.save()
+
+    
 def golfer_played(golfer, week, **kwargs):
     """Checks if a golfer played in a given week and year
 
@@ -370,17 +411,16 @@ def get_back_holes(season):
     return Hole.objects.filter(season=season, number__in=hole_numbers).order_by('number')
 
 
-def get_golfer_points(week_model, golfer_model, **kwargs):
+def get_golfer_points(golfer_matchup, **kwargs):
     
     # When detail is set to True, the function returns a dictionary with the points for the golfer and their opponent
     detail = kwargs.get('detail', False)
-    save_points_to_db = kwargs.get('save_points_to_db', False)
-    
-    # Get the matchup for the inputed week and golfer's team
-    matchup = GolferMatchup.objects.get(week=week_model, golfer=golfer_model)
     
     # Get the golfers opponent
-    opponent = matchup.opponent
+    opponent = golfer_matchup.opponent
+    
+    golfer_model = golfer_matchup.golfer
+    week_model = golfer_matchup.week
     
     # Get all scores for the inputed week and golfer
     scores = Score.objects.filter(golfer=golfer_model, week=week_model)
@@ -671,3 +711,14 @@ def get_score_string(data, holes):
             rankStr = 'worst'
     
     return rankStr
+
+def adjust_weeks(rained_out_week):
+    subsequent_weeks = Week.objects.filter(week_number__gt=rained_out_week.week_number)
+    for week in subsequent_weeks:
+        week.week_number += 1
+        week.date += timedelta(days=7)
+        week.save()
+    # Add a new week at the end
+    last_week_number = Week.objects.latest('week_number').week_number
+    new_week_date = Week.objects.latest('date').date + timedelta(days=7)
+    Week.objects.create(week_number=last_week_number+1, date=new_week_date)

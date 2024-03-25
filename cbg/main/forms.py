@@ -144,4 +144,11 @@ class ScheduleForm(forms.Form):
         if Matchup.objects.filter(week_id=week).filter(Q(teams__id=team1) | Q(teams__id=team2)).exists():
             raise forms.ValidationError('Teams have already been scheduled for this week')
         return cleaned_data
-        
+              
+class WeekUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Week
+        fields = ['number', 'date', 'rained_out', 'is_front', 'season']
+
+class WeekSelectionForm(forms.Form):
+    week = forms.ModelChoiceField(queryset=Week.objects.filter(season = Season.objects.all().order_by('-year')[0]).order_by('number'), label="Select Week")
