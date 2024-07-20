@@ -45,20 +45,52 @@
 
     <br>
   </div>
-  <div class="row text-center">
-    <h2 class="text-center">Week {{ week }}'s Game: {{ currentGame.name }}</h2>
-    <br>
-  </div>
+  {% if initialized %}
+    <div class="row text-center">
+      <h2 class="text-center">Week {{ week }}'s Game: {{ currentGame.name }}</h2>
+      <br>
+    </div>
 
-  <div class="row">
-    {% if secondHalf %}
+    <div class="row">
+      {% if secondHalf %}
+        <div class="col">
+          <p class="text-center">Full Season Standings</p>
+          <table id='standings'>
+            <thead>
+              <tr>
+                <th rowspan="2">Team</th>
+                <th colspan="2">2nd Half</th>
+              </tr>
+              <tr>
+                <th>Points</th>
+                <th>Hcp</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              {% for team in fullStandings %}
+                <tr>
+                  <td class="name">{{ team.golfer1 }}</td>
+                  <td class="score" rowspan="2">{{ team.total }}</td>
+                  <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
+                </tr>
+
+                <tr>
+                  <td class="name">{{ team.golfer2 }}</td>
+                  <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
       <div class="col">
-        <p class="text-center">Full Season Standings</p>
+        <p class="text-center">First Half Standings</p>
         <table id='standings'>
           <thead>
             <tr>
               <th rowspan="2">Team</th>
-              <th colspan="2">2nd Half</th>
+              <th colspan="2">1st Half</th>
             </tr>
             <tr>
               <th>Points</th>
@@ -67,137 +99,114 @@
           </thead>
           <tbody>
 
-            {% for team in fullStandings %}
+            {% for team in firstHalfStandings %}
               <tr>
                 <td class="name">{{ team.golfer1 }}</td>
-                <td class="score" rowspan="2">{{ team.total }}</td>
-                <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
+                <td class="score" rowspan="2">{{ team.first }}</td>
+                <td class="hcp">{{ team.golfer1FirstHcp|floatformat:2 }}</td>
               </tr>
 
               <tr>
                 <td class="name">{{ team.golfer2 }}</td>
-                <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
+                <td class="hcp">{{ team.golfer2FirstHcp|floatformat:2 }}</td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-    {% endif %}
-    <div class="col">
-      <p class="text-center">First Half Standings</p>
-      <table id='standings'>
+
+      {% if secondHalf %} 
+        <div class="col">
+          <p class="text-center"> Second Half Standings</p>
+          <table id='standings'>
+            <thead>
+              <tr>
+                <th rowspan="2">Team</th>
+                <th colspan="2">2nd Half</th>
+              </tr>
+              <tr>
+                <th>Points</th>
+                <th>Hcp</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              {% for team in secondHalfStandings %}
+                <tr>
+                  <td class="name">{{ team.golfer1 }}</td>
+                  <td class="score" rowspan="2">{{ team.second }}</td>
+                  <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
+                </tr>
+
+                <tr>
+                  <td class="name">{{ team.golfer2 }}</td>
+                  <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+
+    <br>
+
+    <div class="row">
+      <h4>Week {{ lastweek }} Skins Winner{{ lastSkinWinner|pluralize }}:</h4>
+      <ul>
+      {% for skinWinner in lastSkinWinner %}
+        <li>{{ skinWinner.golfer }} - ${{ skinWinner.winnings|floatformat:2 }}</li>
+      {% endfor %}
+      </ul>
+    </div>
+
+    <br>
+
+    <div class="row">
+      <h4>Week {{ lastweek }} Game Winner:</h4>
+      <ul>
+        {% for gameWinner in lastGameWinner %}
+          <li>{{ gameWinner }} - ${{ game_pot|floatformat:2 }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <br>
+
+    <div class="row">
+      <p class="text-center">Schedule</p>
+      <table id="schedule">
         <thead>
           <tr>
-            <th rowspan="2">Team</th>
-            <th colspan="2">1st Half</th>
-          </tr>
-          <tr>
-            <th>Points</th>
-            <th>Hcp</th>
+            <th>Team #</th>
+            <th>Golfers</th>
+            <th>Opponent</th>
           </tr>
         </thead>
         <tbody>
-
-          {% for team in firstHalfStandings %}
+          {% for matchup in schedule %}
             <tr>
-              <td class="name">{{ team.golfer1 }}</td>
-              <td class="score" rowspan="2">{{ team.first }}</td>
-              <td class="hcp">{{ team.golfer1FirstHcp|floatformat:2 }}</td>
+              <td class="team" rowspan="2">{{ forloop.counter }}</td>
+              <td class="name">{{ matchup.0.0 }}</td>
+              <td class="name">{{ matchup.0.1 }}</td>
             </tr>
-
             <tr>
-              <td class="name">{{ team.golfer2 }}</td>
-              <td class="hcp">{{ team.golfer2FirstHcp|floatformat:2 }}</td>
+              <td class="name">{{ matchup.1.0 }}</td>
+              <td class="name">{{ matchup.1.1 }}</td>
             </tr>
           {% endfor %}
+
         </tbody>
       </table>
     </div>
-
-    {% if secondHalf %} 
-      <div class="col">
-        <p class="text-center"> Second Half Standings</p>
-        <table id='standings'>
-          <thead>
-            <tr>
-              <th rowspan="2">Team</th>
-              <th colspan="2">2nd Half</th>
-            </tr>
-            <tr>
-              <th>Points</th>
-              <th>Hcp</th>
-            </tr>
-          </thead>
-          <tbody>
-
-            {% for team in secondHalfStandings %}
-              <tr>
-                <td class="name">{{ team.golfer1 }}</td>
-                <td class="score" rowspan="2">{{ team.second }}</td>
-                <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
-              </tr>
-
-              <tr>
-                <td class="name">{{ team.golfer2 }}</td>
-                <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% endif %}
-  </div>
-
-  <br>
-
-  <div class="row">
-    <h4>Week {{ lastweek }} Skins Winner{{ lastSkinWinner|pluralize }}:</h4>
-    <ul>
-    {% for skinWinner in lastSkinWinner %}
-      <li>{{ skinWinner.golfer }} - ${{ skinWinner.winnings|floatformat:2 }}</li>
-    {% endfor %}
-    </ul>
-  </div>
-
-  <br>
-
-  <div class="row">
-    <h4>Week {{ lastweek }} Game Winner:</h4>
-    <ul>
-      {% for gameWinner in lastGameWinner %}
-        <li>{{ gameWinner }} - ${{ game_pot|floatformat:2 }}</li>
-      {% endfor %}
-	  </ul>
-  </div>
-
-  <br>
-
-  <div class="row">
-    <p class="text-center">Schedule</p>
-    <table id="schedule">
-      <thead>
-        <tr>
-          <th>Team #</th>
-          <th>Golfers</th>
-          <th>Opponent</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for matchup in schedule %}
-          <tr>
-            <td class="team" rowspan="2">{{ forloop.counter }}</td>
-            <td class="name">{{ matchup.0.0 }}</td>
-            <td class="name">{{ matchup.0.1 }}</td>
-          </tr>
-          <tr>
-            <td class="name">{{ matchup.1.0 }}</td>
-            <td class="name">{{ matchup.1.1 }}</td>
-          </tr>
-        {% endfor %}
-
-      </tbody>
-    </table>
-  </div>
+    
+  {% endif %}
+  {% if initialized != None %}
+    <div class="row text-center">
+      <h2 class="text-center">The Season Has Not Started</h2>
+      <p>Check back soon for the start of the season</p>
+    </div>
+  {% endif %}
 
   <br>
   

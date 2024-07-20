@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+  <div class="container">
+    <h1 class="text-center my-4">Create Season</h1>
+    <form method="post" class="col-md-6 offset-md-3">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="year" class="form-label">Year:</label>
+            <input type="input" class="form-control" id="year" name="year" required>
+        </div>
+        <div class="mb-3">
+            <label for="weeks" class="form-label">Number of Weeks:</label>
+            <input type="number" class="form-control" id="weeks" name="weeks" required>
+        </div>
+        <div class="mb-3">
+            <label for="start_date" class="form-label">Start Date:</label>
+            <input type="date" class="form-control" id="start_date" name="start_date" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Season</button>
+    </form>
+  </div>
+{% endblock %}

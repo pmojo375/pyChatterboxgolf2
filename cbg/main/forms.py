@@ -4,6 +4,11 @@ from main.models import *
 from main.helper import *
 from django.utils import timezone
 
+class SeasonForm(forms.Form):
+    year = forms.IntegerField(label='Year', min_value=2022, max_value=2100)
+    weeks = forms.IntegerField(label='Number of Weeks', min_value=1, max_value=52)
+    start_date = forms.DateField(label='Start Date', initial=timezone.now)
+
 class ScoresForm(forms.Form):
     golfer = forms.ChoiceField(label='Golfer', choices=[])
     week = forms.ChoiceField(label='Week', choices=[])

@@ -10,82 +10,116 @@ from django.db.models import Q, Sum
 from datetime import datetime
 from django.http import HttpResponseRedirect
 import json
+from main.season import create_weeks
+
+def create_season(request):
+    # Set up season related information and create a new season
+    if request.method == 'POST':
+        form = SeasonForm(request.POST)
+        if form.is_valid():
+            print('Valid Form\n')
+            
+            # Get form data
+            year = form.cleaned_data['year']
+            weeks = form.cleaned_data['weeks']
+            start_date = form.cleaned_data['start_date']
+            
+            season = Season.objects.get_or_create(year=year)[0]
+            
+            # Print info for debugging
+            print(f'Year: {year} Type {type(year)}')
+            print(f'Weeks: {weeks} Type {type(weeks)}')
+            print(f'Start Date: {start_date} Type {type(start_date)}')
+            create_weeks(season, weeks, start_date)
+
+        else:
+            print('Invalid Form\n')
+            print(form.errors)
+    
+    else:
+        form = SeasonForm()
+    
+    return render(request, 'create_season.html', {'form': form})
 
 # Create your views here.
 def main(request):
-    #week = get_week()
-    season = Season.objects.get(year=2022)
-    week = Week.objects.filter(season=season)[0]
-    print(week.number)
-    lastGameWinner = []
-    
-    #calculate_and_save_handicaps_for_season(season)
-    #generate_rounds(season)
-    # sub records for the given year
-    #subs = Subrecord.objects.filter(year=2022).values('sub_id', 'absent_id', 'week')
 
-    if week.number > 8:
-        secondHalf = True
-    else:
-        secondHalf = False
-
-    seeds = []
-
-    # get the next weeks schedule
-    schedule = get_schedule(week)
-
-    # check if there are handicaps for the given week
-    check = Handicap.objects.filter(week=week).exists()
-
-    # if the week is not the first of the year and there are not handicaps decrement the week
-    if week != 0:
-        #lastSkinWinner = get_skins_winner(week, year=2022)
-        lastSkinWinner = []
-        lastGame = Game.objects.get(week=week)
-        if not check:
-            week = week - 1
-    else:
-        lastGame = Game.objects.get(year=2021, week=19)
-        lastSkinWinner = []
-
-    # get standings for the current week
-    #standings = getStandings(week)
-    #standings = get_standings_fast(week, subs=subs, year=2022)
-
-    # get standings in correct order
-    #firstHalfStandings = sorted(standings, key=itemgetter('first'), reverse=True)
-    #secondHalfStandings = sorted(standings, key=itemgetter('second'), reverse=True)
-    #fullStandings = sorted(standings, key=itemgetter('total'), reverse=True)
-
-    currentGame = Game.objects.get(week=week)
-
-    if GameEntry.objects.filter(winner=True, week=week).exists():
-        winners =  GameEntry.objects.filter(winner=True, week=week)
-        for winner in winners:
-                lastGameWinner.append(winner.golfer.name)
-    else:
-        lastGameWinner.append('Not Set')
-
-    game_pot = (GameEntry.objects.filter(week=week).count() * 2)/len(lastGameWinner)
+    initialized = False
 
     season = Season.objects.all().order_by('-year')[0]
-    golfer_list = Golfer.objects.filter(team__season=season)
-    context = {
-        'lastSkinWinner': lastSkinWinner,
-        'week': week.number,
-        'lastweek': week,
-        'currentGame': currentGame,
-        'lastGame': lastGame,
-        'lastGameWinner': lastGameWinner,
-        'game_pot': game_pot,
-        'firstHalfStandings': [],
-        'secondHalfStandings': [],
-        'fullStandings': [],
-        'schedule': schedule,
-        'secondHalf': secondHalf,
-        'unestablished': [],
-        'golfer_list': golfer_list,
-    }
+    if Week.objects.filter(season=season).exists():
+        week = Week.objects.filter(season=season).order_by('-number')[0]
+        initialized = True
+
+    if initialized:
+        # get the next weeks schedule
+        schedule = get_schedule(week)
+
+        lastGameWinner = []
+
+        if week.number > 8:
+            secondHalf = True
+        else:
+            secondHalf = False
+
+        # check if there are handicaps for the given week
+        check = Handicap.objects.filter(week=week).exists()
+
+        # if the week is not the first of the year and there are not handicaps decrement the week
+        if week != 0:
+            #lastSkinWinner = get_skins_winner(week, year=2022)
+            lastSkinWinner = []
+            lastGame = Game.objects.get(week=week)
+            if not check:
+                week = week - 1
+        else:
+            lastGame = Game.objects.get(year=2024, week=19)
+            lastSkinWinner = []
+
+        # get standings for the current week
+        #standings = getStandings(week)
+        #standings = get_standings_fast(week, subs=subs, year=2022)
+
+        # get standings in correct order
+        #firstHalfStandings = sorted(standings, key=itemgetter('first'), reverse=True)
+        #secondHalfStandings = sorted(standings, key=itemgetter('second'), reverse=True)
+        #fullStandings = sorted(standings, key=itemgetter('total'), reverse=True)
+
+        currentGame = Game.objects.get(week=week)
+
+        if GameEntry.objects.filter(winner=True, week=week).exists():
+            winners =  GameEntry.objects.filter(winner=True, week=week)
+            for winner in winners:
+                    lastGameWinner.append(winner.golfer.name)
+        else:
+            lastGameWinner.append('Not Set')
+
+        game_pot = (GameEntry.objects.filter(week=week).count() * 2)/len(lastGameWinner)
+
+        golfer_list = Golfer.objects.filter(team__season=season)
+        context = {
+            'initialized': initialized,
+            'lastSkinWinner': lastSkinWinner,
+            'week': week.number,
+            'lastweek': week,
+            'currentGame': currentGame,
+            'lastGame': lastGame,
+            'lastGameWinner': lastGameWinner,
+            'game_pot': game_pot,
+            'firstHalfStandings': [],
+            'secondHalfStandings': [],
+            'fullStandings': [],
+            'schedule': schedule,
+            'secondHalf': secondHalf,
+            'unestablished': [],
+            'golfer_list': golfer_list,
+        }
+    else:
+    
+        context = {
+            'initialized': initialized,
+        }
+        
     return render(request, 'main.html', context)
 
 def add_scores(request):
