@@ -32,7 +32,10 @@ class Week(models.Model):
     
     def __str__(self):
         #print date in format 2022-01-01 with week number
-        return f'{self.date.strftime("%Y-%m-%d")} (Week {self.number})'
+        if self.rained_out:
+            return f'{self.date.strftime("%Y-%m-%d")} (Week {self.number}) - Rained Out'
+        else:
+            return f'{self.date.strftime("%Y-%m-%d")} (Week {self.number})'
 
 
 class Game(models.Model):

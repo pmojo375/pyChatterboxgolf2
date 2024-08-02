@@ -11,6 +11,7 @@ from datetime import datetime
 from django.http import HttpResponseRedirect
 import json
 from main.season import create_weeks
+from main.season import rain_out_update
 
 def create_season(request):
     # Set up season related information and create a new season
@@ -73,7 +74,7 @@ def main(request):
             if not check:
                 week = week - 1
         else:
-            lastGame = Game.objects.get(year=2024, week=19)
+            lastGame = Game.objects.get(year=2022, week=19)
             lastSkinWinner = []
 
         # get standings for the current week
@@ -535,28 +536,43 @@ def scorecards(request, week):
     
     return render(request, 'scorecards.html', context)
 
-def manage_weeks(request):
+def set_rainout(request):
     if 'select_week' in request.POST:
         selection_form = WeekSelectionForm(request.POST)
-        update_form = WeekUpdateForm()
         if selection_form.is_valid():
+            
             selected_week = selection_form.cleaned_data['week']
-            update_form = WeekUpdateForm(instance=selected_week)
-    elif 'update_week' in request.POST:
-        update_form = WeekUpdateForm(request.POST)
-        if update_form.is_valid():
-            update_form.save()
-            # Adjust subsequent weeks if marked as a rainout
-            if update_form.cleaned_data['rain_out']:
-                adjust_weeks(update_form.instance)
-            return redirect('manage_weeks')
+        
+            rain_out_update(selected_week)
     else:
         selection_form = WeekSelectionForm()
-        update_form = WeekUpdateForm()
-
-    weeks = Week.objects.all()
-    return render(request, 'manage_weeks.html', {
+    
+    return render(request, 'set_rainout.html', {
         'selection_form': selection_form,
-        'update_form': update_form,
-        'weeks': weeks
     })
+
+def create_team(request):
+    
+    if request.method == 'POST':
+        form = TeamForm(request.POST)
+        if form.is_valid():
+            print('Valid Form\n')
+            
+            # Get form data
+            golfer1 = form.cleaned_data['golfer1']
+            golfer2 = form.cleaned_data['golfer2']
+            
+            # Create the team object
+            create_team(Season.objects.latest('year'), [golfer1, golfer2])
+            
+            # Print info for debugging
+            print(f'Golfer 1: {golfer1}')
+            print(f'Golfer 2: {golfer2}')
+
+        else:
+            print('Invalid Form\n')
+            print(form.errors)
+    else:
+        form = TeamForm()
+    
+    return render(request, 'create_team.html', {'form': form})  

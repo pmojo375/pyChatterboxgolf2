@@ -10,6 +10,7 @@ urlpatterns = [
     path('enter_schedule', views.enter_schedule, name='enter_schedule'),
     path('<int:week>/', views.scorecards, name="scorecards"),
     path('stats/<int:golfer_id>/', views.golfer_stats, name="golfer_stats"),
-    path('manage_weeks', views.manage_weeks, name='manage_weeks'),
-    path('create_season', views.create_season, name='create_season')
+    path('set_rainout', views.set_rainout, name='set_rainout'),
+    path('create_season', views.create_season, name='create_season'),
+    path('create_team', views.create_team, name='create_team'),
 ]
