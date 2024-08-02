@@ -84,7 +84,8 @@ def create_teams(season, golfers):
     """
     
     if len(golfers) == 2 and not Team.objects.filter(season=season, golfers__in=golfers).exists() and golfers[0] != golfers[1]:
-        team = Team(season=season).save()
+        team = Team(season=season)
+        team.save()
         team.golfers.add(*golfers)
         return 1
     else:

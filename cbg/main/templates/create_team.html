@@ -11,17 +11,31 @@
         {% csrf_token %}
         <div class="row justify-content-md-center">
             <div class="col-md-6">
+                <div class="row mb-3">
+                    <label for="{{ form.season.id_for_label }}" class="col-sm-2 col-form-label ">Season:</label>
+                
+                    <div class="form-group mb-3 col-sm-10">
+                        <select name="{{ form.season.name }}" id="{{ form.season.id_for_label }}" class="form-control">
+                            {% for season in form.fields.season.queryset %}
+                                <option value="{{ season.pk }}">{{ season }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
                 <div class="form-group mb-3">
-                    <label for="{{ form.golfer1.id_for_label }}" class="form-label">{{ form.golfer1.label }}</label>
                     <select name="{{ form.golfer1.name }}" id="{{ form.golfer1.id_for_label }}" class="form-control">
+                        <option value="" selected>Select a Golfer</option>
                         {% for golfer in form.fields.golfer1.queryset %}
-                            <option value="{{ golfer.pk }}" {% if golfer.pk == form.golfer1.value %}selected{% endif %}>{{ golfer }}</option>
+                            <option value="{{ golfer.pk }}">{{ golfer }}</option>
                         {% endfor %}
                     </select>
-                    <label for="{{ form.golfer2.id_for_label }}" class="form-label">{{ form.golfer2.label }}</label>
+                </div>
+                    
+                <div class="form-group mb-3">
                     <select name="{{ form.golfer2.name }}" id="{{ form.golfer2.id_for_label }}" class="form-control">
+                        <option value="" selected>Select a Golfer</option>
                         {% for golfer in form.fields.golfer2.queryset %}
-                            <option value="{{ golfer.pk }}" {% if golfer.pk == form.golfer2.value %}selected{% endif %}>{{ golfer }}</option>
+                            <option value="{{ golfer.pk }}">{{ golfer }}</option>
                         {% endfor %}
                     </select>
                 </div>

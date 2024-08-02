@@ -10,9 +10,7 @@ from django.db.models import Q, Sum
 from datetime import datetime
 from django.http import HttpResponseRedirect
 import json
-from main.season import create_weeks
-from main.season import rain_out_update
-
+from main.season import *
 def create_season(request):
     # Set up season related information and create a new season
     if request.method == 'POST':
@@ -561,9 +559,10 @@ def create_team(request):
             # Get form data
             golfer1 = form.cleaned_data['golfer1']
             golfer2 = form.cleaned_data['golfer2']
+            season = form.cleaned_data['season']
             
             # Create the team object
-            create_team(Season.objects.latest('year'), [golfer1, golfer2])
+            create_teams(season, [golfer1, golfer2])
             
             # Print info for debugging
             print(f'Golfer 1: {golfer1}')

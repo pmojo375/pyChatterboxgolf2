@@ -154,5 +154,12 @@ class WeekSelectionForm(forms.Form):
     week = forms.ModelChoiceField(queryset=Week.objects.filter(season = Season.objects.all().order_by('-year')[0]).order_by('number'), label="Select Week")
     
 class TeamForm(forms.Form):
+    season = forms.ModelChoiceField(queryset=Season.objects.all().order_by('-year'), label="Select Season")
+    
     golfer1 = forms.ModelChoiceField(queryset=Golfer.objects.all(), label="Select Golfer")
     golfer2 = forms.ModelChoiceField(queryset=Golfer.objects.all(), label="Select Golfer")
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['golfer1'].empty_label = None
+        self.fields['golfer2'].empty_label = None
