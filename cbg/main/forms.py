@@ -34,8 +34,7 @@ class RoundForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        season = Season.objects.get(year=2022)
-        week = Week.objects.get(season=season, number=3, rained_out=False)
+        week = get_next_week()
         
         self.matchups = Matchup.objects.filter(week=week)
         
@@ -151,7 +150,11 @@ class ScheduleForm(forms.Form):
         return cleaned_data
 
 class WeekSelectionForm(forms.Form):
-    week = forms.ModelChoiceField(queryset=Week.objects.filter(season = Season.objects.all().order_by('-year')[0]).order_by('number'), label="Select Week")
+    current_season = get_current_season()
+    if current_season:
+        week = forms.ModelChoiceField(queryset=Week.objects.filter(season = Season.objects.all().order_by('-year')[0]).order_by('number'), label="Select Week")
+    else:
+        week = forms.ModelChoiceField(queryset=Week.objects.all().order_by('number'), label="Select Week")
     
 class TeamForm(forms.Form):
     season = forms.ModelChoiceField(queryset=Season.objects.all().order_by('-year'), label="Select Season")

@@ -49,21 +49,97 @@ def get_week(**kwargs):
 
     return week
 
-def get_active_week():
-    season = Season.objects.all().order_by('-year')[0]
+def get_game_winners(game):
+    if GameEntry.objects.filter(winner=True, game=game).exists():
+        winners = []
+        for winner in GameEntry.objects.filter(winner=True, game=game):
+            winners.append(winner.golfer.name)
+        
+        return winners
+    else:
+        return None
+
+def get_game(week):
+    """Get the game object for a given week
+
+    Parameters
+    ----------
+    week : Week
+        The week object you want to get the game for
+
+    Returns
+    -------
+    Game
+        The game object for the given week
+    """
+
+    # get the game object for the week
+    if Game.objects.filter(week=week).exists():
+        game = Game.objects.get(week=week)
+    else:
+        game = None
+
+    return game
+
+def get_current_season():
+    """Gets the current season object from the current year
+
+    Returns
+    -------
+    Season
+        The current season object or False if no season exists
+    """
+
+    # get current date
+    now = datetime.now()
+
+    # get season if it exists
+    if Season.objects.filter(year=now.year).exists():
+        season = Season.objects.get(year=now.year)
+    else:
+        season = False
+
+    return season
+
+
+def get_last_week():
+
+    # check if season exists
+    current_season = get_current_season()
     
-    # get the latest week that was played before the current date
-    week = Week.objects.filter(season=season, date__lt=datetime.now()).order_by('-date')[0]
-    
-    return week
+    if not current_season: 
+        return None
+    else:
+        # get the latest week that was played before the current date
+        weeks = Week.objects.filter(season=current_season, date__lt=timezone.now()).order_by('-date')
+        
+        for week in weeks:
+            if Score.objects.filter(week=week).exists():
+                return week
+            
+        return None
 
 def get_next_week():
-    season = Season.objects.all().order_by('-year')[0]
     
-    # get the latest week that was played before the current date
-    week = Week.objects.filter(season=season, date__gt=datetime.now()).order_by('date')[0]
+    # check if season exists
+    current_season = get_current_season()
     
-    return week
+    if not current_season:
+        return None
+    else:
+        
+        # get the latest week that was played before the current date
+        weeks = Week.objects.filter(season=current_season, date__lt=timezone.now() + timedelta(weeks=1)).order_by('-date')
+        
+        for week in weeks:
+            if Week.objects.filter(season=current_season, date=week.date - timedelta(weeks=1)).exists():
+                last_week = Week.objects.get(season=current_season, date=week.date - timedelta(weeks=1))
+                if Score.objects.filter(week=last_week).exists():
+                    return week
+            else:
+                return week
+
+        return None
 
 def get_golfers(**kwargs):
     """Gets the golfer objects for a specific season
@@ -263,34 +339,38 @@ def get_schedule(week_model):
     # Get all matches for the inputed week
     matches = week_model.matchup_set.all()
     schedule = []
-    # Iterate through the matches and format the information for each match
-    for match in matches:
-        team1_golfer1 = match.teams.all()[0].golfers.all()[0]
-        team1_golfer2 = match.teams.all()[0].golfers.all()[1]
-        team2_golfer1 = match.teams.all()[1].golfers.all()[0]
-        team2_golfer2 = match.teams.all()[1].golfers.all()[1]
+    
+    if matches.count() == 0:
+        return None
+    else:
+        # Iterate through the matches and format the information for each match
+        for match in matches:
+            team1_golfer1 = match.teams.all()[0].golfers.all()[0]
+            team1_golfer2 = match.teams.all()[0].golfers.all()[1]
+            team2_golfer1 = match.teams.all()[1].golfers.all()[0]
+            team2_golfer2 = match.teams.all()[1].golfers.all()[1]
 
-        team1_golfer1_hcp = team1_golfer1.handicap_set.all().order_by('-week__date')[0].handicap
-        team1_golfer2_hcp = team1_golfer2.handicap_set.all().order_by('-week__date')[0].handicap
-        team2_golfer1_hcp = team2_golfer1.handicap_set.all().order_by('-week__date')[0].handicap
-        team2_golfer2_hcp = team2_golfer2.handicap_set.all().order_by('-week__date')[0].handicap
+            team1_golfer1_hcp = team1_golfer1.handicap_set.all().order_by('-week__date').first().handicap if team1_golfer1.handicap_set.all().order_by('-week__date').first() else 0
+            team1_golfer2_hcp = team1_golfer2.handicap_set.all().order_by('-week__date').first().handicap if team1_golfer2.handicap_set.all().order_by('-week__date').first() else 0
+            team2_golfer1_hcp = team2_golfer1.handicap_set.all().order_by('-week__date').first().handicap if team2_golfer1.handicap_set.all().order_by('-week__date').first() else 0
+            team2_golfer2_hcp = team2_golfer2.handicap_set.all().order_by('-week__date').first().handicap if team2_golfer2.handicap_set.all().order_by('-week__date').first() else 0
 
-        if team1_golfer1_hcp > team1_golfer2_hcp and team2_golfer1_hcp > team2_golfer2_hcp:
-            match_low = [team1_golfer2.name, team2_golfer2.name]
-            match_high = [team1_golfer1.name, team2_golfer1.name]
-        elif team1_golfer1_hcp < team1_golfer2_hcp and team2_golfer1_hcp < team2_golfer2_hcp:
-            match_low = [team1_golfer1.name, team2_golfer1.name]
-            match_high = [team1_golfer2.name, team2_golfer2.name]
-        elif team1_golfer1_hcp > team1_golfer2_hcp and team2_golfer1_hcp < team2_golfer2_hcp:
-            match_low = [team1_golfer2.name, team2_golfer1.name]
-            match_high = [team1_golfer1.name, team2_golfer2.name]
-        elif team1_golfer1_hcp < team1_golfer2_hcp and team2_golfer1_hcp > team2_golfer2_hcp:
-            match_low = [team1_golfer1.name, team2_golfer2.name]
-            match_high = [team1_golfer2.name, team2_golfer1.name]
+            if team1_golfer1_hcp > team1_golfer2_hcp and team2_golfer1_hcp > team2_golfer2_hcp:
+                match_low = [team1_golfer2.name, team2_golfer2.name]
+                match_high = [team1_golfer1.name, team2_golfer1.name]
+            elif team1_golfer1_hcp < team1_golfer2_hcp and team2_golfer1_hcp < team2_golfer2_hcp:
+                match_low = [team1_golfer1.name, team2_golfer1.name]
+                match_high = [team1_golfer2.name, team2_golfer2.name]
+            elif team1_golfer1_hcp > team1_golfer2_hcp and team2_golfer1_hcp < team2_golfer2_hcp:
+                match_low = [team1_golfer2.name, team2_golfer1.name]
+                match_high = [team1_golfer1.name, team2_golfer2.name]
+            else:
+                match_low = [team1_golfer1.name, team2_golfer2.name]
+                match_high = [team1_golfer2.name, team2_golfer1.name]
 
-        schedule.append([match_low, match_high])
+            schedule.append({'low_match': match_low, 'high_match': match_high})
 
-    return schedule
+        return schedule
 
 
 def calculate_team_points(current_week):

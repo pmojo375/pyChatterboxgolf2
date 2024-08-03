@@ -1,12 +1,73 @@
 from django.test import TestCase
 from django.db.models import Sum
-from datetime import date, timedelta
+from datetime import timedelta
 from django.utils import timezone
 from main.models import *
-from main.helper import get_week, calculate_handicap, get_golfer_points, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_rounds
+from main.helper import get_current_season, get_last_week, get_next_week, get_week, get_golfer_points, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_rounds
 import random
 from django.urls import reverse
+class SeasonWeekTests(TestCase):
 
+    def setUp(self):
+        # Setting up data for the tests
+        self.current_year = timezone.now().year
+        self.past_date = timezone.now() - timedelta(weeks=1)
+        self.future_date = timezone.now() + timedelta(weeks=1)
+        
+        # Create a current season
+        self.current_season = Season.objects.create(year=self.current_year)
+        
+        # Create weeks for the current season
+        self.past_week = Week.objects.create(season=self.current_season, date=self.past_date, number=1, rained_out=False, is_front=True)
+        self.future_week = Week.objects.create(season=self.current_season, date=self.future_date, number=2, rained_out=False, is_front=True)
+
+    def test_get_current_season_exists(self):
+        # Test when the current season exists
+        season = get_current_season()
+        self.assertIsNot(season, False)
+        self.assertEqual(season.year, self.current_year)
+
+    def test_get_current_season_not_exists(self):
+        # Test when the current season does not exist
+        Season.objects.all().delete()  # Remove the current season
+        season = get_current_season()
+        self.assertFalse(season)
+
+    def test_get_last_week_exists(self):
+        # Test when the current season exists and there is a past week
+        week = get_last_week()
+        self.assertIsNotNone(week)
+        self.assertEqual(week.date, self.past_date)
+
+    def test_get_last_week_no_past_weeks(self):
+        # Test when the current season exists but there are no past weeks
+        Week.objects.filter(date__lt=timezone.now()).delete()
+        week = get_last_week()
+        self.assertIsNone(week)
+
+    def test_get_last_week_no_season(self):
+        # Test when the current season does not exist
+        Season.objects.all().delete()  # Remove the current season
+        week = get_last_week()
+        self.assertIsNone(week)
+
+    def test_get_next_week_exists(self):
+        # Test when the current season exists and there is a future week
+        week = get_next_week()
+        self.assertIsNotNone(week)
+        self.assertEqual(week.date, self.future_date)
+
+    def test_get_next_week_no_future_weeks(self):
+        # Test when the current season exists but there are no future weeks
+        Week.objects.filter(date__gt=timezone.now()).delete()
+        week = get_next_week()
+        self.assertIsNone(week)
+
+    def test_get_next_week_no_season(self):
+        # Test when the current season does not exist
+        Season.objects.all().delete()  # Remove the current season
+        week = get_next_week()
+        self.assertIsNone(week)
 
 class WeekTestCase(TestCase):
     def setUp(self):

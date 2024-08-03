@@ -1,16 +1,13 @@
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.utils import timezone
+from django.shortcuts import render
 from main.models import *
 from main.signals import *
 from main.helper import *
 from main.forms import *
-from django.contrib import messages
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from datetime import datetime
-from django.http import HttpResponseRedirect
 import json
 from main.season import *
+
 def create_season(request):
     # Set up season related information and create a new season
     if request.method == 'POST':
@@ -42,38 +39,52 @@ def create_season(request):
 
 # Create your views here.
 def main(request):
-
-    initialized = False
-
-    season = Season.objects.all().order_by('-year')[0]
-    if Week.objects.filter(season=season).exists():
-        week = Week.objects.filter(season=season).order_by('-number')[0]
+    
+    # get the current years season, last week, and next week if they exist
+    season = get_current_season()
+    last_week = get_last_week()
+    next_week = get_next_week()
+    
+    # if the season exists
+    if season:
         initialized = True
-
+    else:
+        initialized = False
+    
     if initialized:
-        # get the next weeks schedule
-        schedule = get_schedule(week)
+        
+        if next_week:
+            next_game = get_game(next_week)
+            
+            # get the weeks schedule
+            next_week_schedule = get_schedule(next_week)
+        else:
+            next_game = None
+            next_week_schedule = None
+            
+        if last_week:
+            last_game = get_game(last_week)
+            
+            # check if season is in the second half
+            is_second_half = last_week.number > 8
+            
+            if last_game:
+                game_winners = get_game_winners(last_game)
+                if game_winners:
+                    game_winner_payout = (GameEntry.objects.filter(week=last_week).count() * 2) / len(game_winners)
+                else:
+                    game_winner_payout = 0
+            else:
+                game_winners = None
+                game_winner_payout = 0
+        else:
+            last_game = None
+            game_winners = None
+            game_winner_payout = 0
+            is_second_half = False
 
         lastGameWinner = []
 
-        if week.number > 8:
-            secondHalf = True
-        else:
-            secondHalf = False
-
-        # check if there are handicaps for the given week
-        check = Handicap.objects.filter(week=week).exists()
-
-        # if the week is not the first of the year and there are not handicaps decrement the week
-        if week != 0:
-            #lastSkinWinner = get_skins_winner(week, year=2022)
-            lastSkinWinner = []
-            lastGame = Game.objects.get(week=week)
-            if not check:
-                week = week - 1
-        else:
-            lastGame = Game.objects.get(year=2022, week=19)
-            lastSkinWinner = []
 
         # get standings for the current week
         #standings = getStandings(week)
@@ -84,35 +95,25 @@ def main(request):
         #secondHalfStandings = sorted(standings, key=itemgetter('second'), reverse=True)
         #fullStandings = sorted(standings, key=itemgetter('total'), reverse=True)
 
-        currentGame = Game.objects.get(week=week)
-
-        if GameEntry.objects.filter(winner=True, week=week).exists():
-            winners =  GameEntry.objects.filter(winner=True, week=week)
-            for winner in winners:
-                    lastGameWinner.append(winner.golfer.name)
-        else:
-            lastGameWinner.append('Not Set')
-
-        game_pot = (GameEntry.objects.filter(week=week).count() * 2)/len(lastGameWinner)
-
-        golfer_list = Golfer.objects.filter(team__season=season)
+        season_golfers = Golfer.objects.filter(team__season=season)
+        
         context = {
             'initialized': initialized,
-            'lastSkinWinner': lastSkinWinner,
-            'week': week.number,
-            'lastweek': week,
-            'currentGame': currentGame,
-            'lastGame': lastGame,
-            'lastGameWinner': lastGameWinner,
-            'game_pot': game_pot,
+            'next_week': next_week,
+            'last_week': last_week,
+            'next_game': next_game,
+            'last_game': last_game,
+            'game_winners': game_winners,
+            'game_winner_payout': game_winner_payout,
+            'next_week_schedule': next_week_schedule,
             'firstHalfStandings': [],
             'secondHalfStandings': [],
             'fullStandings': [],
-            'schedule': schedule,
-            'secondHalf': secondHalf,
+            'is_second_half': is_second_half,
             'unestablished': [],
-            'golfer_list': golfer_list,
+            'season_golfers': season_golfers,
         }
+        print(context)
     else:
     
         context = {
@@ -244,7 +245,7 @@ def add_golfer(request):
             # Print info for debugging
             print(f'Name: {name}')
             
-            #golfer.save()
+            golfer.save()
         else:
             print('Invalid Form\n')
             print(form.errors)

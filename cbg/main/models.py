@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
 class Golfer(models.Model):
     name = models.CharField(max_length=40)
     
@@ -25,7 +26,7 @@ class Team(models.Model):
 
 class Week(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
-    date = models.DateTimeField()
+    date = models.DateTimeField(default=timezone.now)
     rained_out = models.BooleanField()
     number = models.IntegerField()
     is_front = models.BooleanField()

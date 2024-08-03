@@ -16,13 +16,6 @@
   }(document, 'script', 'weatherwidget-io-js');
 </script>
 
-{% if new %}
-    <h2 class="text-center">New Content</h2>
-    {% for message in new_messages %}
-        <h4 class="text-center">{{ message }}</h4>
-    {% endfor %}
-{% endif %}
-
 <div class="container">
   <div class="row text-center p-4">
     <h1>The Official Chatterbox Golf League Site</h1>
@@ -46,13 +39,15 @@
     <br>
   </div>
   {% if initialized %}
-    <div class="row text-center">
-      <h2 class="text-center">Week {{ week }}'s Game: {{ currentGame.name }}</h2>
-      <br>
+    {% if next_game %}
+    <div class="row mb-2 text-center">
+      <h2 class="text-center mb-2">Week {{ next_week.number }}'s Game: {{ next_game.name }}</h2>
     </div>
+    {% endif %}
 
+    {% if is_second_half or last_week %}
     <div class="row">
-      {% if secondHalf %}
+      {% if is_second_half %}
         <div class="col">
           <p class="text-center">Full Season Standings</p>
           <table id='standings'>
@@ -84,6 +79,7 @@
           </table>
         </div>
       {% endif %}
+      {% if last_week %}
       <div class="col">
         <p class="text-center">First Half Standings</p>
         <table id='standings'>
@@ -114,8 +110,9 @@
           </tbody>
         </table>
       </div>
+      {% endif %}
 
-      {% if secondHalf %} 
+      {% if is_second_half %} 
         <div class="col">
           <p class="text-center"> Second Half Standings</p>
           <table id='standings'>
@@ -148,11 +145,11 @@
         </div>
       {% endif %}
     </div>
+    {% endif %}
 
-    <br>
-
+    {% if last_week %}
     <div class="row">
-      <h4>Week {{ lastweek }} Skins Winner{{ lastSkinWinner|pluralize }}:</h4>
+      <h4>Week {{ last_week.number }} Skins Winner{{ lastSkinWinner|pluralize }}:</h4>
       <ul>
       {% for skinWinner in lastSkinWinner %}
         <li>{{ skinWinner.golfer }} - ${{ skinWinner.winnings|floatformat:2 }}</li>
@@ -160,56 +157,56 @@
       </ul>
     </div>
 
-    <br>
-
+    {% if game_winners and last_week %}
     <div class="row">
-      <h4>Week {{ lastweek }} Game Winner:</h4>
+      <h4>Week {{ last_week.number }} Game Winner:</h4>
       <ul>
-        {% for gameWinner in lastGameWinner %}
-          <li>{{ gameWinner }} - ${{ game_pot|floatformat:2 }}</li>
+        {% for game_winner in game_winners %}
+          <li>{{ game_winner }} - ${{ game_winner_payout|floatformat:2 }}</li>
         {% endfor %}
       </ul>
     </div>
+    {% endif %}
+    {% endif %}
 
-    <br>
-
+    {% if next_week_schedule %}
     <div class="row">
-      <p class="text-center">Schedule</p>
-      <table id="schedule">
-        <thead>
-          <tr>
-            <th>Team #</th>
-            <th>Golfers</th>
-            <th>Opponent</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for matchup in schedule %}
+        <p class="text-center">Schedule</p>
+        <table id="schedule">
+          <thead>
             <tr>
-              <td class="team" rowspan="2">{{ forloop.counter }}</td>
-              <td class="name">{{ matchup.0.0 }}</td>
-              <td class="name">{{ matchup.0.1 }}</td>
+              <th>Team #</th>
+              <th>Golfers</th>
+              <th>Opponent</th>
             </tr>
-            <tr>
-              <td class="name">{{ matchup.1.0 }}</td>
-              <td class="name">{{ matchup.1.1 }}</td>
-            </tr>
-          {% endfor %}
-
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for matchup in next_week_schedule %}
+              <tr>
+                <td class="team" rowspan="2">{{ forloop.counter }}</td>
+                <td class="name">{{ matchup.high_match.0 }}</td>
+                <td class="name">{{ matchup.high_match.1 }}</td>
+              </tr>
+              <tr>
+                <td class="name">{{ matchup.low_match.0 }}</td>
+                <td class="name">{{ matchup.low_match.1 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
     </div>
+    {% else %}
+      <div>
+        <p class="text-center">The schedule is not entered yet.</p>
+      </div>
+    {% endif %}
     
-  {% endif %}
-  {% if initialized != None %}
+  {% else %}
     <div class="row text-center">
       <h2 class="text-center">The Season Has Not Started</h2>
       <p>Check back soon for the start of the season</p>
     </div>
   {% endif %}
-
-  <br>
-  
 </div>
 
 {% endblock %}
