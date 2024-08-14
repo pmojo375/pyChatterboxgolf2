@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_content %}
+
+<a class="weatherwidget-io" href="https://forecast7.com/en/42d12n86d45/benton-harbor/?unit=us" data-label_1="Lake Michigan Hills" data-label_2="Chatterbox Golf League" data-theme="original">Lake Michigan Hills Chatterbox Golf League</a>
+<script>
+  ! function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (!d.getElementById(id)) {
+      js = d.createElement(s);
+      js.id = id;
+      js.src = 'https://weatherwidget.io/js/widget.min.js';
+      fjs.parentNode.insertBefore(js, fjs);
+    }
+  }(document, 'script', 'weatherwidget-io-js');
+</script>
+
+<div class="container">
+  <div class="row text-center p-4">
+    <h1>The Official Chatterbox Golf League Site</h1>
+  </div>
+  <div class="row text-center">
+    {% if unestablished|length > 0 %}
+    <p>Scores are subject to change when all league members post three rounds of scores. Current scores use one or two rounds of scores to compute handicaps for those who have yet to post three or more rounds.</p>
+
+    <br>
+
+    <p>These are the golfers whos handicaps will change after they play 3 weeks</p>
+
+    <ul>
+      {% for golfer in unestablished %}
+      <li>{{ golfer.name }}</li>
+      {% endfor %}
+    </ul>
+
+    {% endif %}
+
+    <br>
+  </div>
+  {% if initialized %}
+    {% if next_game %}
+    <div class="row mb-2 text-center">
+      <h2 class="text-center mb-2">Week {{ next_week.number }}'s Game: {{ next_game.name }}</h2>
+    </div>
+    {% endif %}
+
+    {% if is_second_half or last_week %}
+    <div class="row">
+      {% if is_second_half %}
+        <div class="col">
+          <p class="text-center">Full Season Standings</p>
+          <table id='standings'>
+            <thead>
+              <tr>
+                <th rowspan="2">Team</th>
+                <th colspan="2">2nd Half</th>
+              </tr>
+              <tr>
+                <th>Points</th>
+                <th>Hcp</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              {% for team in fullStandings %}
+                <tr>
+                  <td class="name">{{ team.golfer1 }}</td>
+                  <td class="score" rowspan="2">{{ team.total }}</td>
+                  <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
+                </tr>
+
+                <tr>
+                  <td class="name">{{ team.golfer2 }}</td>
+                  <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+      {% if last_week %}
+      <div class="col">
+        <p class="text-center">First Half Standings</p>
+        <table id='standings'>
+          <thead>
+            <tr>
+              <th rowspan="2">Team</th>
+              <th colspan="2">1st Half</th>
+            </tr>
+            <tr>
+              <th>Points</th>
+              <th>Hcp</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            {% for team in firstHalfStandings %}
+              <tr>
+                <td class="name">{{ team.golfer1 }}</td>
+                <td class="score" rowspan="2">{{ team.first }}</td>
+                <td class="hcp">{{ team.golfer1FirstHcp|floatformat:2 }}</td>
+              </tr>
+
+              <tr>
+                <td class="name">{{ team.golfer2 }}</td>
+                <td class="hcp">{{ team.golfer2FirstHcp|floatformat:2 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% if is_second_half %} 
+        <div class="col">
+          <p class="text-center"> Second Half Standings</p>
+          <table id='standings'>
+            <thead>
+              <tr>
+                <th rowspan="2">Team</th>
+                <th colspan="2">2nd Half</th>
+              </tr>
+              <tr>
+                <th>Points</th>
+                <th>Hcp</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              {% for team in secondHalfStandings %}
+                <tr>
+                  <td class="name">{{ team.golfer1 }}</td>
+                  <td class="score" rowspan="2">{{ team.second }}</td>
+                  <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
+                </tr>
+
+                <tr>
+                  <td class="name">{{ team.golfer2 }}</td>
+                  <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if last_week %}
+    <div class="row">
+      <h4>Week {{ last_week.number }} Skins Winner{{ lastSkinWinner|pluralize }}:</h4>
+      <ul>
+      {% for skinWinner in lastSkinWinner %}
+        <li>{{ skinWinner.golfer }} - ${{ skinWinner.winnings|floatformat:2 }}</li>
+      {% endfor %}
+      </ul>
+    </div>
+
+    {% if game_winners and last_week %}
+    <div class="row">
+      <h4>Week {{ last_week.number }} Game Winner:</h4>
+      <ul>
+        {% for game_winner in game_winners %}
+          <li>{{ game_winner }} - ${{ game_winner_payout|floatformat:2 }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if next_week_schedule %}
+    <div class="row">
+        <p class="text-center">Schedule</p>
+        <table id="schedule">
+          <thead>
+            <tr>
+              <th>Match</th>
+              <th>Golfers</th>
+              <th>Opponent</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for matchup in next_week_schedule %}
+              <tr>
+                <td class="team" rowspan="2">{{ forloop.counter }}</td>
+                <td class="name">{{ matchup.high_match.0 }}</td>
+                <td class="name">{{ matchup.high_match.1 }}</td>
+              </tr>
+              <tr>
+                <td class="name">{{ matchup.low_match.0 }}</td>
+                <td class="name">{{ matchup.low_match.1 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+    </div>
+    {% else %}
+      <div>
+        <p class="text-center">The schedule is not entered yet.</p>
+      </div>
+    {% endif %}
+    
+  {% else %}
+    <div class="row text-center">
+      <h2 class="text-center">The Season Has Not Started</h2>
+      <p>Check back soon for the start of the season</p>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block page_content %}
+<div class="container">
+
+<h1>{{ name }}</h1>
+<div class="card">
+<div class="card-header">
+Last Round: Week {{ lastWeek }}
+</div>
+<ul class="list-group list-group-flush">
+  <li class="list-group-item">Score: {{ weekGross }}</li>
+  <li class="list-group-item">Net Score: {{ weekNet }}</li>
+</ul>
+</div>
+
+<br>
+<div class="card">
+<div class="card-header">
+  Season Stats
+</div>
+<ul class="list-group list-group-flush">
+<li class="list-group-item">Best gross score: {{ bestGrossRound }} in week {{ bestGrossRoundWeek }}</li>
+<li class="list-group-item">Worst gross score: {{ worstGrossRound }} in week {{ worstGrossRoundWeek }}</li>
+<li class="list-group-item">Best net score: {{ bestNetRound }} in week {{ bestNetRoundWeek }}</li>
+<li class="list-group-item">Worst net score: {{ worstNetRound }} in week {{ worstNetRoundWeek }}</li>
+<li class="list-group-item">Total Points: {{ totalPoints }}</li>
+</ul>
+</div>
+
+<br>
+<div class="card">
+  <div class="card-body">
+<h5 class="card-title">Current Handicap Calculation</h5>
+<p class="card-text">Current handicap is calculated by your last 10 rounds I have entered in the database. If you have less than 10 rounds played, I only use those. If you have played 5 rounds, your best and worst scores will be thrown out and then the final handicap is calculated by taking 80% of your average strokes over par for the rounds used.</p>
+
+</div>
+<ul class="list-group list-group-flush">
+{% for line in hcpCalcData %}
+<li class="list-group-item">{{ line }}</li>
+{% endfor %}
+<div class="card-body">
+Scores used in calculation:
+</div>
+<ul class="list-group list-group-flush">
+{% for line in hcpScores %}
+<li class="list-group-item"> {{ line }} </li>
+{% endfor %}
+</ul>
+</ul>
+</div>
+
+{% autoescape off %}
+{{ scores_div }}
+{% endautoescape %}
+
+{% autoescape off %}
+{{ points_div }}
+{% endautoescape %}
+
+{% autoescape off %}
+{{ holeStd_div }}
+{% endautoescape %}
+
+<br>
+<p>This next graph shows you and your opponents performance compared to what your handicap says you should shoot. It is essentially showing your net score over or under par. When you shoot net 0 or lower and your opponent shoots even lower, its bad luck and you most likely didnt take many points that week. Conversely, if you shoot higher than net 0 and your opponent shoots even higher you got lucky!</p>
+<br>
+<div class="card">
+<div class="card-header">
+Season Average Net Score Over/Under Par
+</div>
+<ul class="list-group list-group-flush">
+  <li class="list-group-item">You: {{ netDiff }}</li>
+  <li class="list-group-item">Opponent's: {{ oppNetDiff }}</li>
+</ul>
+</div>
+
+<br>
+
+{% autoescape off %}
+{{ netDiff_div }}
+{% endautoescape %}
+
+{% autoescape off %}
+{{ hcp_div }}
+{% endautoescape %}
+
+{% autoescape off %}
+{{ plot_div }}
+{% endautoescape %}
+
+{% autoescape off %}
+{{ scoreDistribution_div }}
+{% endautoescape %}
+
+</div>
+{% endblock %}
