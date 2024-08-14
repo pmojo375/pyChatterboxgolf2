@@ -67,7 +67,7 @@ class SkinEntryAdmin(admin.ModelAdmin):
 
 
 class HoleAdmin(admin.ModelAdmin):
-    list_display = ('number', 'par', 'yards', 'get_season')
+    list_display = ('number', 'par', 'yards', 'handicap', 'get_season')
     
     def get_season(self, obj):
         return obj.season.year
@@ -141,6 +141,9 @@ class SubAdmin(admin.ModelAdmin):
 
 class PointsAdmin(admin.ModelAdmin):
     list_display = ('get_golfer', 'get_week', 'hole', 'score', 'points')
+    
+    # change the display name of the Points from Pointss to points
+    Points._meta.verbose_name_plural = 'Points'
     
     def get_week(self, obj):
         return f"{obj.week.date.strftime('%Y-%m-%d')} (Week {obj.week.number})"

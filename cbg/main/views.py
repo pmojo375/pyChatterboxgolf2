@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from main.models import *
 from main.signals import *
 from main.helper import *
@@ -7,6 +7,7 @@ from django.db.models import Sum
 from datetime import datetime
 import json
 from main.season import *
+from django.forms import formset_factory
 
 def create_season(request):
     # Set up season related information and create a new season
@@ -113,7 +114,7 @@ def main(request):
             'unestablished': [],
             'season_golfers': season_golfers,
         }
-        print(context)
+        
     else:
     
         context = {
@@ -228,6 +229,7 @@ def add_scores(request):
         total_yards += hole[2]
 
     return render(request, 'add_round.html', {'form': form, 'golfer_data_json': golfer_data_json, 'hole_data': hole_data, 'hole_numbers': hole_numbers, 'total_yards': total_yards})
+
 def add_golfer(request):
     if request.method == 'POST':
         form = GolferForm(request.POST)
@@ -255,9 +257,10 @@ def add_golfer(request):
     return render(request, 'add_golfer.html', {'form': form})
 
 def add_sub(request):
-    absent_golfers = Golfer.objects.filter(team__season=Season.objects.order_by('-year').first())
-    sub_golfers = Golfer.objects.exclude(team__season=Season.objects.order_by('-year').first())
-    weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
+    current_season = Season.objects.order_by('-year').first()
+    absent_golfers = Golfer.objects.filter(team__season=current_season)
+    sub_golfers = Golfer.objects.all()
+    weeks = Week.objects.filter(season=current_season).order_by('-date')
     
     if request.method == 'POST':
         form = SubForm(absent_golfers, sub_golfers, weeks, request.POST)
@@ -365,7 +368,6 @@ def golfer_stats(request, golfer_id):
 
     
     return render(request, 'golfer_stats.html', context)
-
 
 def scorecards(request, week):
     # Retrieve necessary data from the models
@@ -575,4 +577,63 @@ def create_team(request):
     else:
         form = TeamForm()
     
-    return render(request, 'create_team.html', {'form': form})  
+    return render(request, 'create_team.html', {'form': form})
+
+HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
+
+def set_holes(request):
+    if request.method == 'POST':
+        season_form = SeasonSelectForm(request.POST)
+        formset = HoleFormSet(request.POST)
+        
+        if season_form.is_valid() and formset.is_valid():
+            print('Valid Form\n')
+            
+            season = season_form.cleaned_data['year']  # Get the selected season
+            
+            for i, form in enumerate(formset.forms):           
+                par = form.cleaned_data.get('par')
+                handicap = form.cleaned_data.get('handicap')
+                yards = form.cleaned_data.get('yards')
+                number = i + 1
+                
+                if number <= 9:
+                    handicap9 = (handicap + 1) // 2
+                # For the second nine holes
+                else:
+                    handicap9 = handicap // 2
+                
+                # check if hole exists for the season and hole number
+                hole = Hole.objects.filter(season=season, number=number)
+                
+                if hole.exists():
+                    # Update the existing hole
+                    hole = hole.first()
+                    hole.par = par
+                    hole.handicap = handicap
+                    hole.handicap9 = handicap9
+                    hole.yards = yards
+                    hole.save()
+                else:
+                    # Create a new Hole instance
+                    hole = Hole(
+                        number=number,
+                        par=par,
+                        handicap=handicap,
+                        handicap9=handicap9,
+                        yards=yards,
+                        season=season
+                    )
+                    hole.save()  # Save the instance to the database
+        else:
+            print('Invalid Form\n')
+            # Debugging: Print errors
+            if not season_form.is_valid():
+                print("Season form errors:", season_form.errors)
+            if not formset.is_valid():
+                for form in formset:
+                    print("Form errors:", form.errors)
+    else:
+        season_form = SeasonSelectForm()
+        formset = HoleFormSet()
+    return render(request, 'set_holes.html', {'season_form': season_form, 'formset': formset})

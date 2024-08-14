@@ -10,6 +10,7 @@
         <div class="form-group mb-3">
           <label for="{{ form.week.id_for_label }}" class="form-label">{{ form.week.label }}</label>
           <select name="{{ form.week.name }}" id="{{ form.week.id_for_label }}" class="form-control">
+            <option value="" selected disabled>Select Week</option>
               {% for choice in form.week.field.choices %}
                   <option value="{{ choice.0 }}" {% if choice.0 == form.week.value %}selected{% endif %}>{{ choice.1 }}</option>
               {% endfor %}
@@ -20,6 +21,7 @@
         <div class="form-group mb-3">
           <label for="{{ form.team1.id_for_label }}" class="form-label">{{ form.team1.label }}</label>
           <select name="{{ form.team1.name }}" id="{{ form.team1.id_for_label }}" class="form-control">
+            <option value="" selected disabled>Select Team 1</option>
               {% for choice in form.team1.field.choices %}
                   <option value="{{ choice.0 }}" {% if choice.0 == form.team1.value %}selected{% endif %}>{{ choice.1 }}</option>
               {% endfor %}
@@ -30,6 +32,7 @@
         <div class="form-group mb-3">
           <label for="{{ form.team2.id_for_label }}" class="form-label">{{ form.team2.label }}</label>
           <select name="{{ form.team2.name }}" id="{{ form.team2.id_for_label }}" class="form-control">
+            <option value="" selected disabled>Select Team 2</option>
               {% for choice in form.team2.field.choices %}
                   <option value="{{ choice.0 }}" {% if choice.0 == form.team2.value %}selected{% endif %}>{{ choice.1 }}</option>
               {% endfor %}

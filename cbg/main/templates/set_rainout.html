@@ -14,6 +14,7 @@
                 <div class="form-group mb-3">
                     <label for="{{ selection_form.week.id_for_label }}" class="form-label">{{ selection_form.week.label }}</label>
                     <select name="{{ selection_form.week.name }}" id="{{ selection_form.week.id_for_label }}" class="form-control">
+                        <option value="" selected disabled>Select Week</option>
                         {% for week in selection_form.fields.week.queryset %}
                             <option value="{{ week.pk }}" {% if week.pk == selection_form.week.value %}selected{% endif %}>{{ week }}</option>
                         {% endfor %}

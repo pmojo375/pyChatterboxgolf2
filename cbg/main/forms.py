@@ -3,6 +3,7 @@ from django.db.models import Q
 from main.models import *
 from main.helper import *
 from django.utils import timezone
+from django.forms import formset_factory
 
 class SeasonForm(forms.Form):
     year = forms.IntegerField(label='Year', min_value=2022, max_value=2100)
@@ -114,15 +115,14 @@ class GolferForm(forms.Form):
         self.fields['name'].widget.attrs.update({'autofocus': 'autofocus'})
         
 class SubForm(forms.Form):
-    absent_golfer = forms.ChoiceField(label='Absent Golfer', choices=[])
-    sub_golfer = forms.ChoiceField(label='Substitute Golfer', choices=[])
-    week = forms.ChoiceField(label='Week', choices=[])
+    absent_golfer = forms.ChoiceField(label='Absent Golfer', required=True, choices=[])
+    sub_golfer = forms.ChoiceField(label='Substitute Golfer', required=True, choices=[])
+    week = forms.ChoiceField(label='Week', required=True, choices=[])
     
     def __init__(self, absent_golfers, sub_golfers, weeks, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.initial['week'] = weeks[0].id if weeks else None
         self.fields['absent_golfer'].choices = [(g.id, g.name) for g in absent_golfers]
-        self.fields['sub_golfer'].choices = [(g.id, g.name) for g in absent_golfers]
+        self.fields['sub_golfer'].choices = [(g.id, g.name) for g in sub_golfers]
         self.fields['week'].choices = [(w.id, f"{w} - {'Front' if w.is_front else 'Back'}") for w in weeks]
 
 class ScheduleForm(forms.Form):
@@ -166,3 +166,19 @@ class TeamForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields['golfer1'].empty_label = None
         self.fields['golfer2'].empty_label = None
+
+class SeasonSelectForm(forms.Form):
+    year = forms.ModelChoiceField(queryset=Season.objects.all().order_by('-year'), required=True, label='Select Season')
+    
+    class Meta:
+        model = Season
+        fields = ['year']
+        
+class HoleForm(forms.Form):
+    par = forms.IntegerField(label='Par', required=True, min_value=3, max_value=5)
+    handicap = forms.IntegerField(label='Handicap', required=True, min_value=1, max_value=18)
+    yards = forms.IntegerField(label='Yards', required=True, min_value=50, max_value=600)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        #self.empty_permitted = False

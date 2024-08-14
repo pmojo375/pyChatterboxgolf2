@@ -13,4 +13,6 @@ urlpatterns = [
     path('set_rainout', views.set_rainout, name='set_rainout'),
     path('create_season', views.create_season, name='create_season'),
     path('create_team', views.create_team, name='create_team'),
+    path('set_holes', views.set_holes, name='set_holes'),
+    
 ]
