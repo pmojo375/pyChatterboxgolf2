@@ -6,6 +6,10 @@ from main.models import *
 from main.helper import get_current_season, get_last_week, get_next_week, get_week, get_golfer_points, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_rounds
 import random
 from django.urls import reverse
+
+
+class GenerateGolferMatchupsTests(TestCase):
+    pass
 class SeasonWeekTests(TestCase):
 
     def setUp(self):

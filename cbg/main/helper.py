@@ -128,15 +128,17 @@ def get_next_week():
         return None
     else:
         
-        # get the latest week that was played before the current date
+        # get the weeks before the current date plus one week (so the next week that will play)
         weeks = Week.objects.filter(season=current_season, date__lt=timezone.now() + timedelta(weeks=1)).order_by('-date')
         
         for week in weeks:
+            # check if the week prior to the week exists and has scores posted
             if Week.objects.filter(season=current_season, date=week.date - timedelta(weeks=1)).exists():
                 last_week = Week.objects.get(season=current_season, date=week.date - timedelta(weeks=1))
                 if Score.objects.filter(week=last_week).exists():
                     return week
             else:
+                # if the week prior to the week does not exist, return the week
                 return week
 
         return None
@@ -185,7 +187,10 @@ def get_sub(golfer, week):
     """
 
     if Sub.objects.filter(absent_golfer=golfer, week=week).exists():
-        return Sub.objects.get(absent_golfer=golfer, week=week).sub_golfer
+        if Sub.objects.get(absent_golfer=golfer, week=week).no_sub:
+            return None
+        else:
+            return Sub.objects.get(absent_golfer=golfer, week=week).sub_golfer
     else:
         return golfer
 
@@ -802,3 +807,84 @@ def adjust_weeks(rained_out_week):
     last_week_number = Week.objects.latest('week_number').week_number
     new_week_date = Week.objects.latest('date').date + timedelta(days=7)
     Week.objects.create(week_number=last_week_number+1, date=new_week_date)
+    
+def generate_golfer_matchups(week):
+    matchups = Matchup.objects.filter(week=week)
+    
+    for matchup in matchups:
+        teams = matchup.teams.all()
+        
+        team1 = teams[0]
+        team2 = teams[1]
+        
+        team1_golfer1 = team1[0]
+        team1_golfer2 = team1[1]
+        
+        team2_golfer1 = team2[0]
+        team2_golfer2 = team2[1]
+        
+        if Sub.objects.filter(week=week, absent_golfer=team1_golfer1).exists():
+            sub = Sub.objects.get(week=week, absent_golfer=team1_golfer1)
+            
+            if sub.no_sub:
+                team1_golfer1 = team1_golfer2
+                team1_golfer1_hcp = get_hcp(team1_golfer2, week)
+            else:
+                team1_golfer1_hcp = get_hcp(sub.sub_golfer, week)
+        else:
+            team1_golfer1_hcp = get_hcp(team1_golfer1, week)
+            
+        if Sub.objects.filter(week=week, absent_golfer=team1_golfer2).exists():
+            sub = Sub.objects.get(week=week, absent_golfer=team1_golfer2)
+            
+            if sub.no_sub:
+                team1_golfer2 = team1_golfer1
+                team1_golfer2_hcp = get_hcp(team1_golfer1, week)
+            else:
+                team1_golfer2_hcp = get_hcp(sub.sub_golfer, week)   
+        else:
+            team1_golfer2_hcp = get_hcp(team1_golfer2, week)
+            
+        if Sub.objects.filter(week=week, absent_golfer=team2_golfer1).exists():
+            sub = Sub.objects.get(week=week, absent_golfer=team2_golfer1)
+            
+            if sub.no_sub:
+                team2_golfer1 = team2_golfer2
+                team2_golfer1_hcp = get_hcp(team2_golfer2, week)
+            else:
+                team2_golfer1_hcp = get_hcp(sub.sub_golfer, week)
+        else:
+            team2_golfer1_hcp = get_hcp(team2_golfer1, week)
+            
+        if Sub.objects.filter(week=week, absent_golfer=team2_golfer2).exists():
+            sub = Sub.objects.get(week=week, absent_golfer=team2_golfer2)
+            
+            if sub.no_sub:
+                team2_golfer2 = team2_golfer1
+                team2_golfer2_hcp = get_hcp(team2_golfer1, week)
+            else:
+                team2_golfer2_hcp = get_hcp(sub.sub_golfer, week)
+        else:
+            team2_golfer2_hcp = get_hcp(team2_golfer2, week)
+        
+        # get the A and B golfers for each team
+        if team1_golfer1_hcp <= team1_golfer2_hcp:
+            team1_A_golfer = team1_golfer1
+            team1_B_golfer = team1_golfer2
+        else:
+            team1_A_golfer = team1_golfer2
+            team1_B_golfer = team1_golfer1
+            
+        if team2_golfer1_hcp <= team2_golfer2_hcp:
+            team2_A_golfer = team2_golfer1
+            team2_B_golfer = team2_golfer2
+        else:
+            team2_A_golfer = team2_golfer2
+            team2_B_golfer = team2_golfer1
+        
+        # create the GolferMatchup objects
+        GolferMatchup.objects.update_or_create(week=week, golfer=team1_A_golfer, defaults={'is_A': True, 'opponent': team2_A_golfer})
+        GolferMatchup.objects.update_or_create(week=week, golfer=team2_A_golfer, defaults={'is_A': True, 'opponent': team1_A_golfer})
+        GolferMatchup.objects.update_or_create(week=week, golfer=team1_B_golfer, defaults={'is_A': False, 'opponent': team2_B_golfer})
+        GolferMatchup.objects.update_or_create(week=week, golfer=team2_B_golfer, defaults={'is_A': False, 'opponent': team1_B_golfer})
+        

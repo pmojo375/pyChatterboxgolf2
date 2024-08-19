@@ -46,6 +46,10 @@ def main(request):
     last_week = get_last_week()
     next_week = get_next_week()
     
+    print(f'Season: {season}')
+    print(f'Last Week: {last_week}')
+    print(f'Next Week: {next_week}')
+    
     # if the season exists
     if season:
         initialized = True
@@ -123,6 +127,7 @@ def main(request):
         
     return render(request, 'main.html', context)
 
+
 def add_scores(request):
     if request.method == 'POST':
         
@@ -151,10 +156,12 @@ def add_scores(request):
             if team2_golferB not in golfers:
                 golfers.append(team2_golferB)
 
-            week = Week.objects.get(number=3, season=Season.objects.order_by('-year').first())
+            week = get_next_week()
+            season = get_current_season()
+                
             front = week.is_front
 
-            holes = Hole.objects.filter(season=week.season)
+            holes = Hole.objects.filter(season=season)
 
             # Create the score objects
             for golfer_num in range(1, 5):
@@ -169,7 +176,7 @@ def add_scores(request):
                         
                     hole = holes.get(number=hole)
                     print(f'{golfer} - Hole {hole.number} - {score}')
-                    #Score.objects.update_or_create(golfer=golfer, week=week, hole=hole, score=score)
+                    Score.objects.update_or_create(golfer=golfer, week=week, hole=hole, score=score)
 
             # Create the golfer matchup objects
             
@@ -266,33 +273,48 @@ def add_sub(request):
         form = SubForm(absent_golfers, sub_golfers, weeks, request.POST)
         if form.is_valid():
             print('Valid Form\n')
+            print(form.cleaned_data)
             
             # Get form data
             absent_golfer_id = form.cleaned_data['absent_golfer']
             sub_golfer_id = form.cleaned_data['sub_golfer']
             week_id = form.cleaned_data['week']
+            no_sub = form.cleaned_data['no_sub']
+            
             
             # Get the golfer and week objects
             absent_golfer = Golfer.objects.get(id=absent_golfer_id)
-            sub_golfer = Golfer.objects.get(id=sub_golfer_id)
             week = Week.objects.get(id=week_id)
-            
-            # Create the sub object
-            sub = Sub(
-                absent_golfer=absent_golfer,
-                sub_golfer=sub_golfer,
-                week=week
-            )
             
             # Print info for debugging
             print(f'Absent Golfer: {absent_golfer.name}')
-            print(f'Sub Golfer: {sub_golfer.name}')
+            print(f'No Sub: {no_sub}')
             print(f'Week: {week}')
+            
+            if sub_golfer_id == '':
+                sub_golfer = None
+                # Create the sub object
+                sub = Sub(
+                    absent_golfer=absent_golfer,
+                    week=week,
+                    no_sub=no_sub
+                )
+                print(f'Sub Golfer: None')
+            else:
+                sub_golfer = Golfer.objects.get(id=sub_golfer_id)
+                # Create the sub object
+                sub = Sub(
+                    absent_golfer=absent_golfer,
+                    sub_golfer=sub_golfer,
+                    week=week,
+                    no_sub=no_sub
+                )
+                print(f'Sub Golfer: {sub_golfer.name}')
             
             sub.save()
         else:
             print('Invalid Form\n')
-            print(form.errors)
+            print(form.errors.items())
     
     else:
         form = SubForm(absent_golfers, sub_golfers, weeks)

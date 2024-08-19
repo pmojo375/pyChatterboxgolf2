@@ -30,7 +30,14 @@ class Week(models.Model):
     rained_out = models.BooleanField()
     number = models.IntegerField()
     is_front = models.BooleanField()
+    num_scores = models.IntegerField()
     
+    def save(self, *args, **kwargs):
+        # Calculate default number of scores based on season's team count
+        if self.num_scores is None:  # Only calculate if not already set
+            self.num_scores = Team.objects.filter(season=self.season).count() * 9 * 2
+        super().save(*args, **kwargs)
+        
     def __str__(self):
         #print date in format 2022-01-01 with week number
         if self.rained_out:
@@ -107,7 +114,8 @@ class Matchup(models.Model):
 class Sub(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     absent_golfer = models.ForeignKey(Golfer, related_name='absent', on_delete=models.CASCADE)
-    sub_golfer = models.ForeignKey(Golfer, related_name='sub', on_delete=models.CASCADE)
+    sub_golfer = models.ForeignKey(Golfer, related_name='sub', on_delete=models.CASCADE, null=True)
+    no_sub = models.BooleanField(default=False)
 
 class Points(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
@@ -140,4 +148,3 @@ class GolferMatchup(models.Model):
     
     def __str__(self):
         return f'{self.week.date.strftime("%Y-%m-%d")} - {self.golfer.name} vs {self.opponent.name}'
-        

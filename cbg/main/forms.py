@@ -35,18 +35,21 @@ class RoundForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
+        # get the next week with no scores entered
         week = get_next_week()
         
+        # get all matchups for the week
         self.matchups = Matchup.objects.filter(week=week)
         
-        self.golfer_data = []
         # get golfers from matchups accounting for subs
+        self.golfer_data = []
         matchup_golfers = []
         
         # Create fields for each of the 9 holes for each golfer
         for hole in range(1, 10):
             for golfer_num in range(1, 5):  # Assume max of 4 golfers
                 field_name = f'hole{hole}_{golfer_num}'
+                
                 self.fields[field_name] = forms.IntegerField(
                     label=f'Hole {hole} - Golfer {golfer_num}', 
                     min_value=1, 
@@ -54,54 +57,63 @@ class RoundForm(forms.Form):
                     required=True
                 )
         
-        for m in self.matchups:
-            _teams = []
-            for team in m.teams.all():
+        # iterate through each matchup and get all golfers and their handicaps accounting for subs
+        for _matchup in self.matchups:
+            
+            team1 = []
+            team2 = []
+            
+            # iterate through the teams in the matchup
+            for team in _matchup.teams.all():
+                
                 _golfers = []
+                
                 # iterate though the teams golfers
                 for golfer in team.golfers.all():
                     
-                    try:
-                        sub = Sub.objects.filter(week=m.week).filter(absent_golfer=golfer).first()
-                        if sub:
-                            handicap = get_hcp(sub.sub_golfer, week)
-                            _golfers.append([sub.sub_golfer, handicap])
-
+                    if Sub.objects.filter(week=_matchup.week, absent_golfer=golfer).exists():
+                        sub = Sub.objects.filter(week=_matchup.week, absent_golfer=golfer).first()
+                        
+                        # if the golfer has no sub, get their handicap
+                        if sub.no_sub:
+                            partner = [g for g in team.golfers.all() if g != golfer][0]
+                            handicap = get_hcp(partner, week)
+                            _golfers.append({'golfer': partner, 'handicap': handicap})
                         else:
-                            handicap = get_hcp(golfer, week)
-                            _golfers.append([golfer, handicap])
-                    except:
+                            handicap = get_hcp(sub.sub_golfer, week)
+                            _golfers.append({'golfer': sub.sub_golfer, 'handicap': handicap})
+
+                    else:
                         handicap = get_hcp(golfer, week)
-                        _golfers.append([golfer, handicap])
-                _teams.append(_golfers)
+                        _golfers.append({'golfer': golfer, 'handicap': handicap})
+                        
+                if team1 == []:
+                    team1 = _golfers
+                else:
+                    team2 = _golfers
 
             # determine which golfer on each team has the better handicap and put them as the first two in the list
-            if _teams[0][0][1] <= _teams[0][1][1]:
-                if _teams[1][0][1] <= _teams[1][1][1]:
-                    golfers = [_teams[0][0][0], _teams[1][0][0], _teams[0][1][0], _teams[1][1][0]]
+            if team1[0]['handicap'] <= team1[1]['handicap']:
+                if team2[0]['handicap'] <= team2[1]['handicap']:
+                    golfers = [team1[0]['golfer'], team2[0]['golfer'], team1[1]['golfer'], team2[1]['golfer']]
                 else:
-                    golfers = [_teams[0][0][0], _teams[1][1][0], _teams[0][1][0], _teams[1][0][0]]
+                    golfers = [team1[0]['golfer'], team2[1]['golfer'], team1[1]['golfer'], team2[0]['golfer']]
             else:
-                if _teams[1][0][1] <= _teams[1][1][1]:
-                    golfers = [_teams[0][1][0], _teams[1][0][0], _teams[0][0][0], _teams[1][1][0]]
+                if team2[0]['handicap'] <= team2[1]['handicap']:
+                    golfers = [team1[1]['golfer'], team2[0]['golfer'], team1[0]['golfer'], team2[1]['golfer']]
                 else:
-                    golfers = [_teams[0][1][0], _teams[1][1][0], _teams[0][0][0], _teams[1][0][0]]
+                    golfers = [team1[1]['golfer'], team2[1]['golfer'], team1[0]['golfer'], team2[0]['golfer']]
 
             matchup_golfers.append(golfers)
 
         # I now have each matchups golfers with subs accounted for
         _matchups = []
-        _matchups.append((None, "Select Matchup"))
+        
         for i, golfers in enumerate(matchup_golfers):
             display_text = f"{golfers[0].name} vs. {golfers[1].name} - {golfers[2].name} vs. {golfers[3].name}"
-            temp = []
-            for g in golfers:
-                handicap = get_hcp(g, week)
-                temp.append([g.name, g.id, handicap])
                 
             _matchups.append((i, display_text))
-            self.golfer_data.append(temp)
-            
+            self.golfer_data.append([[g.name, g.id, get_hcp(g, week)] for g in golfers])
             
         self.fields['matchup'].choices = _matchups
         
@@ -116,14 +128,26 @@ class GolferForm(forms.Form):
         
 class SubForm(forms.Form):
     absent_golfer = forms.ChoiceField(label='Absent Golfer', required=True, choices=[])
-    sub_golfer = forms.ChoiceField(label='Substitute Golfer', required=True, choices=[])
+    sub_golfer = forms.ChoiceField(label='Substitute Golfer', required=False, choices=[])
     week = forms.ChoiceField(label='Week', required=True, choices=[])
+    no_sub = forms.BooleanField(label='No Sub', required=False)
     
     def __init__(self, absent_golfers, sub_golfers, weeks, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['absent_golfer'].choices = [(g.id, g.name) for g in absent_golfers]
         self.fields['sub_golfer'].choices = [(g.id, g.name) for g in sub_golfers]
         self.fields['week'].choices = [(w.id, f"{w} - {'Front' if w.is_front else 'Back'}") for w in weeks]
+        
+    # custom validation to ensure that a sub is selected if the no_sub checkbox is not checked
+    def clean(self):
+        cleaned_data = super().clean()
+        no_sub = cleaned_data.get('no_sub')
+        sub_golfer = cleaned_data.get('sub_golfer')
+        if not no_sub and not sub_golfer:
+            raise forms.ValidationError({'no_sub': 'A substitute golfer must be selected if no sub is not checked'})
+        if no_sub and sub_golfer:
+            raise forms.ValidationError({'no_sub': 'No sub cannot be checked if a substitute golfer is selected'})
+        return cleaned_data
 
 class ScheduleForm(forms.Form):
     week = forms.ChoiceField(label='Week', choices=[])
@@ -181,4 +205,3 @@ class HoleForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #self.empty_permitted = False

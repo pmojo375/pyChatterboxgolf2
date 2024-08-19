@@ -10,6 +10,7 @@
         <div class="form-group mb-3">
             <label for="{{ form.matchup.id_for_label }}" class="form-label">Matchup Selection</label>
             <select name="{{ form.matchup.name }}" id="{{ form.matchup.id_for_label }}" class="form-control">
+                <option value="" selected disabled>Select Matchup</option>
                 {% for choice in form.matchup.field.choices %}
                     <option value="{{ choice.0 }}">{{ choice.1 }}</option>
                 {% endfor %}

@@ -124,7 +124,7 @@ class MatchupAdmin(admin.ModelAdmin):
 
 
 class SubAdmin(admin.ModelAdmin):
-    list_display = ('get_week', 'get_absent', 'get_sub')
+    list_display = ('get_week', 'get_absent', 'get_sub', 'no_sub')
     
     def get_week(self, obj):
         return f"{obj.week.date.strftime('%Y-%m-%d')} (Week {obj.week.number})"
@@ -135,8 +135,14 @@ class SubAdmin(admin.ModelAdmin):
     get_absent.short_description = 'Absent Golfer'
     
     def get_sub(self, obj):
-        return obj.sub_golfer.name
+        if obj.sub_golfer:
+            return obj.sub_golfer.name
+        else:
+            return 'No Sub'
     get_sub.short_description = 'Absent Golfer'
+    
+    def no_sub(self, obj):
+        return obj.no_sub
 
 
 class PointsAdmin(admin.ModelAdmin):
