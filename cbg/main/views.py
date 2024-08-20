@@ -4,7 +4,6 @@ from main.signals import *
 from main.helper import *
 from main.forms import *
 from django.db.models import Sum
-from datetime import datetime
 import json
 from main.season import *
 from django.forms import formset_factory

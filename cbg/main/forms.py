@@ -3,7 +3,6 @@ from django.db.models import Q
 from main.models import *
 from main.helper import *
 from django.utils import timezone
-from django.forms import formset_factory
 
 class SeasonForm(forms.Form):
     year = forms.IntegerField(label='Year', min_value=2022, max_value=2100)

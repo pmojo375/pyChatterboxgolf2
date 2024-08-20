@@ -7,12 +7,7 @@ from main.helper import get_hcp
 @receiver(post_save, sender=Score)
 def score_updated(sender, instance, created, **kwargs):
     # 'instance' is the Score object that was saved
-    
-    if created:
-        print('Score Created')
-    else:
-        print('Score Modified')
-    
+
     week = instance.week
     
     number_of_scores = Score.objects.filter(week=week).count()
@@ -29,14 +24,13 @@ def score_updated(sender, instance, created, **kwargs):
         
 @receiver(post_delete, sender=Score)
 def score_deleted(sender, instance, **kwargs):
-    print('Score Deleted')
+    pass
+    #print('Score Deleted')
 
 @receiver(post_save, sender=Sub)
 def sub_updated(sender, instance, created, **kwargs):
-    if created:
-        print('Sub Created')
-    else:
-        print('Sub Modified')
+
+    print('Sub Updated')
         
     no_sub_golfer_count = Sub.objects.filter(week=instance.week, no_sub=True).count()
     scores_needed = ((Team.objects.filter(season=instance.week.season).count() * 2) - no_sub_golfer_count) * 9
@@ -46,7 +40,6 @@ def sub_updated(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=Sub)
 def sub_deleted(sender, instance, **kwargs):
-    print('Score Deleted')
     
     no_sub_golfer_count = Sub.objects.filter(week=instance.week, no_sub=True).count()
     scores_needed = ((Team.objects.filter(season=instance.week.season).count() * 2) - no_sub_golfer_count) * 9

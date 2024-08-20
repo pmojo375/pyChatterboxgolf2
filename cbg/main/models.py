@@ -145,6 +145,18 @@ class GolferMatchup(models.Model):
     is_A = models.BooleanField(default=False)
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     opponent = models.ForeignKey(Golfer, related_name='opponent', on_delete=models.CASCADE)
+
+    # If the golfer is subbing for another golfer, this field will be set otherwise it will be null
+    subbing_for_golfer = models.ForeignKey(Golfer, related_name='subbing_for_golfer', on_delete=models.CASCADE, null=True)
     
     def __str__(self):
         return f'{self.week.date.strftime("%Y-%m-%d")} - {self.golfer.name} vs {self.opponent.name}'
+    
+class RandomDrawnTeam(models.Model):
+    # This model is used to store the random drawn team that plays in place of an absent team that could not find subs
+    week = models.ForeignKey(Week, on_delete=models.CASCADE)
+    absent_team = models.ForeignKey(Team, related_name='absent_team', on_delete=models.CASCADE)
+    drawn_team = models.ForeignKey(Team, related_name='drawn_team', on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return f'{self.week.date.strftime("%Y-%m-%d")} - {self.drawn_team} plays for {self.absent_team}'
