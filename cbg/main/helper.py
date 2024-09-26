@@ -106,6 +106,7 @@ def get_current_season():
 
 def get_last_week():
 
+    print('Getting last week')
     # check if season exists
     current_season = get_current_season()
     
@@ -122,7 +123,7 @@ def get_last_week():
         return None
 
 def get_next_week():
-    
+    print('Getting next week')
     # check if season exists
     current_season = get_current_season()
     
@@ -840,15 +841,41 @@ def generate_golfer_matchups(week):
         team2_golfer1_absent = Sub.objects.filter(week=week, absent_golfer=team2_golfer1).exists()
         team2_golfer2_absent = Sub.objects.filter(week=week, absent_golfer=team2_golfer2).exists()
 
-        team1_golfer1_sub = Sub.objects.get(week=week, absent_golfer=team1_golfer1) if team1_golfer1_absent else False
-        team1_golfer2_sub = Sub.objects.get(week=week, absent_golfer=team1_golfer2) if team1_golfer2_absent else False
-        team2_golfer1_sub = Sub.objects.get(week=week, absent_golfer=team2_golfer1) if team2_golfer1_absent else False
-        team2_golfer2_sub = Sub.objects.get(week=week, absent_golfer=team2_golfer2) if team2_golfer2_absent else False
-
-        team1_golfer1_no_sub = team1_golfer1_sub.no_sub if team1_golfer1_sub else False
-        team1_golfer2_no_sub = team1_golfer2_sub.no_sub if team1_golfer2_sub else False
-        team2_golfer1_no_sub = team2_golfer1_sub.no_sub if team2_golfer1_sub else False
-        team2_golfer2_no_sub = team2_golfer2_sub.no_sub if team2_golfer2_sub else False
+        if team1_golfer1_absent:
+            team1_golfer1_sub = Sub.objects.get(week=week, absent_golfer=team1_golfer1) 
+            team1_golfer1_subbing_for = team1_golfer1_sub.absent_golfer
+            team1_golfer1_no_sub = team1_golfer1_sub.no_sub
+        else:
+            team1_golfer1_subbing_for = None
+            team1_golfer1_sub = False
+            team1_golfer1_no_sub = False
+            
+        if team1_golfer2_absent:
+            team1_golfer2_sub = Sub.objects.get(week=week, absent_golfer=team1_golfer2) 
+            team1_golfer2_subbing_for = team1_golfer2_sub.absent_golfer
+            team1_golfer2_no_sub = team1_golfer2_sub.no_sub
+        else:
+            team1_golfer2_subbing_for = None
+            team1_golfer2_sub = False
+            team1_golfer2_no_sub = False
+            
+        if team2_golfer1_absent:
+            team2_golfer1_sub = Sub.objects.get(week=week, absent_golfer=team2_golfer1) 
+            team2_golfer1_subbing_for = team2_golfer1_sub.absent_golfer
+            team2_golfer1_no_sub = team2_golfer1_sub.no_sub
+        else:
+            team2_golfer1_subbing_for = None
+            team2_golfer1_sub = False
+            team2_golfer1_no_sub = False
+            
+        if team2_golfer2_absent:
+            team2_golfer2_sub = Sub.objects.get(week=week, absent_golfer=team2_golfer2) 
+            team2_golfer2_subbing_for = team2_golfer2_sub.absent_golfer
+            team2_golfer2_no_sub = team2_golfer2_sub.no_sub
+        else:
+            team2_golfer2_subbing_for = None
+            team2_golfer2_sub = False
+            team2_golfer2_no_sub = False
 
         # determine if a whole team is absent and has no subs
         if team1_golfer1_no_sub and team1_golfer2_no_sub:
@@ -866,6 +893,7 @@ def generate_golfer_matchups(week):
                     team1_golfer1 = team1_golfer2
                     team1_golfer1_hcp = get_hcp(team1_golfer2, week)
                 else:
+                    team1_golfer1 = team1_golfer1_sub.sub_golfer
                     team1_golfer1_hcp = get_hcp(team1_golfer1_sub.sub_golfer, week)
             else:
                 team1_golfer1_hcp = get_hcp(team1_golfer1, week)
@@ -875,6 +903,7 @@ def generate_golfer_matchups(week):
                     team1_golfer2 = team1_golfer1
                     team1_golfer2_hcp = get_hcp(team1_golfer1, week)
                 else:
+                    team1_golfer2 = team1_golfer2_sub.sub_golfer
                     team1_golfer2_hcp = get_hcp(team1_golfer2_sub.sub_golfer, week)   
             else:
                 team1_golfer2_hcp = get_hcp(team1_golfer2, week)
@@ -903,6 +932,7 @@ def generate_golfer_matchups(week):
                     team2_golfer1 = team2_golfer2
                     team2_golfer1_hcp = get_hcp(team2_golfer2, week)
                 else:
+                    team2_golfer1 = team2_golfer1_sub.sub_golfer
                     team2_golfer1_hcp = get_hcp(team2_golfer1_sub.sub_golfer, week)
             else:
                 team2_golfer1_hcp = get_hcp(team2_golfer1, week)
@@ -912,6 +942,7 @@ def generate_golfer_matchups(week):
                     team2_golfer2 = team2_golfer1
                     team2_golfer2_hcp = get_hcp(team2_golfer1, week)
                 else:
+                    team2_golfer2 = team2_golfer2_sub.sub_golfer
                     team2_golfer2_hcp = get_hcp(team2_golfer2_sub.sub_golfer, week)
             else:
                 team2_golfer2_hcp = get_hcp(team2_golfer2, week)
@@ -949,42 +980,16 @@ def generate_golfer_matchups(week):
             team2_A_golfer = team2_golfer2
             team2_B_golfer = team2_golfer1
         
-        if team1_golfer1_absent:
-            team1_golfer1_subbing_for = team1_golfer1_sub.absent_golfer
-        else:
-            team1_golfer1_subbing_for = None
-
-        if team1_golfer2_absent:
-            team1_golfer2_subbing_for = team1_golfer2_sub.absent_golfer
-        else:
-            team1_golfer2_subbing_for = None
-
-        if team2_golfer1_absent:
-            team2_golfer1_subbing_for = team2_golfer1_sub.absent_golfer
-        else:
-            team2_golfer1_subbing_for = None
-
-        if team2_golfer2_absent:
-            team2_golfer2_subbing_for = team2_golfer2_sub.absent_golfer
-        else:
-            team2_golfer2_subbing_for = None
+        # delete all golfer matchups for each golfer for the week
+        GolferMatchup.objects.filter(week=week, golfer__in=[team1_A_golfer, team2_A_golfer, team1_B_golfer, team2_B_golfer]).delete()
         
-        # create the GolferMatchup objects
-        print(f'Week: {week}')
-        print(f'Team 1 A: {team1_A_golfer} vs Team 2 A: {team2_A_golfer}')
-        print(f'Team 1 B: {team1_B_golfer} vs Team 2 B: {team2_B_golfer}')
-
-        print(f'Team 1 A subbing for: {team1_golfer1_subbing_for}')
-        print(f'Team 1 B subbing for: {team1_golfer2_subbing_for}')
-        print(f'Team 2 A subbing for: {team2_golfer1_subbing_for}')
-        print(f'Team 2 B subbing for: {team2_golfer2_subbing_for}')
+        gm1 = GolferMatchup.objects.create(week=week, golfer=team1_A_golfer, is_A=True, opponent=team2_A_golfer, subbing_for_golfer=team1_golfer1_subbing_for)
+        gm2 = GolferMatchup.objects.create(week=week, golfer=team2_A_golfer, is_A=True, opponent=team1_A_golfer, subbing_for_golfer=team2_golfer1_subbing_for)
+        gm3 = GolferMatchup.objects.create(week=week, golfer=team1_B_golfer, is_A=False, opponent=team2_B_golfer, subbing_for_golfer=team1_golfer2_subbing_for)
+        gm4 = GolferMatchup.objects.create(week=week, golfer=team2_B_golfer, is_A=False, opponent=team1_B_golfer, subbing_for_golfer=team2_golfer2_subbing_for)
         
-        gm1 = GolferMatchup.objects.update_or_create(week=week, golfer=team1_A_golfer, defaults={'week':week, 'golfer':team1_A_golfer, 'is_A': True, 'opponent': team2_A_golfer, 'subbing_for_golfer':team1_golfer1_subbing_for})
-        gm2 = GolferMatchup.objects.update_or_create(week=week, golfer=team2_A_golfer, defaults={'week':week, 'golfer':team2_A_golfer, 'is_A': True, 'opponent': team1_A_golfer, 'subbing_for_golfer':team2_golfer1_subbing_for})
-        gm3 = GolferMatchup.objects.update_or_create(week=week, golfer=team1_B_golfer, defaults={'week':week, 'golfer':team1_B_golfer, 'is_A': False, 'opponent': team2_B_golfer, 'subbing_for_golfer':team1_golfer2_subbing_for})
-        gm4 = GolferMatchup.objects.update_or_create(week=week, golfer=team2_B_golfer, defaults={'week':week, 'golfer':team2_B_golfer, 'is_A': False, 'opponent': team1_B_golfer, 'subbing_for_golfer':team2_golfer2_subbing_for})
+        print(f'{gm1.golfer.name} vs {gm1.opponent.name}')
+        print(f'{gm2.golfer.name} vs {gm2.opponent.name}')
+        print(f'{gm3.golfer.name} vs {gm3.opponent.name}')
+        print(f'{gm4.golfer.name} vs {gm4.opponent.name}')
         
-        print(f'GolferMatchup 1: {gm1}')
-        print(f'GolferMatchup 2: {gm2}')
-        print(f'GolferMatchup 3: {gm3}')
-        print(f'GolferMatchup 4: {gm4}')

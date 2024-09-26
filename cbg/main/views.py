@@ -280,7 +280,6 @@ def add_sub(request):
             week_id = form.cleaned_data['week']
             no_sub = form.cleaned_data['no_sub']
             
-            
             # Get the golfer and week objects
             absent_golfer = Golfer.objects.get(id=absent_golfer_id)
             week = Week.objects.get(id=week_id)

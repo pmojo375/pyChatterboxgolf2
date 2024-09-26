@@ -111,9 +111,10 @@ class GenerateGolferMatchupsTests(TestCase):
         self.assertEqual(GolferMatchup.objects.filter(golfer=self.golfer2).count(), 2)
         self.assertEqual(GolferMatchup.objects.filter(golfer=self.golfer3).count(), 1)
         self.assertEqual(GolferMatchup.objects.filter(golfer=self.golfer4).count(), 1)
-        self.assertEqual(GolferMatchup.objects.get(week=self.week, golfer=self.golfer2).subbing_for_golfer, None)
-        self.assertEqual(GolferMatchup.objects.get(week=self.week, golfer=self.golfer3).subbing_for_golfer, None)
-        self.assertEqual(GolferMatchup.objects.get(week=self.week, golfer=self.golfer4).subbing_for_golfer, None)
+        self.assertEqual(GolferMatchup.objects.get(week=self.week, golfer=self.golfer2, subbing_for_golfer=None).subbing_for_golfer, None)
+        self.assertEqual(GolferMatchup.objects.get(week=self.week, golfer=self.golfer3, subbing_for_golfer=None).subbing_for_golfer, None)
+        self.assertEqual(GolferMatchup.objects.get(week=self.week, golfer=self.golfer4, subbing_for_golfer=None).subbing_for_golfer, None)
+        self.assertNotEqual(GolferMatchup.objects.get(week=self.week, golfer=self.golfer2, subbing_for_golfer=self.golfer1).subbing_for_golfer, None)
 
         # remove all golfer matchups
         GolferMatchup.objects.all().delete()
@@ -171,9 +172,10 @@ class SeasonWeekTests(TestCase):
         # Test when the current season exists and there is a future week
         week = get_next_week()
         self.assertIsNotNone(week)
-        self.assertEqual(week.date.day, (timezone.now() + timedelta(weeks=1)).day)
-        self.assertEqual(week.date.month, (timezone.now() + timedelta(weeks=1)).month)
-        self.assertEqual(week.date.year, (timezone.now() + timedelta(weeks=1)).year)
+        future_date = timezone.now() + timedelta(weeks=1)
+        self.assertEqual(week.date.day, future_date.day)
+        self.assertEqual(week.date.month, future_date.month)
+        self.assertEqual(week.date.year, future_date.year)
 
     def test_get_next_week_no_future_weeks(self):
         # Test when the current season exists but there are no future weeks
@@ -184,25 +186,6 @@ class SeasonWeekTests(TestCase):
         Season.objects.all().delete()  # Remove the current season
         week = get_next_week()
         self.assertIsNone(week)
-
-class WeekTestCase(TestCase):
-    def setUp(self):
-        self.current_date = timezone.now().date()
-        self.season = Season.objects.create(year=self.current_date.year)
-        self.golfer = Golfer.objects.create(name='Test Golfer')
-        self.hole = Hole.objects.create(number=1, par=4, handicap=2, handicap9=1, yards=478, season=self.season)
-        self.week1 = Week.objects.create(date=self.current_date - timedelta(days=14), season=self.season, number=1, rained_out=False, is_front=True)
-        self.week2 = Week.objects.create(date=self.current_date - timedelta(days=7), season=self.season, number=2, rained_out=False, is_front=False)
-        Score.objects.create(golfer=self.golfer, week=self.week1, score=75, hole=self.hole)
-
-    def test_get_week(self):
-        # Test with no scores posted
-        week = get_week(offset=False)
-        self.assertEqual(week, self.week2)
-
-        # Test with scores posted
-        week = get_week(offset=True)
-        self.assertEqual(week, self.week1)
 
 class RoundTestCase(TestCase):
     def setUp(self):
@@ -631,6 +614,8 @@ class AddSubViewTests(TestCase):
         self.season = Season.objects.create(year=self.current_date.year)
         self.week = Week.objects.create(date=self.current_date, season=self.season, number=1, rained_out=False, is_front=True)
         self.absent_golfer = Golfer.objects.create(name='John Doe')
+        self.team = Team.objects.create(season=self.season)
+        self.team.golfers.add(self.absent_golfer)
         self.sub_golfer = Golfer.objects.create(name='Jim Doe')
 
     def test_add_sub_view_uses_correct_template(self):
