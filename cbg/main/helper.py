@@ -225,34 +225,37 @@ def generate_rounds(season):
     
     # Get all the weeks in the season
     for week in Week.objects.filter(season=season):
-        for golfer in golfers:
-            if golfer_played(golfer, week):
-                
-                gross_score = Score.objects.filter(golfer=golfer, week=week).aggregate(Sum('score'))['score__sum']
-                handicap = Handicap.objects.get(golfer=golfer, week=week)
-                net_score = gross_score - handicap.handicap
-                matchup = Matchup.objects.get(week=week, teams=golfer.team_set.get(season=season))
-                scores = Score.objects.filter(golfer=golfer, week=week)
-                points_detail = get_golfer_points(week, golfer, detail=True)
-                round_points = points_detail['round_points']
-                total_points = points_detail['golfer_points']
-                points_objs = Points.objects.filter(golfer=golfer, week=week)
-                if Round.objects.filter(golfer=golfer, week=week, matchup=matchup).exists():
-                    round = Round.objects.get(golfer=golfer, week=week)
-                    round.handicap = handicap
-                    round.gross = gross_score
-                    round.net = net_score
-                    round.round_points = round_points
-                    round.total_points = total_points
-                    round.points.set(points_objs)
-                    round.scores.set(scores)
-                    round.save()
-                else:
-                    round = Round(golfer=golfer, week=week, matchup=matchup, handicap=handicap, gross=gross_score, net=net_score, round_points=round_points, total_points=total_points)
-                    round.save()
-                    round.points.set(points_objs)
-                    round.scores.set(scores)
-                    round.save()
+        golfer_matchups = GolferMatchup.objects.filter(week=week)
+        for golfer_matchup in golfer_matchups:
+            golfer = golfer_matchup.golfer
+            is_sub = True if golfer_matchup.subbing_for_golfer else False
+            gross_score = Score.objects.filter(golfer=golfer, week=week).aggregate(Sum('score'))['score__sum']
+            handicap = Handicap.objects.get(golfer=golfer, week=week)
+            net_score = gross_score - handicap.handicap
+            matchup = Matchup.objects.get(week=week, teams=golfer.team_set.get(season=season))
+            scores = Score.objects.filter(golfer=golfer, week=week)
+            points_detail = get_golfer_points(golfer_matchup, detail=True)
+            round_points = points_detail['round_points']
+            total_points = points_detail['golfer_points']
+            points_objs = Points.objects.filter(golfer=golfer, week=week)
+            if Round.objects.filter(golfer=golfer, week=week, golfer_matchup=golfer_matchup).exists():
+                round = Round.objects.get(golfer=golfer, week=week)
+                round.handicap = handicap
+                round.golfer_matchup = golfer_matchup
+                round.gross = gross_score
+                round.net = net_score
+                round.round_points = round_points
+                round.total_points = total_points
+                round.points.set(points_objs)
+                round.scores.set(scores)
+                round.is_sub = is_sub
+                round.save()
+            else:
+                round = Round(golfer=golfer, golfer_matchup=golfer_matchup, is_sub=is_sub, week=week, matchup=matchup, handicap=handicap, gross=gross_score, net=net_score, round_points=round_points, total_points=total_points)
+                round.save()
+                round.points.set(points_objs)
+                round.scores.set(scores)
+                round.save()
 
 
 def generate_round(golfer_matchup, **kwargs):
@@ -987,9 +990,4 @@ def generate_golfer_matchups(week):
         gm2 = GolferMatchup.objects.create(week=week, golfer=team2_A_golfer, is_A=True, opponent=team1_A_golfer, subbing_for_golfer=team2_golfer1_subbing_for)
         gm3 = GolferMatchup.objects.create(week=week, golfer=team1_B_golfer, is_A=False, opponent=team2_B_golfer, subbing_for_golfer=team1_golfer2_subbing_for)
         gm4 = GolferMatchup.objects.create(week=week, golfer=team2_B_golfer, is_A=False, opponent=team1_B_golfer, subbing_for_golfer=team2_golfer2_subbing_for)
-        
-        print(f'{gm1.golfer.name} vs {gm1.opponent.name}')
-        print(f'{gm2.golfer.name} vs {gm2.opponent.name}')
-        print(f'{gm3.golfer.name} vs {gm3.opponent.name}')
-        print(f'{gm4.golfer.name} vs {gm4.opponent.name}')
         

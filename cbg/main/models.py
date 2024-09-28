@@ -126,6 +126,7 @@ class Points(models.Model):
     
 class Round(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
+    is_sub = models.BooleanField(default=False)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     matchup = models.ForeignKey(Matchup, on_delete=models.CASCADE)
     golfer_matchup = models.ForeignKey('GolferMatchup', on_delete=models.CASCADE, null=True)
