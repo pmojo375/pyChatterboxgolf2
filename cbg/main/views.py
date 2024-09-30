@@ -139,7 +139,12 @@ def get_matchup_data(request, matchup_id):
     week = matchup.week
 
     # Get golfer matchups for this week and matchup
-    golfer_matchups = GolferMatchup.objects.filter(week=week, golfer__in=matchup.teams.all().values_list('golfers', flat=True))
+    golfer_matchups = GolferMatchup.objects.filter(
+        week=week).filter(
+            Q(golfer__in=matchup.teams.all().values_list('golfers', flat=True)) |
+            Q(subbing_for_golfer__in=matchup.teams.all().values_list('golfers', flat=True))
+    )
+
 
     serialized_data = []
     for golfer_matchup in golfer_matchups:

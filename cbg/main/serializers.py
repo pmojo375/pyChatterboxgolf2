@@ -23,7 +23,10 @@ class GolferSerializer(serializers.ModelSerializer):
         return obj.golfer.name
 
     def get_handicap(self, obj):
-        return get_hcp(obj.golfer, self.context['week'])
+        if Handicap.objects.filter(golfer=obj.golfer, week=self.context['week']).exists():
+            return Handicap.objects.get(golfer=obj.golfer, week=self.context['week']).handicap
+        else:
+            return 'N/A'
 
     def get_gray_out(self, obj):
 

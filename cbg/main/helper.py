@@ -830,16 +830,31 @@ def generate_golfer_matchups(week):
         # Assign A and B golfers based on handicaps
         if team1_golfer1_hcp <= team1_golfer2_hcp:
             team1_A_golfer, team1_B_golfer = team1_golfer1, team1_golfer2
+            # set subbing for field correctly
+            team1_A_subbing_for = team1_golfer1_subbing_for
+            team1_B_subbing_for = team1_golfer2_subbing_for
         else:
             team1_A_golfer, team1_B_golfer = team1_golfer2, team1_golfer1
+            team1_A_subbing_for = team1_golfer2_subbing_for
+            team1_B_subbing_for = team1_golfer1_subbing_for
 
         if team2_golfer1_hcp <= team2_golfer2_hcp:
             team2_A_golfer, team2_B_golfer = team2_golfer1, team2_golfer2
+            team2_A_subbing_for = team2_golfer1_subbing_for
+            team2_B_subbing_for = team2_golfer2_subbing_for
         else:
             team2_A_golfer, team2_B_golfer = team2_golfer2, team2_golfer1
+            team2_A_subbing_for = team2_golfer2_subbing_for
+            team2_B_subbing_for = team2_golfer1_subbing_for
 
         # Create golfer matchups, setting the subbing_for field correctly
-        GolferMatchup.objects.create(week=week, golfer=team1_A_golfer, is_A=True, opponent=team2_A_golfer, subbing_for_golfer=team1_golfer1_subbing_for)
-        GolferMatchup.objects.create(week=week, golfer=team2_A_golfer, is_A=True, opponent=team1_A_golfer, subbing_for_golfer=team2_golfer1_subbing_for)
-        GolferMatchup.objects.create(week=week, golfer=team1_B_golfer, is_A=False, opponent=team2_B_golfer, subbing_for_golfer=team1_golfer2_subbing_for)
-        GolferMatchup.objects.create(week=week, golfer=team2_B_golfer, is_A=False, opponent=team1_B_golfer, subbing_for_golfer=team2_golfer2_subbing_for)
+        GolferMatchup.objects.create(week=week, golfer=team1_A_golfer, is_A=True, opponent=team2_A_golfer, subbing_for_golfer=team1_A_subbing_for)
+        GolferMatchup.objects.create(week=week, golfer=team2_A_golfer, is_A=True, opponent=team1_A_golfer, subbing_for_golfer=team2_A_subbing_for)
+        GolferMatchup.objects.create(week=week, golfer=team1_B_golfer, is_A=False, opponent=team2_B_golfer, subbing_for_golfer=team1_B_subbing_for)
+        GolferMatchup.objects.create(week=week, golfer=team2_B_golfer, is_A=False, opponent=team1_B_golfer, subbing_for_golfer=team2_B_subbing_for)
+        
+        # print subbing for golfers
+        print(f'{team1_A_golfer.name} is subbing for {team1_A_subbing_for.name}') if team1_A_subbing_for else print(f'{team1_A_golfer.name} is not subbing')
+        print(f'{team2_A_golfer.name} is subbing for {team2_A_subbing_for.name}') if team2_A_subbing_for else print(f'{team2_A_golfer.name} is not subbing')
+        print(f'{team1_B_golfer.name} is subbing for {team1_B_subbing_for.name}') if team1_B_subbing_for else print(f'{team1_B_golfer.name} is not subbing')
+        print(f'{team2_B_golfer.name} is subbing for {team2_B_subbing_for.name}') if team2_B_subbing_for else print(f'{team2_B_golfer.name} is not subbing')
