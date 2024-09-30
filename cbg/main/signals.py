@@ -38,6 +38,8 @@ def sub_updated(sender, instance, created, **kwargs):
     instance.week.num_scores = scores_needed
     instance.week.save()
 
+    generate_golfer_matchups(instance.week)
+
 @receiver(post_delete, sender=Sub)
 def sub_deleted(sender, instance, **kwargs):
     
@@ -46,5 +48,8 @@ def sub_deleted(sender, instance, **kwargs):
     
     instance.week.num_scores = scores_needed
     instance.week.save()
+
+    generate_golfer_matchups(instance.week)
+    
 
     

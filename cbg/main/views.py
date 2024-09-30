@@ -7,6 +7,14 @@ from django.db.models import Sum
 import json
 from main.season import *
 from django.forms import formset_factory
+from main.serializers import GolferSerializer
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from django.db.models import Q
+from operator import itemgetter
+from django.http import HttpResponseBadRequest
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 
 def create_season(request):
     # Set up season related information and create a new season
@@ -126,8 +134,117 @@ def main(request):
         
     return render(request, 'main.html', context)
 
+def get_matchup_data(request, matchup_id):
+    matchup = get_object_or_404(Matchup, pk=matchup_id)
+    week = matchup.week
+
+    # Get golfer matchups for this week and matchup
+    golfer_matchups = GolferMatchup.objects.filter(week=week, golfer__in=matchup.teams.all().values_list('golfers', flat=True))
+
+    serialized_data = []
+    for golfer_matchup in golfer_matchups:
+        serializer = GolferSerializer(golfer_matchup, context={'week': week})
+        serialized_data.append(serializer.data)
+
+    # Sort golfers based on is_A (True on top)
+    serialized_data.sort(key=lambda x: x['is_A'], reverse=True)
+
+    # Map data for four golfers
+    data = {
+        'golfer1': serialized_data[0],
+        'golfer2': serialized_data[1],
+        'golfer3': serialized_data[2],
+        'golfer4': serialized_data[3],
+    }
+
+    print(data)
+
+    return JsonResponse(data)
 
 def add_scores(request):
+    if request.method == 'POST':
+        # Extract matchup and week data
+        week_id = request.POST.get('week_id')
+        matchup_id = request.POST.get('matchup_id')
+
+        if not week_id or not matchup_id:
+            return HttpResponseBadRequest("Missing week or matchup ID.")
+
+        week = Week.objects.get(pk=week_id)
+        matchup = Matchup.objects.get(pk=matchup_id)
+
+        # Iterate through each golfer and their scores
+        golfer_ids = ['golfer1', 'golfer2', 'golfer3', 'golfer4']
+        for golfer_id in golfer_ids:
+            golfer_name = request.POST.get(f'{golfer_id}_name')
+            if not golfer_name:
+                continue
+
+            golfer = Golfer.objects.get(name=golfer_name)
+            is_absent = request.POST.get(f'{golfer_id}_absent', 'false') == 'true'
+            
+            if is_absent:
+                continue  # Skip score processing for absent golfers
+
+            for i in range(1, 10):  # Assuming 9 holes
+                score_field = f'hole{i}_{golfer_id[-1]}'
+                score_value = request.POST.get(score_field)
+
+                if not score_value:
+                    return HttpResponseBadRequest(f"Score for {golfer_name} on hole {i} is missing.")
+
+                try:
+                    score_value = int(score_value)
+                    if score_value < 1 or score_value > 10:
+                        return HttpResponseBadRequest(f"Invalid score {score_value} for {golfer_name} on hole {i}.")
+                except ValueError:
+                    return HttpResponseBadRequest(f"Score for {golfer_name} on hole {i} must be a number between 1 and 10.")
+
+                hole = Hole.objects.get(number=i, season=week.season)
+                Score.objects.update_or_create(
+                    golfer=golfer,
+                    week=week,
+                    hole=hole,
+                    defaults={'score': score_value}
+                )
+
+        return redirect('success_page')  # Redirect to a success page or any other page
+    else:
+        hole_data_raw = Hole.objects.filter(season=Season.objects.order_by('-year').first())
+
+        hole_data = []
+
+        # determine if playing front or back
+        season = Season.objects.order_by('-year').first()
+        week = get_next_week()
+        front = week.is_front
+
+        if front:
+            hole_numbers = range(1, 10)
+        else:
+            hole_numbers = range(10, 19)
+
+        for hole in hole_data_raw:
+            if front:
+                if hole.number < 10:
+                    hole_data.append([hole.par, hole.handicap9, hole.yards])
+            else:
+                if hole.number > 9:
+                    hole_data.append([hole.par, hole.handicap9, hole.yards])
+        
+        # get total yard for the holes
+        total_yards = 0
+        for hole in hole_data:
+            total_yards += hole[2]
+
+        matchups = Matchup.objects.filter(week=get_next_week())
+
+        return render(request, 'add_round.html', {'matchups':matchups, 'hole_data': hole_data, 'hole_numbers': hole_numbers, 'total_yards': total_yards})
+
+'''
+def add_scores(request):
+    matchups = Matchup.objects.filter(week=get_next_week())
+
     if request.method == 'POST':
         
         form = RoundForm(request.POST)
@@ -234,7 +351,8 @@ def add_scores(request):
     for hole in hole_data:
         total_yards += hole[2]
 
-    return render(request, 'add_round.html', {'form': form, 'golfer_data_json': golfer_data_json, 'hole_data': hole_data, 'hole_numbers': hole_numbers, 'total_yards': total_yards})
+    return render(request, 'add_round.html', {'form': form, 'matchups':matchups, 'golfer_data_json': golfer_data_json, 'hole_data': hole_data, 'hole_numbers': hole_numbers, 'total_yards': total_yards})
+'''
 
 def add_golfer(request):
     if request.method == 'POST':
