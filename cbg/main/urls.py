@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import get_matchup_data
+from .api import get_matchup_data
 
 
 urlpatterns = [
