@@ -4,17 +4,9 @@ from main.signals import *
 from main.helper import *
 from main.forms import *
 from django.db.models import Sum
-import json
 from main.season import *
 from django.forms import formset_factory
-from main.serializers import GolferSerializer
-from rest_framework.response import Response
-from rest_framework.decorators import api_view
-from django.db.models import Q
-from operator import itemgetter
 from django.http import HttpResponseBadRequest
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
 
 def create_season(request):
     # Set up season related information and create a new season
@@ -133,38 +125,6 @@ def main(request):
         }
         
     return render(request, 'main.html', context)
-
-def get_matchup_data(request, matchup_id):
-    matchup = get_object_or_404(Matchup, pk=matchup_id)
-    week = matchup.week
-
-    # Get golfer matchups for this week and matchup
-    golfer_matchups = GolferMatchup.objects.filter(
-        week=week).filter(
-            Q(golfer__in=matchup.teams.all().values_list('golfers', flat=True)) |
-            Q(subbing_for_golfer__in=matchup.teams.all().values_list('golfers', flat=True))
-    )
-
-
-    serialized_data = []
-    for golfer_matchup in golfer_matchups:
-        serializer = GolferSerializer(golfer_matchup, context={'week': week})
-        serialized_data.append(serializer.data)
-
-    # Sort golfers based on is_A (True on top)
-    serialized_data.sort(key=lambda x: x['is_A'], reverse=True)
-
-    # Map data for four golfers
-    data = {
-        'golfer1': serialized_data[0],
-        'golfer2': serialized_data[1],
-        'golfer3': serialized_data[2],
-        'golfer4': serialized_data[3],
-    }
-
-    print(data)
-
-    return JsonResponse(data)
 
 def add_scores(request):
     if request.method == 'POST':
