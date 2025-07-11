@@ -115,9 +115,7 @@ class RoundForm(forms.Form):
             self.golfer_data.append([[g.name, g.id, get_hcp(g, week)] for g in golfers])
             
         self.fields['matchup'].choices = _matchups
-        
-    
-        
+             
 class GolferForm(forms.Form):
     name = forms.CharField(label='Name', max_length=100)
     

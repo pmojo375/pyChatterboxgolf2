@@ -15,6 +15,7 @@ urlpatterns = [
     path('create_season', views.create_season, name='create_season'),
     path('create_team', views.create_team, name='create_team'),
     path('set_holes', views.set_holes, name='set_holes'),
+    path('generate_rounds', views.generate_rounds_page, name='generate_rounds'),
     path('api/get_matchup/<int:matchup_id>/', get_matchup_data, name='get_matchup_data'),
     
 ]

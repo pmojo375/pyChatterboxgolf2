@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Generate Rounds</h3>
+                </div>
+                <div class="card-body">
+                    {% if message %}
+                        <div class="alert alert-{{ message_type }}" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="week_id" class="form-label">Select Week:</label>
+                            <select class="form-select" id="week_id" name="week_id" required>
+                                <option value="">Choose a week...</option>
+                                {% for week in weeks %}
+                                    <option value="{{ week.id }}">
+                                        Week {{ week.number }} - {{ week.date|date:"Y-m-d" }} 
+                                        {% if week.is_front %}(Front 9){% else %}(Back 9){% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                Generate Handicaps & Rounds
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="mt-4">
+                        <h5>What this does:</h5>
+                        <ul>
+                            <li><strong>First:</strong> Calculates and saves handicaps for all golfers in the season</li>
+                            <li><strong>Then:</strong> Generates Round objects for all golfer matchups in the selected week</li>
+                            <li>Calculates and stores Points for each hole</li>
+                            <li>Updates Round totals and statistics</li>
+                            <li>This ensures handicaps exist before generating rounds, preventing errors</li>
+                        </ul>
+                        
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> Make sure the schedule has been entered and golfer matchups exist for the selected week before generating rounds.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

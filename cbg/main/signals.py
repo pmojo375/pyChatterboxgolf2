@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from main.models import Score, GolferMatchup, Sub, Team, Matchup, Week
-from main.helper import generate_golfer_matchups, calculate_and_save_handicaps_for_season, get_week
+from main.helper import generate_golfer_matchups, calculate_and_save_handicaps_for_season, get_week, process_week
 from main.helper import get_hcp
 
 @receiver(post_save, sender=Score)
@@ -19,7 +19,7 @@ def score_updated(sender, instance, created, **kwargs):
         scores_needed = ((Team.objects.filter(season=week.season).count() * 2) - no_sub_golfer_count) * 9
         
         if number_of_scores == scores_needed:
-            pass
+            process_week(week)
             # all scores entered... Process week.
         
 @receiver(post_delete, sender=Score)

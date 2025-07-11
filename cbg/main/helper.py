@@ -3,6 +3,14 @@ from main.models import *
 from django.db.models import Sum
 from django.utils import timezone
 import random
+import math
+
+def conventional_round(value):
+    """
+    Conventional rounding: 0.5 and up round up, under 0.5 round down.
+    This is different from Python's built-in round() which uses banker's rounding.
+    """
+    return math.floor(value + 0.5)
 
 '''
 Need to run the golfer matchup generator weekly. Need to figure out trigger
@@ -96,8 +104,8 @@ def get_current_season():
     now = timezone.now()
 
     # get season if it exists
-    if Season.objects.filter(year=now.year).exists():
-        season = Season.objects.get(year=now.year)
+    if Season.objects.filter(year=2025).exists():
+        season = Season.objects.get(year=2025)
     else:
         season = None
 
@@ -124,27 +132,17 @@ def get_last_week():
 
 def get_next_week():
     print('Getting next week')
-    # check if season exists
     current_season = get_current_season()
-    
     if not current_season:
         return None
-    else:
-        
-        # get the weeks before the current date plus one week (so the next week that will play)
-        weeks = Week.objects.filter(season=current_season, date__lt=timezone.now() + timedelta(weeks=1)).order_by('-date')
-        
-        for week in weeks:
-            # check if the week prior to the week exists and has scores posted
-            if Week.objects.filter(season=current_season, date=week.date - timedelta(weeks=1)).exists():
-                last_week = Week.objects.get(season=current_season, date=week.date - timedelta(weeks=1))
-                if Score.objects.filter(week=last_week).exists():
-                    return week
-            else:
-                # if the week prior to the week does not exist, return the week
+    # Get all weeks in order (by number or date)
+    weeks = Week.objects.filter(season=current_season).order_by('number')
+    for week in weeks:
+        if not week.rained_out:
+            score_count = Score.objects.filter(week=week).count()
+            if score_count == 0:
                 return week
-
-        return None
+    return None
 
 def get_golfers(**kwargs):
     """Gets the golfer objects for a specific season
@@ -226,36 +224,9 @@ def generate_rounds(season):
     # Get all the weeks in the season
     for week in Week.objects.filter(season=season):
         golfer_matchups = GolferMatchup.objects.filter(week=week)
+        
         for golfer_matchup in golfer_matchups:
-            golfer = golfer_matchup.golfer
-            is_sub = True if golfer_matchup.subbing_for_golfer else False
-            gross_score = Score.objects.filter(golfer=golfer, week=week).aggregate(Sum('score'))['score__sum']
-            handicap = Handicap.objects.get(golfer=golfer, week=week)
-            net_score = gross_score - handicap.handicap
-            matchup = Matchup.objects.get(week=week, teams=golfer.team_set.get(season=season))
-            scores = Score.objects.filter(golfer=golfer, week=week)
-            points_detail = get_golfer_points(golfer_matchup, detail=True)
-            round_points = points_detail['round_points']
-            total_points = points_detail['golfer_points']
-            points_objs = Points.objects.filter(golfer=golfer, week=week)
-            if Round.objects.filter(golfer=golfer, week=week, golfer_matchup=golfer_matchup).exists():
-                round = Round.objects.get(golfer=golfer, week=week)
-                round.handicap = handicap
-                round.golfer_matchup = golfer_matchup
-                round.gross = gross_score
-                round.net = net_score
-                round.round_points = round_points
-                round.total_points = total_points
-                round.points.set(points_objs)
-                round.scores.set(scores)
-                round.is_sub = is_sub
-                round.save()
-            else:
-                round = Round(golfer=golfer, golfer_matchup=golfer_matchup, is_sub=is_sub, week=week, matchup=matchup, handicap=handicap, gross=gross_score, net=net_score, round_points=round_points, total_points=total_points)
-                round.save()
-                round.points.set(points_objs)
-                round.scores.set(scores)
-                round.save()
+            generate_round(golfer_matchup)
 
 
 def generate_round(golfer_matchup, **kwargs):
@@ -266,26 +237,33 @@ def generate_round(golfer_matchup, **kwargs):
     if golfer_played(golfer, week):
         gross_score = Score.objects.filter(golfer=golfer, week=week).aggregate(Sum('score'))['score__sum']
         handicap = Handicap.objects.get(golfer=golfer, week=week)
-        net_score = gross_score - handicap.handicap
+        net_score = gross_score - conventional_round(handicap.handicap)  # Use conventionally rounded handicap for net score
         scores = Score.objects.filter(golfer=golfer, week=week)
-        matchup = Matchup.objects.get(week=week, teams=golfer.team_set.get(season=week.season))
+        is_sub = True if golfer_matchup.subbing_for_golfer else False
+        if is_sub:
+            matchup = Matchup.objects.get(week=week, teams__golfers__in=[golfer_matchup.subbing_for_golfer])
+        else:
+            matchup = Matchup.objects.get(week=week, teams__golfers__in=[golfer_matchup.golfer])
         points_detail = get_golfer_points(golfer_matchup, detail=True)
         round_points = points_detail['round_points']
         total_points = points_detail['golfer_points']
-        points_objs = Points.objects.filter(golfer=golfer, week=week)
+        # Get points objects AFTER calculating points
+        points_objs = Points.objects.filter(golfer=golfer, week=week).order_by('hole__number')
         if Round.objects.filter(golfer=golfer, week=week, golfer_matchup=golfer_matchup).exists():
             round = Round.objects.get(golfer=golfer, week=week, golfer_matchup=golfer_matchup)
             round.handicap = handicap
+            round.is_sub = is_sub
             round.gross = gross_score
             round.net = net_score
             round.golfer_matchup = golfer_matchup
+            round.matchup = matchup
             round.round_points = round_points
             round.total_points = total_points
             round.points.set(points_objs)
             round.scores.set(scores)
             round.save()
         else:
-            round = Round(golfer=golfer, week=week, matchup=matchup, golfer_matchup=golfer_matchup, handicap=handicap, gross=gross_score, net=net_score, round_points=round_points, total_points=total_points)
+            round = Round(golfer=golfer, week=week, matchup=matchup, golfer_matchup=golfer_matchup, handicap=handicap, gross=gross_score, net=net_score, round_points=round_points, total_points=total_points, is_sub=is_sub)
             round.save()
             round.points.set(points_objs)
             round.scores.set(scores)
@@ -443,6 +421,38 @@ def get_back_holes(season):
 
 
 def get_golfer_points(golfer_matchup, **kwargs):
+    """
+    Calculate the points for a golfer in a matchup based on their scores, handicaps, and the week's holes.
+    Args:
+        golfer_matchup (object): An object representing the golfer's matchup, containing:
+            - golfer: The golfer's model instance.
+            - opponent: The opponent's model instance.
+            - week: The week model instance.
+        **kwargs: Optional keyword arguments:
+            - detail (bool): If True, returns a detailed dictionary of points for both the golfer and their opponent.
+              Defaults to False.
+    Returns:
+        int or dict: 
+            - If `detail` is False, returns the total points for the golfer as an integer.
+            - If `detail` is True, returns a dictionary with the following keys:
+                - 'golfer': The golfer's model instance.
+                - 'golfer_points': Total points for the golfer.
+                - 'opponent': The opponent's model instance.
+                - 'opp_points': Total points for the opponent.
+                - 'hole_points': Points earned by the golfer on individual holes.
+                - 'opp_hole_points': Points earned by the opponent on individual holes.
+                - 'round_points': Points earned by the golfer for the round.
+                - 'opp_round_points': Points earned by the opponent for the round.
+    Notes:
+        - Points are calculated based on net scores (gross score minus handicap) for each hole.
+        - Handicaps are applied to adjust scores based on the difference between the golfer's and opponent's handicaps.
+        - Points are awarded for each hole and for the overall round:
+            - 1 point for winning a hole, 0.5 points for tying a hole.
+            - 3 points for winning the round, 1.5 points for tying the round.
+        - Points are stored or updated in the `Points` model for each hole.
+    Raises:
+        DoesNotExist: If a score for a specific hole is not found in the database.
+    """
     
     # When detail is set to True, the function returns a dictionary with the points for the golfer and their opponent
     detail = kwargs.get('detail', False)
@@ -464,8 +474,8 @@ def get_golfer_points(golfer_matchup, **kwargs):
     gross_score = scores.aggregate(Sum('score'))['score__sum']
     opp_gross_score = opp_scores.aggregate(Sum('score'))['score__sum']
     
-    net_score = gross_score - golfer_hcp
-    opp_net_score = opp_gross_score - opp_hcp
+    net_score = gross_score - conventional_round(golfer_hcp)  # Use conventionally rounded handicap for net score
+    opp_net_score = opp_gross_score - conventional_round(opp_hcp)  # Use conventionally rounded handicap for net score
     
     # Initialize the points to 0
     points = 0
@@ -473,11 +483,11 @@ def get_golfer_points(golfer_matchup, **kwargs):
     
     # Figure out if the golfer is giving or getting strokes
     if golfer_hcp > opp_hcp:
-        hcp_diff = golfer_hcp - opp_hcp
+        hcp_diff = conventional_round(golfer_hcp - opp_hcp)  # Use conventional rounding for handicap difference
         getting = True
         giving = False
     elif golfer_hcp < opp_hcp:
-        hcp_diff =  opp_hcp - golfer_hcp
+        hcp_diff = conventional_round(opp_hcp - golfer_hcp)  # Use conventional rounding for handicap difference
         getting = False
         giving = True
     else:
@@ -496,7 +506,11 @@ def get_golfer_points(golfer_matchup, **kwargs):
         holes = get_front_holes(week_model.season)
     else:
         holes = get_back_holes(week_model.season)
-        
+    
+    # Clear existing points for this golfer and week before calculating new ones
+    Points.objects.filter(golfer=golfer_model, week=week_model).delete()
+    Points.objects.filter(golfer=opponent, week=week_model).delete()
+    
     # Iterate over the holes and calculate the points for each golfer
     for hole in holes:
         # Get the net scores for the inputed golfer and their opponent
@@ -504,6 +518,9 @@ def get_golfer_points(golfer_matchup, **kwargs):
         opponent_score_model = opp_scores.get(hole=hole)
         golfer_score = golfer_score_model.score
         opponent_score = opponent_score_model.score
+        
+        original_golfer_score = golfer_score
+        original_opponent_score = opponent_score
         
         # Apply handicaps
         if hole.handicap9 <= hcp_diff:
@@ -516,6 +533,8 @@ def get_golfer_points(golfer_matchup, **kwargs):
                 opponent_score = opponent_score - 1
             if getting:
                 golfer_score = golfer_score - 1
+
+
 
         # Calculate the points for the hole based on the net scores
         if golfer_score < opponent_score:
@@ -531,6 +550,8 @@ def get_golfer_points(golfer_matchup, **kwargs):
             opp_points += 1
             Points.objects.update_or_create(golfer=golfer_model, week=week_model, hole=hole, score=golfer_score_model, points=0)
             Points.objects.update_or_create(golfer=opponent, week=week_model, hole=hole, score=opponent_score_model, points=1)
+        
+
     
     hole_points = points
     opp_hole_points = opp_points
@@ -744,6 +765,24 @@ def get_score_string(data, holes):
     return rankStr
 
 def adjust_weeks(rained_out_week):
+    """
+    Adjusts the week numbers and dates for subsequent weeks after a rained-out week
+    and adds a new week at the end of the schedule.
+
+    Args:
+        rained_out_week (Week): The week instance that was rained out.
+
+    Functionality:
+        - Increments the week numbers and adjusts the dates for all weeks 
+          that occur after the rained-out week.
+        - Adds a new week at the end of the schedule with an incremented week 
+          number and a date 7 days after the last week's date.
+
+    Note:
+        This function assumes that the `Week` model has `week_number` and `date` 
+        fields and that the `Week.objects` manager provides `filter`, `latest`, 
+        and `create` methods.
+    """
     subsequent_weeks = Week.objects.filter(week_number__gt=rained_out_week.week_number)
     for week in subsequent_weeks:
         week.week_number += 1
@@ -755,6 +794,32 @@ def adjust_weeks(rained_out_week):
     Week.objects.create(week_number=last_week_number+1, date=new_week_date)
     
 def generate_golfer_matchups(week):
+    """
+    Generates golfer matchups for a given week by pairing golfers from opposing teams
+    and handling substitutions for absent golfers.
+    This function performs the following steps:
+    1. Retrieves all matchups for the specified week.
+    2. Deletes any existing golfer matchups for the week.
+    3. Iterates through each matchup and retrieves the teams and their golfers.
+    4. Checks for absent golfers and replaces them with substitutes or teammates.
+    5. Calculates handicaps for each golfer.
+    6. Assigns A and B golfers for each team based on their handicaps.
+    7. Creates golfer matchups, ensuring the correct "subbing_for" field is set.
+    8. Prints information about which golfers are subbing for absent players.
+    Args:
+        week (int): The week number for which golfer matchups are to be generated.
+    Raises:
+        Exception: If there are issues with retrieving or processing matchups, teams, or golfers.
+    Models Used:
+        - Matchup: Represents a matchup between two teams for a given week.
+        - GolferMatchup: Represents a matchup between individual golfers.
+        - Sub: Represents a substitution for an absent golfer.
+    Helper Functions:
+        - get_hcp(golfer, week): Retrieves the handicap for a golfer for the specified week.
+    Notes:
+        - The function assumes that each team has exactly two golfers.
+        - If a golfer is absent and no substitute is available, their teammate may replace them.
+    """
     matchups = Matchup.objects.filter(week=week)
 
     # delete all golfer matchups for the week
@@ -858,3 +923,16 @@ def generate_golfer_matchups(week):
         print(f'{team2_A_golfer.name} is subbing for {team2_A_subbing_for.name}') if team2_A_subbing_for else print(f'{team2_A_golfer.name} is not subbing')
         print(f'{team1_B_golfer.name} is subbing for {team1_B_subbing_for.name}') if team1_B_subbing_for else print(f'{team1_B_golfer.name} is not subbing')
         print(f'{team2_B_golfer.name} is subbing for {team2_B_subbing_for.name}') if team2_B_subbing_for else print(f'{team2_B_golfer.name} is not subbing')
+
+def process_week(week):
+    # get the golfer matchups for the week
+    golfer_matchups = GolferMatchup.objects.filter(week=week)
+    
+    # generate the handicaps for the next week
+    calculate_and_save_handicaps_for_season(week.season)
+    
+    for golfer_matchup in golfer_matchups:
+        generate_round(golfer_matchup)
+        
+        
+    

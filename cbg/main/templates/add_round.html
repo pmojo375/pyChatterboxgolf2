@@ -22,189 +22,356 @@
         <!-- Scorecard -->
         <form id="scoreForm" method="post" action="{% url 'add_round' %}">
             {% csrf_token %}
-            <div class="table-responsive mb-3">
-                <table class="scorecard" style="undefined;table-layout: fixed; width: 568px">
+            <input type="hidden" name="week_id" value="{{ week.id }}">
+            <input type="hidden" name="matchup_id" id="matchup_id">
+
+            <div class="table-responsive mb-3" style="max-width: 960px; margin: 0 auto;">
+                <table class="scorecard" style="table-layout: fixed; width: 100%;" id="scorecard_table">
                     <colgroup>
-                        <col style="width: 139px">
-                        <col style="width: 32px">
-                        <col style="width: 35px">
-                        <col style="width: 35px">
-                        <col style="width: 33px">
-                        <col style="width: 35px">
-                        <col style="width: 35px">
-                        <col style="width: 35px">
-                        <col style="width: 35px">
-                        <col style="width: 35px">
-                        <col style="width: 35px">
-                        <col style="width: 43px">
+                        <col style="width: 160px">
+                        <col style="width: 50px">
+                        {% for hole in hole_numbers %}<col style="width: 35px">{% endfor %}
                     </colgroup>
-                    <tr id="golfer1_row" class="scores">
-                        <td class="descriptor" id="golfer1_name"></td>
-                        <td class="hcp" id="golfer1_hcp"></td>
-                
-                        <td class="score"><input type="number" id="hole1_1" name="hole1_1" class="fit-cell golfer1_score"></input></td>
-                        <td class="score"><input type="number" id="hole2_1" name="hole2_1" class="fit-cell golfer1_score"></input></td>
-                        <td class="score"><input type="number" id="hole3_1" name="hole3_1" class="fit-cell golfer1_score"></input></td>
-                        <td class="score"><input type="number" id="hole4_1" name="hole4_1" class="fit-cell golfer1_score"></input></td>
-                        <td class="score"><input type="number" id="hole5_1" name="hole5_1" class="fit-cell golfer1_score"></input></td>
-                        <td class="score"><input type="number" id="hole6_1" name="hole6_1" class="fit-cell golfer1_score"></input></td>
-                        <td class="score"><input type="number" id="hole7_1" name="hole7_1" class="fit-cell golfer1_score"></input></td>
-                        <td class="score"><input type="number" id="hole8_1" name="hole8_1" class="fit-cell golfer1_score"></input></td>
-                        <td class="score"><input type="number" id="hole9_1" name="hole9_1" class="fit-cell golfer1_score"></input></td>
-                        <input type="hidden" id="golfer1_id" name="scores[golfer1][golfer_id]">
-                
-                        <td class="score" id="golfer1_total" style="background-color:#97A2A2"></td>
-                    </tr>
-                    <tr id="golfer2_row" class="scores">
-                        <td class="descriptor" id="golfer2_name"></td>
-                        <td class="hcp" id="golfer2_hcp"></td>
-                
-                        <td class="score"><input type="number" id="hole1_2" name="hole1_2" class="fit-cell golfer2_score"></input></td>
-                        <td class="score"><input type="number" id="hole2_2" name="hole2_2" class="fit-cell golfer2_score"></input></td>
-                        <td class="score"><input type="number" id="hole3_2" name="hole3_2" class="fit-cell golfer2_score"></input></td>
-                        <td class="score"><input type="number" id="hole4_2" name="hole4_2" class="fit-cell golfer2_score"></input></td>
-                        <td class="score"><input type="number" id="hole5_2" name="hole5_2" class="fit-cell golfer2_score"></input></td>
-                        <td class="score"><input type="number" id="hole6_2" name="hole6_2" class="fit-cell golfer2_score"></input></td>
-                        <td class="score"><input type="number" id="hole7_2" name="hole7_2" class="fit-cell golfer2_score"></input></td>
-                        <td class="score"><input type="number" id="hole8_2" name="hole8_2" class="fit-cell golfer2_score"></input></td>
-                        <td class="score"><input type="number" id="hole9_2" name="hole9_2" class="fit-cell golfer2_score"></input></td>
-                        <input type="hidden" id="golfer2_id" name="scores[golfer2][golfer_id]">
-                        <td class="score" id="golfer2_total" style="background-color:#97A2A2"></td>
-                    </tr>
-                    <tr class="data">
-                        <td class="hole-data left-align" colspan="2">HOLE</td>
-                        {% for hole_num in hole_numbers %}
-                            <td class="hole-data center-align">{{ hole_num }}</td>
-                        {% endfor %}
-                        <td class="hole-data center-align" rowspan="2">IN</td>
-                    </tr>
-                    <tr class="data">
-                        <td class="hole-data left-align" colspan="2">HANDICAP</td>
-                        {% for data in hole_data %}
-                            <td class="hole-data center-align">{{ data.1 }}</td>
-                        {% endfor %}
-                    </tr>
-                    <tr class="data">
-                        <td class="hole-data left-align" colspan="2">YARDS</td>
-                        {% for data in hole_data %}
-                            <td class="hole-data center-align">{{ data.2 }}</td>
-                        {% endfor %}
-                        <td class="hole-data center-align">{{ total_yards }}</td>
-                    </tr>
-                    <tr class="data">
-                        <td class="hole-data left-align" colspan="2">PAR</td>
-                        {% for data in hole_data %}
-                            <td class="hole-data center-align">{{ data.0 }}</td>
-                        {% endfor %}
-                        <td class="hole-data center-align">36</td>
-                    </tr>
-                    <tr id="golfer3_row" class="scores">
-                        <td class="descriptor" id="golfer3_name"></td>
-                        <td class="hcp" id="golfer3_hcp"></td>
-                
-                        <td class="score"><input type="number" id="hole1_3" name="hole1_3" class="fit-cell golfer3_score"></input></td>
-                        <td class="score"><input type="number" id="hole2_3" name="hole2_3" class="fit-cell golfer3_score"></input></td>
-                        <td class="score"><input type="number" id="hole3_3" name="hole3_3" class="fit-cell golfer3_score"></input></td>
-                        <td class="score"><input type="number" id="hole4_3" name="hole4_3" class="fit-cell golfer3_score"></input></td>
-                        <td class="score"><input type="number" id="hole5_3" name="hole5_3" class="fit-cell golfer3_score"></input></td>
-                        <td class="score"><input type="number" id="hole6_3" name="hole6_3" class="fit-cell golfer3_score"></input></td>
-                        <td class="score"><input type="number" id="hole7_3" name="hole7_3" class="fit-cell golfer3_score"></input></td>
-                        <td class="score"><input type="number" id="hole8_3" name="hole8_3" class="fit-cell golfer3_score"></input></td>
-                        <td class="score"><input type="number" id="hole9_3" name="hole9_3" class="fit-cell golfer3_score"></input></td>
-                        <input type="hidden" id="golfer3_id" name="scores[golfer3][golfer_id]">
-                        <td class="score" id="golfer3_total" style="background-color:#97A2A2"></td>
-                    </tr>
-                    <tr id="golfer4_row" class="scores">
-                        <td class="descriptor" id="golfer4_name"></td>
-                        <td class="hcp" id="golfer4_hcp"></td>
-                
-                        <td class="score"><input type="number" id="hole1_4" name="hole1_4" class="fit-cell golfer4_score"></input></td>
-                        <td class="score"><input type="number" id="hole2_4" name="hole2_4" class="fit-cell golfer4_score"></input></td>
-                        <td class="score"><input type="number" id="hole3_4" name="hole3_4" class="fit-cell golfer4_score"></input></td>
-                        <td class="score"><input type="number" id="hole4_4" name="hole4_4" class="fit-cell golfer4_score"></input></td>
-                        <td class="score"><input type="number" id="hole5_4" name="hole5_4" class="fit-cell golfer4_score"></input></td>
-                        <td class="score"><input type="number" id="hole6_4" name="hole6_4" class="fit-cell golfer4_score"></input></td>
-                        <td class="score"><input type="number" id="hole7_4" name="hole7_4" class="fit-cell golfer4_score"></input></td>
-                        <td class="score"><input type="number" id="hole8_4" name="hole8_4" class="fit-cell golfer4_score"></input></td>
-                        <td class="score"><input type="number" id="hole9_4" name="hole9_4" class="fit-cell golfer4_score"></input></td>
-                        <input type="hidden" id="golfer4_id" name="scores[golfer4][golfer_id]">
-                        <td class="score" id="golfer4_total" style="background-color:#97A2A2"></td>
-                    </tr>
+                    <thead>
+                        <tr>
+                            <th>Golfer</th>
+                            <th>HCP</th>
+                            {% for hole in hole_numbers %}<th style="text-align: center">{{ hole }}</th>{% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody id="scorecard_body">
+                        <!-- Empty structure shown before matchup selection -->
+                        <tr class="empty-row">
+                            <td class="descriptor">Select a matchup to begin</td>
+                            <td class="hcp">-</td>
+                            {% for hole in hole_numbers %}
+                                <td><input type="number" min="1" max="10" disabled></td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="empty-row">
+                            <td class="descriptor">-</td>
+                            <td class="hcp">-</td>
+                            {% for hole in hole_numbers %}
+                                <td><input type="number" min="1" max="10" disabled></td>
+                            {% endfor %}
+                        </tr>                        <!-- Hole info rows in default state -->
+                        <tr class="hole-info-row">
+                            <td colspan="2" class="text-end fw-bold">Par</td>
+                            {% for hole in hole_data %}<td style="text-align: center">{{ hole.0 }}</td>{% endfor %}
+                        </tr>
+                        <tr class="hole-info-row">
+                            <td colspan="2" class="text-end fw-bold">Yards</td>
+                            {% for hole in hole_data %}<td style="text-align: center">{{ hole.2 }}</td>{% endfor %}
+                        </tr>
+                        <tr class="empty-row">
+                            <td class="descriptor">-</td>
+                            <td class="hcp">-</td>
+                            {% for hole in hole_numbers %}
+                                <td><input type="number" min="1" max="10" disabled></td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="empty-row">
+                            <td class="descriptor">-</td>
+                            <td class="hcp">-</td>
+                            {% for hole in hole_numbers %}
+                                <td><input type="number" min="1" max="10" disabled></td>
+                            {% endfor %}
+                        </tr>
+
+                    </tbody>
                 </table>
             </div>
-            <button id="submitButton" type="submit" class="btn btn-primary">Submit Scores</button>
+
+            <div class="text-end">
+                <button type="submit" class="btn btn-success">Submit Scores</button>
+            </div>
         </form>
     </div>
 
-{% block extra_js %} <script>
+<style>
+    .scorecard input[type="number"] {
+        width: 100%;
+        padding: 2px;
+        box-sizing: border-box;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+    .scorecard td {
+        padding: 0;
+        vertical-align: middle;
+        text-align: center;
+    }
+    .scorecard .descriptor {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-align: left;
+        padding-left: 4px;
+    }
+    .scorecard .empty-row {
+        background-color: #f8f9fa;
+        color: #6c757d;
+    }
+    .scorecard .empty-row input {
+        background-color: #e9ecef;
+        color: #6c757d;
+    }
+    .scorecard .sub-row {
+        background-color: #e3f2fd;
+        font-style: italic;
+    }
+    .scorecard .sub-indicator {
+        font-size: 0.75rem;
+        color: #666;
+        display: block;
+    }
+    .scorecard input:disabled {
+        background-color: #e9ecef;
+        color: #6c757d;
+    }
+    .scorecard .pairing-separator {
+        background-color: #f8f9fa;
+        border-top: 2px solid #dee2e6;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .scorecard .handicap-high {
+        background-color: #fff8e1;
+        border-left: 3px solid #ffc107;
+    }
+    .scorecard .handicap-low {
+        background-color: #f1f8e9;
+        border-left: 3px solid #4caf50;
+    }
+    .scorecard .handicap-label {
+        font-size: 0.7rem;
+        color: #666;
+        display: block;
+        font-weight: bold;
+    }
+    .scorecard .hole-info-row {
+        background-color: #f8f9fa;
+        font-weight: 500;
+        font-size: 0.75rem;
+    }
+</style>
+
+<script>
     document.addEventListener('DOMContentLoaded', function () {
         const matchupSelect = document.getElementById('matchup_select');
+        const matchupInput = document.getElementById('matchup_id');
+        const scorecardBody = document.getElementById('scorecard_body');
+        const holeNumbers = {{ hole_numbers|safe }};
+        const holeData = {{ hole_data|safe }};
 
         matchupSelect.addEventListener('change', function () {
             const matchupId = this.value;
+            matchupInput.value = matchupId;
 
             if (matchupId) {
-                fetchMatchupData(matchupId);
+                fetch(`/api/get_matchup/${matchupId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        populateScorecard(data.rows);
+                    })
+                    .catch(error => console.error('Fetch error:', error));
             } else {
-                resetScorecard();
+                showEmptyScorecard();
             }
         });
 
-        function fetchMatchupData(matchupId) {
-            fetch(`/api/get_matchup/${matchupId}/`)
-                .then(response => response.json())
-                .then(data => populateScorecard(data))
-                .catch(error => console.error('Error fetching matchup data:', error));
+        function populateScorecard(rows) {
+            clearScorecard();
+            
+            let currentPairing = -1;
+            
+            rows.forEach((row, index) => {
+                // Add pairing separator with hole info if this is the start of a new pairing
+                if (row.is_pairing_start && currentPairing !== -1) {
+                    addPairingSeparator();
+                }
+                
+                if (row.is_pairing_start) {
+                    currentPairing = row.pairing_index;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.id = `golfer${row.row_num}_row`;
+                
+                // Add CSS classes based on row type
+                if (row.playing_for) {
+                    tr.classList.add('sub-row');
+                }
+                
+                // Add handicap-based styling
+                if (row.pairing_index === 0) {
+                    tr.classList.add('handicap-high');
+                } else {
+                    tr.classList.add('handicap-low');
+                }
+
+                // Golfer name cell
+                const nameCell = document.createElement('td');
+                nameCell.className = 'descriptor';
+                
+                const handicapLabel = row.pairing_index === 0 ? 'Higher HCP' : 'Lower HCP';
+                
+                nameCell.innerHTML = `
+                    ${row.golfer_name}
+                    <span class="handicap-label">${handicapLabel}</span>
+                    ${row.playing_for ? `<span class="sub-indicator">(sub for ${row.playing_for})</span>` : ''}
+                `;
+                tr.appendChild(nameCell);
+
+                // Hidden inputs for form processing
+                const nameInput = document.createElement('input');
+                nameInput.type = 'hidden';
+                nameInput.name = `golfer${row.row_num}_name`;
+                nameInput.value = row.golfer_name;
+                tr.appendChild(nameInput);
+
+                const activeInput = document.createElement('input');
+                activeInput.type = 'hidden';
+                activeInput.name = `golfer${row.row_num}_active`;
+                activeInput.value = 'true';
+                tr.appendChild(activeInput);
+
+                // Handicap cell
+                const hcpCell = document.createElement('td');
+                hcpCell.className = 'hcp';
+                hcpCell.textContent = row.handicap;
+                tr.appendChild(hcpCell);
+
+                // Score input cells
+                holeNumbers.forEach(holeNum => {
+                    const td = document.createElement('td');
+                    const input = document.createElement('input');
+                    input.name = `hole${holeNum}_${row.row_num}`;
+                    input.type = 'number';
+                    input.min = '1';
+                    input.max = '10';
+                    input.disabled = false; // All rows are editable now
+                    
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+
+                scorecardBody.appendChild(tr);
+            });
         }
 
-        function populateScorecard(data) {
-            updateGolferInfo('golfer1', data.golfer1);
-            updateGolferInfo('golfer2', data.golfer2);
-            updateGolferInfo('golfer3', data.golfer3);
-            updateGolferInfo('golfer4', data.golfer4);
-        }
-        
-        function updateGolferInfo(golferId, golferData) {
-            if (!golferData) return;
-        
-            const golferRow = document.getElementById(`${golferId}_row`);
-            const golferNameCell = document.getElementById(`${golferId}_name`);
-            const golferHcpCell = document.getElementById(`${golferId}_hcp`);
-            const golferIdInput = document.getElementById(`${golferId}_id`);
-            const golferScoreInputs = document.querySelectorAll(`.${golferId}_score`);
-        
-            golferNameCell.textContent = golferData.name;
-            golferHcpCell.textContent = golferData.handicap !== null ? golferData.handicap : 'N/A';
-            golferIdInput.value = golferData.golfer_id;
-        
-            // Gray out if gray_out is true
-            if (golferData.gray_out) {
-                golferRow.style.backgroundColor = '#d3d3d3';  // Gray out the row
-                golferScoreInputs.forEach(input => input.disabled = true);
-            } else {
-                golferRow.style.backgroundColor = '';  // Reset row color
-                golferScoreInputs.forEach(input => input.disabled = false);
-            }
-        }
-        
-        function resetScorecard() {
-            const golferIds = ['golfer1', 'golfer2', 'golfer3', 'golfer4'];
-            golferIds.forEach(golferId => {
-                document.getElementById(`${golferId}_name`).textContent = '';
-                document.getElementById(`${golferId}_hcp`).textContent = '';
-                document.getElementById(`${golferId}_id`).value = '';
-                const golferRow = document.getElementById(`${golferId}_row`);
-                golferRow.style.backgroundColor = '';
-                const golferScoreInputs = document.querySelectorAll(`.${golferId}_score`);
-                golferScoreInputs.forEach(input => {
-                    input.value = '';
-                    input.disabled = false;
-                });
+        function addPairingSeparator() {
+            // Add par row
+            const parRow = document.createElement('tr');
+            parRow.className = 'pairing-separator hole-info-row';
+            
+            const parCell = document.createElement('td');
+            parCell.colSpan = 2;
+            parCell.className = 'text-end fw-bold';
+            parCell.textContent = 'Par';
+            parRow.appendChild(parCell);
+            
+            holeData.forEach(hole => {
+                const td = document.createElement('td');
+                td.style.textAlign = 'center';
+                td.textContent = hole[0];
+                parRow.appendChild(td);
             });
+            
+            scorecardBody.appendChild(parRow);
+            
+            // Add yards row
+            const yardsRow = document.createElement('tr');
+            yardsRow.className = 'pairing-separator hole-info-row';
+            
+            const yardsCell = document.createElement('td');
+            yardsCell.colSpan = 2;
+            yardsCell.className = 'text-end fw-bold';
+            yardsCell.textContent = 'Yards';
+            yardsRow.appendChild(yardsCell);
+            
+            holeData.forEach(hole => {
+                const td = document.createElement('td');
+                td.style.textAlign = 'center';
+                td.textContent = hole[2];
+                yardsRow.appendChild(td);
+            });
+            
+            scorecardBody.appendChild(yardsRow);
+        }
+
+        function showEmptyScorecard() {
+            clearScorecard();
+            
+            // Add empty rows
+            for (let i = 1; i <= 4; i++) {
+                const tr = document.createElement('tr');
+                tr.className = 'empty-row';
+                
+                const nameCell = document.createElement('td');
+                nameCell.className = 'descriptor';
+                nameCell.textContent = i === 1 ? 'Select a matchup to begin' : '-';
+                tr.appendChild(nameCell);
+                
+                const hcpCell = document.createElement('td');
+                hcpCell.className = 'hcp';
+                hcpCell.textContent = '-';
+                tr.appendChild(hcpCell);
+                
+                holeNumbers.forEach(holeNum => {
+                    const td = document.createElement('td');
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.min = '1';
+                    input.max = '10';
+                    input.disabled = true;
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+                
+                scorecardBody.appendChild(tr);
+            }
+            
+            // Add hole info rows
+            const parRow = document.createElement('tr');
+            parRow.className = 'hole-info-row';
+            
+            const parCell = document.createElement('td');
+            parCell.colSpan = 2;
+            parCell.className = 'text-end fw-bold';
+            parCell.textContent = 'Par';
+            parRow.appendChild(parCell);
+            
+            holeData.forEach(hole => {
+                const td = document.createElement('td');
+                td.style.textAlign = 'center';
+                td.textContent = hole[0];
+                parRow.appendChild(td);
+            });
+            
+            scorecardBody.appendChild(parRow);
+            
+            const yardsRow = document.createElement('tr');
+            yardsRow.className = 'hole-info-row';
+            
+            const yardsCell = document.createElement('td');
+            yardsCell.colSpan = 2;
+            yardsCell.className = 'text-end fw-bold';
+            yardsCell.textContent = 'Yards';
+            yardsRow.appendChild(yardsCell);
+            
+            holeData.forEach(hole => {
+                const td = document.createElement('td');
+                td.style.textAlign = 'center';
+                td.textContent = hole[2];
+                yardsRow.appendChild(td);
+            });
+            
+            scorecardBody.appendChild(yardsRow);
+        }
+
+        function clearScorecard() {
+            scorecardBody.innerHTML = '';
         }
     });
 </script>
-                   
-
-{% endblock %}
 {% endblock %}
