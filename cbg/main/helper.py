@@ -470,24 +470,28 @@ def get_golfer_points(golfer_matchup, **kwargs):
     # Get the golfers handicap and the opponents handicap
     golfer_hcp = get_hcp(golfer_model, week_model)
     opp_hcp = get_hcp(opponent, week_model)
-    
+
+    # ROUND EACH HANDICAP BEFORE SUBTRACTION
+    rounded_golfer_hcp = conventional_round(golfer_hcp)
+    rounded_opp_hcp = conventional_round(opp_hcp)
+
     gross_score = scores.aggregate(Sum('score'))['score__sum']
     opp_gross_score = opp_scores.aggregate(Sum('score'))['score__sum']
-    
-    net_score = gross_score - conventional_round(golfer_hcp)  # Use conventionally rounded handicap for net score
-    opp_net_score = opp_gross_score - conventional_round(opp_hcp)  # Use conventionally rounded handicap for net score
+
+    net_score = gross_score - rounded_golfer_hcp  # Use rounded handicap for net score
+    opp_net_score = opp_gross_score - rounded_opp_hcp  # Use rounded handicap for net score
     
     # Initialize the points to 0
     points = 0
     opp_points = 0
     
     # Figure out if the golfer is giving or getting strokes
-    if golfer_hcp > opp_hcp:
-        hcp_diff = conventional_round(golfer_hcp - opp_hcp)  # Use conventional rounding for handicap difference
+    if rounded_golfer_hcp > rounded_opp_hcp:
+        hcp_diff = rounded_golfer_hcp - rounded_opp_hcp
         getting = True
         giving = False
-    elif golfer_hcp < opp_hcp:
-        hcp_diff = conventional_round(opp_hcp - golfer_hcp)  # Use conventional rounding for handicap difference
+    elif rounded_golfer_hcp < rounded_opp_hcp:
+        hcp_diff = rounded_opp_hcp - rounded_golfer_hcp
         getting = False
         giving = True
     else:
@@ -934,5 +938,53 @@ def process_week(week):
     for golfer_matchup in golfer_matchups:
         generate_round(golfer_matchup)
         
+        
+def get_playing_golfers_for_week(week):
+    """
+    Get all golfers who are actually playing in a given week (including subs)
+    """
+    playing_golfers = set()
+    # Get all teams for the season
+    teams = Team.objects.filter(season=week.season)
+    for team in teams:
+        team_golfers = team.golfers.all()
+        for golfer in team_golfers:
+            # Check if golfer is playing (not absent or has a sub)
+            sub = Sub.objects.filter(week=week, absent_golfer=golfer).first()
+            if not sub or (sub and sub.sub_golfer):
+                # Golfer is playing (either directly or via sub)
+                if sub and sub.sub_golfer:
+                    playing_golfers.add(sub.sub_golfer)  # Add the sub
+                else:
+                    playing_golfers.add(golfer)  # Add the original golfer
+    return list(playing_golfers)
+    
+def get_earliest_week_without_full_matchups(season=None):
+    """
+    Find the earliest week that doesn't have 5 matchups (full schedule).
+    A full schedule typically has 5 matchups for a league with 10 teams.
+    
+    Args:
+        season (Season, optional): The season to check. Defaults to current season.
+    
+    Returns:
+        Week: The earliest week without 5 matchups, or None if all weeks are full
+    """
+    if season is None:
+        season = get_current_season()
+    
+    if not season:
+        return None
+    
+    # Get all weeks for the season ordered by week number
+    weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
+    
+    for week in weeks:
+        matchup_count = Matchup.objects.filter(week=week).count()
+        if matchup_count < 5:  # Assuming 5 matchups is a full schedule
+            return week
+    
+    return None  # All weeks have full matchups
+    
         
     

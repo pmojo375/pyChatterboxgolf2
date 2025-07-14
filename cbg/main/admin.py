@@ -38,7 +38,9 @@ class GameAdmin(admin.ModelAdmin):
     list_display = ('name', 'desc', 'get_week')
     
     def get_week(self, obj):
-        return f"{obj.week.date.strftime('%Y-%m-%d')} (Week {obj.week.number})"
+        if obj.week:
+            return f"{obj.week.date.strftime('%Y-%m-%d')} (Week {obj.week.number})"
+        return "(No week assigned)"
     get_week.short_description = 'Week'
 
 

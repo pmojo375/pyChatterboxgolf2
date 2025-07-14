@@ -10,6 +10,8 @@
 
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
   <!--<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css"> -->
   <title>Chatterbox Golf League</title>
@@ -22,7 +24,7 @@
   <nav class="navbar navbar-expand-lg navbar-light bg-body-tertiary">
     <div class="container-fluid">
       <a class="navbar-brand" href="{% url 'main' %}">ChatterboxGolf</a>
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
@@ -39,6 +41,35 @@
               {% endfor %}
             </ul>
           </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Sub Stats
+            </a>
+            <ul class="dropdown-menu">
+              {% for golfer in sub_golfer_list %}
+              <li>
+                <a class="dropdown-item" href="{% url 'sub_stats_detail' golfer.id %}">{{ golfer.name }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'league_stats' %}">League Stats</a>
+          </li>
+          {% if available_weeks %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Weeks
+            </a>
+            <ul class="dropdown-menu">
+              {% for week in available_weeks %}
+              <li>
+                <a class="dropdown-item" href="{% url 'scorecards' week.number %}">Week {{ week.number }} - {{ week.date|date:"M d" }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </li>
+          {% endif %}
         {% comment %}
         <a class="nav-item nav-link" href="{% url 'games' %}">Games</a>
         <div class="nav-item dropdown">
@@ -88,6 +119,13 @@
               </li>
               <li>
                 <a class="dropdown-item" href="{% url 'generate_rounds' %}">Generate Rounds</a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="{% url 'manage_skins' %}">Manage Skins</a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% url 'manage_games' %}">Manage Games</a>
               </li>
             </ul>
           </li>

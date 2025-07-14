@@ -215,6 +215,377 @@ input[type="number"] {
     border-left: none;
 }
 
+/* Modern Standings Styles */
+.modern-standings {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.modern-standings thead {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.modern-standings thead th {
+    border: none;
+    padding: 12px 8px;
+    vertical-align: middle;
+}
+
+.modern-standings tbody tr {
+    transition: all 0.2s ease-in-out;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modern-standings tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.modern-standings tbody tr:last-child {
+    border-bottom: none;
+}
+
+.modern-standings td {
+    padding: 12px 8px;
+    vertical-align: middle;
+    border: none;
+}
+
+.modern-standings .table-light {
+    background-color: #f8f9fa;
+}
+
+.modern-standings .table-white {
+    background-color: #ffffff;
+}
+
+/* Card Styles */
+.card {
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+    border: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-header h5 {
+    font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .modern-standings {
+        font-size: 0.9rem;
+    }
+    
+    .modern-standings thead th,
+    .modern-standings td {
+        padding: 8px 4px;
+    }
+    
+    .card-header h5 {
+        font-size: 1rem;
+    }
+}
+
+/* Animation for rank numbers */
+.modern-standings .fw-bold {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Top 3 highlighting */
+.modern-standings tbody tr:nth-child(1) {
+    background: linear-gradient(135deg, #ffd700 0%, #fff8dc 100%) !important;
+    border-left: 4px solid #ffd700;
+}
+
+.modern-standings tbody tr:nth-child(2) {
+    background: linear-gradient(135deg, #c0c0c0 0%, #f5f5f5 100%) !important;
+    border-left: 4px solid #c0c0c0;
+}
+
+.modern-standings tbody tr:nth-child(3) {
+    background: linear-gradient(135deg, #cd7f32 0%, #f4e4bc 100%) !important;
+    border-left: 4px solid #cd7f32;
+}
+
+/* Modern Schedule Styles */
+.modern-schedule {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.modern-schedule thead {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.modern-schedule thead th {
+    border: none;
+    padding: 12px 8px;
+    vertical-align: middle;
+}
+
+.modern-schedule tbody tr {
+    transition: all 0.2s ease-in-out;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modern-schedule tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.modern-schedule tbody tr:last-child {
+    border-bottom: none;
+}
+
+.modern-schedule td {
+    padding: 12px 8px;
+    vertical-align: middle;
+    border: none;
+}
+
+/* List group improvements */
+.list-group-item {
+    transition: all 0.2s ease-in-out;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+    transform: translateX(2px);
+}
+
+/* Badge improvements */
+.badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+}
+
+/* Card improvements */
+.card-body {
+    padding: 1.5rem;
+}
+
+.card-body .list-group-flush .list-group-item:first-child {
+    border-top: none;
+}
+
+.card-body .list-group-flush .list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* Stats Page Styles */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.stats-card {
+    transition: all 0.3s ease;
+    border-radius: 12px;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+}
+
+.stats-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    font-size: 1.5rem;
+}
+
+.stats-icon-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.scoring-item {
+    transition: all 0.2s ease-in-out;
+}
+
+.scoring-item:hover {
+    transform: translateX(5px);
+}
+
+.scoring-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.scoring-color.eagle {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+}
+
+.scoring-color.birdie {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.scoring-color.par {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.scoring-color.bogey {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+}
+
+.scoring-color.double {
+    background: linear-gradient(135deg, #fd7e14 0%, #e55a00 100%);
+}
+
+.scoring-color.worse {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.modern-stats-table {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.modern-stats-table thead {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.modern-stats-table thead th {
+    border: none;
+    padding: 12px 8px;
+    vertical-align: middle;
+}
+
+.modern-stats-table tbody tr {
+    transition: all 0.2s ease-in-out;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.modern-stats-table tbody tr:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.modern-stats-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.modern-stats-table td {
+    padding: 12px 8px;
+    vertical-align: middle;
+    border: none;
+}
+
+.modern-stats-table .table-light {
+    background-color: #f8f9fa;
+}
+
+.modern-stats-table .table-white {
+    background-color: #ffffff;
+}
+
+
+
+/* Responsive adjustments for stats page */
+@media (max-width: 768px) {
+    .stats-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .stats-icon-sm {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9rem;
+    }
+    
+    .modern-stats-table {
+        font-size: 0.9rem;
+    }
+    
+    .modern-stats-table thead th,
+    .modern-stats-table td {
+        padding: 8px 4px;
+    }
+}
+
+/* Chart responsiveness */
+#hole-by-hole-chart,
+#scoring-breakdown-chart,
+#handicap-chart,
+#points-chart,
+#scores-chart,
+#performance-chart {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 300px;
+}
+
+@media (max-width: 768px) {
+    #hole-by-hole-chart,
+    #scoring-breakdown-chart,
+    #handicap-chart,
+    #points-chart,
+    #scores-chart,
+    #performance-chart {
+        min-height: 250px;
+    }
+}
+
 #eagle {
     background-color: lightgreen;
     color: white;

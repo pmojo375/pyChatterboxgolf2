@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_content %}
+<div class="container">
+    <div class="row text-center p-4">
+        <h1>Manage Games</h1>
+    </div>
+
+    {% if message %}
+    <div class="row">
+        <div class="col">
+            <div class="alert alert-{{ message_type }}" role="alert">
+                {{ message }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Create New Game</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ create_form.name.id_for_label }}" class="form-label">{{ create_form.name.label }}</label>
+                            {{ create_form.name }}
+                            {% if create_form.name.errors %}
+                                <div class="text-danger">{{ create_form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ create_form.desc.id_for_label }}" class="form-label">{{ create_form.desc.label }}</label>
+                            {{ create_form.desc }}
+                            {% if create_form.desc.errors %}
+                                <div class="text-danger">{{ create_form.desc.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ create_form.week.id_for_label }}" class="form-label">{{ create_form.week.label }}</label>
+                            {{ create_form.week }}
+                            {% if create_form.week.errors %}
+                                <div class="text-danger">{{ create_form.week.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <button type="submit" name="create_game" class="btn btn-primary">Create Game</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Add Game Entries</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="game-entry-form">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.week.id_for_label }}" class="form-label">{{ form.week.label }}</label>
+                            {{ form.week }}
+                            {% if form.week.errors %}
+                                <div class="text-danger">{{ form.week.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.golfers.label }}</label>
+                            <div class="border p-3" style="max-height: 300px; overflow-y: auto;" id="game-golfers-container">
+                                <p class="text-muted">Select a week to see available golfers...</p>
+                            </div>
+                            {% if form.golfers.errors %}
+                                <div class="text-danger">{{ form.golfers.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <button type="submit" name="add_game_entry" class="btn btn-primary">Add Game Entries</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Mark Game Winner</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="game-winner-form">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ winner_form.week.id_for_label }}" class="form-label">{{ winner_form.week.label }}</label>
+                            {{ winner_form.week }}
+                            {% if winner_form.week.errors %}
+                                <div class="text-danger">{{ winner_form.week.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="winner_select" class="form-label">{{ winner_form.winner.label }}</label>
+                            <select name="winner" id="winner_select" class="form-select" required>
+                                <option value="">Select a winner...</option>
+                            </select>
+                            {% if winner_form.winner.errors %}
+                                <div class="text-danger">{{ winner_form.winner.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <button type="submit" name="add_game_winner" class="btn btn-success">Mark Winner</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if game_entries %}
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Current Season Game Entries</h4>
+                </div>
+                <div class="card-body">
+                    {% for week, game_data in game_entries.items %}
+                    <div class="mb-4">
+                        <h5>Week {{ week.number }} - {{ week.date|date:"M d, Y" }}</h5>
+                        {% for game, data in game_data.items %}
+                        <div class="mb-3 border rounded p-3">
+                            <h6>{{ game.name }}</h6>
+                            {% if game.desc %}
+                                <p class="text-muted mb-2">{{ game.desc }}</p>
+                            {% endif %}
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Golfers in Game ({{ data.entries|length }}):</strong>
+                                    <ul class="list-unstyled">
+                                        {% for entry in data.entries %}
+                                        <li>
+                                            {{ entry.golfer.name }}
+                                            {% if entry.winner %}
+                                                <span class="badge bg-success">Winner</span>
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Winners:</strong>
+                                    <ul class="list-unstyled">
+                                        {% for entry in data.winners %}
+                                        <li>{{ entry.golfer.name }}</li>
+                                        {% empty %}
+                                        <li class="text-muted">No winners yet</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% if data.winners %}
+                                        <div class="mt-2">
+                                            <strong>Payout:</strong> ${{ data.winner_payout|floatformat:2 }} per winner
+                                            <br>
+                                            <small class="text-muted">Total pot: ${{ data.total_pot|floatformat:2 }} ({{ data.entries|length }} × $2)</small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Auto-populate golfers based on selected week for game entries
+document.addEventListener('DOMContentLoaded', function() {
+    const gameWeekSelect = document.getElementById('{{ form.week.id_for_label }}');
+    const gameGolfersContainer = document.getElementById('game-golfers-container');
+    const winnerWeekSelect = document.getElementById('{{ winner_form.week.id_for_label }}');
+    const winnerSelect = document.getElementById('winner_select');
+    
+    // Set initial values if provided
+    {% if selected_week %}
+        // Set the week dropdown value
+        gameWeekSelect.value = '{{ selected_week.id }}';
+        // Trigger the change event to load golfers immediately
+        setTimeout(() => {
+            gameWeekSelect.dispatchEvent(new Event('change'));
+        }, 100);
+    {% endif %}
+    
+    // Remove setTimeout and AJAX reload after game creation
+    // Game entries form
+    gameWeekSelect.addEventListener('change', function() {
+        const weekId = this.value;
+        if (weekId) {
+            gameGolfersContainer.innerHTML = '<p class="text-muted">Loading golfers...</p>';
+            fetch(`/api/get_playing_golfers/${weekId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.golfers && data.golfers.length > 0) {
+                        let html = '';
+                        data.golfers.forEach(golfer => {
+                            const displayName = golfer.is_sub ? `${golfer.name} (sub for ${golfer.subbing_for})` : golfer.name;
+                            html += `
+                                <div class="form-check">
+                                    <input class="form-check-input golfer-checkbox" type="checkbox" name="golfers" value="${golfer.id}" id="id_golfers_${golfer.id}">
+                                    <label class="form-check-label" for="id_golfers_${golfer.id}">
+                                        ${displayName}
+                                    </label>
+                                </div>
+                            `;
+                        });
+                        gameGolfersContainer.innerHTML = html;
+                        // Pre-check golfers already in the game for this week
+                        fetch(`/api/get_games_by_week/${weekId}/`)
+                            .then(response => response.json())
+                            .then(gameData => {
+                                if (gameData.games && gameData.games.length > 0) {
+                                    const gameId = gameData.games[0].id;
+                                    fetch(`/api/get_game_entries/${weekId}/${gameId}/`)
+                                        .then(response => response.json())
+                                        .then(entryData => {
+                                            if (entryData.entries) {
+                                                entryData.entries.forEach(entry => {
+                                                    const checkbox = document.getElementById(`id_golfers_${entry.golfer_id}`);
+                                                    if (checkbox) {
+                                                        checkbox.checked = true;
+                                                    }
+                                                });
+                                            }
+                                        });
+                                }
+                            });
+                    } else {
+                        gameGolfersContainer.innerHTML = '<p class="text-muted">No golfers playing this week</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    gameGolfersContainer.innerHTML = '<p class="text-danger">Error loading golfers</p>';
+                });
+        } else {
+            gameGolfersContainer.innerHTML = '<p class="text-muted">Select a week to see available golfers...</p>';
+        }
+    });
+    
+    // Game winner form - populate winners based on game
+    winnerWeekSelect.addEventListener('change', function() {
+        const weekId = this.value;
+        if (weekId) {
+            // First get the game for this week
+            fetch(`/api/get_games_by_week/${weekId}/`)
+                .then(response => response.json())
+                .then(gameData => {
+                    if (gameData.games && gameData.games.length > 0) {
+                        const gameId = gameData.games[0].id;
+                        // Then get entries for this game/week
+                        return fetch(`/api/get_game_entries/${weekId}/${gameId}/`);
+                    } else {
+                        winnerSelect.innerHTML = '<option value="">No game found for this week</option>';
+                        throw new Error('No game found');
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    winnerSelect.innerHTML = '<option value="">Select a winner...</option>';
+                    if (data.entries && data.entries.length > 0) {
+                        data.entries.forEach(entry => {
+                            winnerSelect.innerHTML += `<option value="${entry.golfer_id}">${entry.golfer_name}</option>`;
+                        });
+                    } else {
+                        winnerSelect.innerHTML = '<option value="">No entries found for this game</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    if (error.message !== 'No game found') {
+                        winnerSelect.innerHTML = '<option value="">Error loading entries</option>';
+                    }
+                });
+        } else {
+            winnerSelect.innerHTML = '<option value="">Select a winner...</option>';
+        }
+    });
+});
+</script>
+{% endblock %} 

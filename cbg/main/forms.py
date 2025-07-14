@@ -3,6 +3,7 @@ from django.db.models import Q
 from main.models import *
 from main.helper import *
 from django.utils import timezone
+from main.helper import get_playing_golfers_for_week, get_earliest_week_without_full_matchups
 
 class SeasonForm(forms.Form):
     year = forms.IntegerField(label='Year', min_value=2022, max_value=2100)
@@ -135,6 +136,11 @@ class SubForm(forms.Form):
         self.fields['sub_golfer'].choices = [(g.id, g.name) for g in sub_golfers]
         self.fields['week'].choices = [(w.id, f"{w} - {'Front' if w.is_front else 'Back'}") for w in weeks]
         
+        # Find the earliest week without full matchups and set it as initial
+        earliest_week = get_earliest_week_without_full_matchups()
+        if earliest_week:
+            self.initial['week'] = earliest_week.id
+    
     # custom validation to ensure that a sub is selected if the no_sub checkbox is not checked
     def clean(self):
         cleaned_data = super().clean()
@@ -153,7 +159,16 @@ class ScheduleForm(forms.Form):
     
     def __init__(self, weeks, teams, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.initial['week'] = weeks[0].id if weeks else None
+        
+        # Find the earliest week without full matchups
+        earliest_week = get_earliest_week_without_full_matchups()
+        
+        # Set initial week to the earliest week without full matchups, or first week if none found
+        if earliest_week:
+            self.initial['week'] = earliest_week.id
+        else:
+            self.initial['week'] = weeks[0].id if weeks else None
+            
         self.fields['week'].choices = [(w.id, f"{w} - {'Front' if w.is_front else 'Back'}") for w in weeks]
         self.fields['team1'].choices = [(t.id, f"{t.golfers.all()[0].name} & {t.golfers.all()[1].name}") for t in teams]
         self.fields['team2'].choices = [(t.id, f"{t.golfers.all()[0].name} & {t.golfers.all()[1].name}") for t in teams]
@@ -171,12 +186,26 @@ class ScheduleForm(forms.Form):
         return cleaned_data
 
 class WeekSelectionForm(forms.Form):
-    current_season = get_current_season()
-    if current_season:
-        week = forms.ModelChoiceField(queryset=Week.objects.filter(season = Season.objects.all().order_by('-year')[0]).order_by('number'), label="Select Week")
-    else:
-        week = forms.ModelChoiceField(queryset=Week.objects.all().order_by('number'), label="Select Week")
-    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        current_season = get_current_season()
+        if current_season:
+            self.fields['week'] = forms.ModelChoiceField(
+                queryset=Week.objects.filter(season=current_season).order_by('number'), 
+                label="Select Week"
+            )
+        else:
+            self.fields['week'] = forms.ModelChoiceField(
+                queryset=Week.objects.all().order_by('number'), 
+                label="Select Week"
+            )
+        
+        # Find the earliest week without full matchups and set it as initial
+        earliest_week = get_earliest_week_without_full_matchups()
+        if earliest_week:
+            self.initial['week'] = earliest_week
+        
 class TeamForm(forms.Form):
     season = forms.ModelChoiceField(queryset=Season.objects.all().order_by('-year'), label="Select Season")
     
@@ -202,3 +231,222 @@ class HoleForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+class SkinEntryForm(forms.Form):
+    week = forms.ModelChoiceField(
+        queryset=Week.objects.all().order_by('-date'), 
+        label='Week',
+        required=True
+    )
+    golfers = forms.ModelMultipleChoiceField(
+        queryset=Golfer.objects.all().order_by('name'),
+        label='Golfers in Skins',
+        required=True,
+        widget=forms.CheckboxSelectMultiple
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set current season's weeks as default
+        current_season = Season.objects.order_by('-year').first()
+        if current_season:
+            self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-date')
+            
+            # Find the earliest week without full matchups and set it as initial
+            earliest_week = get_earliest_week_without_full_matchups(current_season)
+            if earliest_week:
+                self.initial['week'] = earliest_week.id
+        week = None
+        # Priority: POST data > initial['week']
+        if self.data.get('week'):
+            try:
+                week = Week.objects.get(pk=self.data.get('week'))
+            except Exception:
+                week = None
+        elif self.initial.get('week'):
+            try:
+                week = Week.objects.get(pk=self.initial['week'])
+            except Exception:
+                week = None
+        if week:
+            playing_golfers = get_playing_golfers_for_week(week)
+            self.fields['golfers'].queryset = Golfer.objects.filter(id__in=[g.id for g in playing_golfers]).order_by('name')
+        else:
+            self.fields['golfer'].queryset = Golfer.objects.none()
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        week = cleaned_data.get('week')
+        golfers = cleaned_data.get('golfers')
+        
+        if week and golfers:
+            # Get golfers who are actually playing this week (including subs)
+            playing_golfers = set()
+            
+            # Get all teams for the season
+            teams = Team.objects.filter(season=week.season)
+            
+            for team in teams:
+                team_golfers = team.golfers.all()
+                for golfer in team_golfers:
+                    # Check if golfer is playing (not absent or has a sub)
+                    sub = Sub.objects.filter(week=week, absent_golfer=golfer).first()
+                    if not sub or (sub and sub.sub_golfer):
+                        # Golfer is playing (either directly or via sub)
+                        if sub and sub.sub_golfer:
+                            playing_golfers.add(sub.sub_golfer)  # Add the sub
+                        else:
+                            playing_golfers.add(golfer)  # Add the original golfer
+            
+            # Check if all selected golfers are actually playing
+            non_playing = set(golfers) - playing_golfers
+            if non_playing:
+                golfer_names = [g.name for g in non_playing]
+                raise forms.ValidationError(f"The following golfers are not playing in Week {week.number}: {', '.join(golfer_names)}")
+        
+        return cleaned_data
+
+class CreateGameForm(forms.Form):
+    name = forms.CharField(max_length=100, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    desc = forms.CharField(max_length=200, required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    week = forms.ModelChoiceField(
+        queryset=Week.objects.none(),
+        empty_label="Select a week",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Get current season weeks
+        current_season = Season.objects.order_by('-year').first()
+        if current_season:
+            self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-number')
+            
+            # Find the earliest week without full matchups and set it as initial
+            earliest_week = get_earliest_week_without_full_matchups(current_season)
+            if earliest_week:
+                self.initial['week'] = earliest_week
+
+class GameEntryForm(forms.Form):
+    week = forms.ModelChoiceField(
+        queryset=Week.objects.none(),
+        empty_label="Select a week",
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'game-week-select'})
+    )
+    golfers = forms.ModelMultipleChoiceField(
+        queryset=Golfer.objects.none(),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'golfer-checkbox'}),
+        required=False
+    )
+    
+    def __init__(self, *args, **kwargs):
+        initial_week = kwargs.pop('initial_week', None)
+        super().__init__(*args, **kwargs)
+        current_season = Season.objects.order_by('-year').first()
+        if current_season:
+            self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-number')
+        week = None
+        # Priority: POST data > initial_week > initial['week']
+        if self.data.get('week'):
+            try:
+                week = Week.objects.get(pk=self.data.get('week'))
+            except Exception:
+                week = None
+        elif initial_week:
+            week = initial_week
+        elif self.initial.get('week'):
+            try:
+                week = Week.objects.get(pk=self.initial['week'])
+            except Exception:
+                week = None
+        else:
+            # Find the earliest week without full matchups and set it as initial
+            earliest_week = get_earliest_week_without_full_matchups(current_season)
+            if earliest_week:
+                self.initial['week'] = earliest_week.id
+                week = earliest_week
+        if week:
+            playing_golfers = get_playing_golfers_for_week(week)
+            self.fields['golfers'].queryset = Golfer.objects.filter(id__in=[g.id for g in playing_golfers]).order_by('name')
+        else:
+            self.fields['golfers'].queryset = Golfer.objects.none()
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        week = cleaned_data.get('week')
+        golfers = cleaned_data.get('golfers')
+        
+        if week and golfers:
+            # Check if there's a game for this week
+            game = Game.objects.filter(week=week).first()
+            if not game:
+                raise forms.ValidationError(f"No game has been created for Week {week.number}. Please create a game first.")
+            
+            # Get golfers who are actually playing this week (including subs)
+            playing_golfers = set()
+            
+            # Get all teams for the season
+            teams = Team.objects.filter(season=week.season)
+            
+            for team in teams:
+                team_golfers = team.golfers.all()
+                for golfer in team_golfers:
+                    # Check if golfer is playing (not absent or has a sub)
+                    sub = Sub.objects.filter(week=week, absent_golfer=golfer).first()
+                    if not sub or (sub and sub.sub_golfer):
+                        # Golfer is playing (either directly or via sub)
+                        if sub and sub.sub_golfer:
+                            playing_golfers.add(sub.sub_golfer)  # Add the sub
+                        else:
+                            playing_golfers.add(golfer)  # Add the original golfer
+            
+            # Check if all selected golfers are actually playing
+            non_playing = set(golfers) - playing_golfers
+            if non_playing:
+                golfer_names = [g.name for g in non_playing]
+                raise forms.ValidationError(f"The following golfers are not playing in Week {week.number}: {', '.join(golfer_names)}")
+        
+        return cleaned_data
+
+class GameWinnerForm(forms.Form):
+    week = forms.ModelChoiceField(
+        queryset=Week.objects.none(),
+        empty_label="Select a week",
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'winner-week-select'})
+    )
+    winner = forms.ModelChoiceField(
+        queryset=Golfer.objects.none(),
+        empty_label="Select a winner",
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'winner-select'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        initial_week = kwargs.pop('initial_week', None)
+        super().__init__(*args, **kwargs)
+        current_season = Season.objects.order_by('-year').first()
+        if current_season:
+            self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-number')
+        week = None
+        if self.data.get('week'):
+            try:
+                week = Week.objects.get(pk=self.data.get('week'))
+            except Exception:
+                week = None
+        elif initial_week:
+            week = initial_week
+        else:
+            # Find the earliest week without full matchups and set it as initial
+            earliest_week = get_earliest_week_without_full_matchups(current_season)
+            if earliest_week:
+                self.initial['week'] = earliest_week
+                week = earliest_week
+        if week:
+            # Only golfers who have entries for this week/game
+            game = Game.objects.filter(week=week).first()
+            if game:
+                entry_golfers = GameEntry.objects.filter(week=week, game=game).values_list('golfer', flat=True)
+                self.fields['winner'].queryset = Golfer.objects.filter(id__in=entry_golfers).order_by('name')
+            else:
+                self.fields['winner'].queryset = Golfer.objects.none()
+        else:
+            self.fields['winner'].queryset = Golfer.objects.none()

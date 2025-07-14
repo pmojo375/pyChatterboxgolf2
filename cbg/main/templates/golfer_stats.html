@@ -1,16 +1,670 @@
 {% extends 'base.html' %}
 
 {% block page_content %}
-<div class="container">
-    <div class="row text-center p-4">
-        <h1>{{ golfer_name }}'s Season Stats</h1>
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row text-center p-5 bg-gradient-primary text-white mb-5">
+        <div class="col">
+            <h1 class="display-4 fw-bold mb-3">{{ golfer.name }}'s {{ season.year }} Season Stats</h1>
+            <p class="lead opacity-75">Comprehensive performance analysis and trends</p>
+        </div>
     </div>
 
-    <div class="row">
-        <p>Best gross score: {{ best_gross_score }} in week {{best_gross_week}}</p>
-        <p>Worst gross score: {{ worst_gross_score }} in week {{worst_gross_week}}</p>
+    <!-- Season Summary Cards -->
+    <div class="row mb-5">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Average Gross</h6>
+                    <h2 class="text-primary fw-bold mb-0">{{ avg_gross }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Average Net</h6>
+                    <h2 class="text-success fw-bold mb-0">{{ avg_net }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Average Points</h6>
+                    <h2 class="text-warning fw-bold mb-0">{{ avg_points }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Total Points</h6>
+                    <h2 class="text-info fw-bold mb-0">{{ total_points }}</h2>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Opponent vs Handicap Season Summary -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Opponent Performance vs Handicap</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <h4 class="text-primary fw-bold">{{ avg_opp_vs_hcp|floatformat:1 }}</h4>
+                                <p class="text-muted mb-0">Average Opponent vs Handicap</p>
+                                <small class="text-muted">(negative = opponent played better)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <h4 class="text-danger fw-bold">{{ num_better }}</h4>
+                                <p class="text-muted mb-0">Weeks Opponent Played Better</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <h4 class="text-success fw-bold">{{ num_worse }}</h4>
+                                <p class="text-muted mb-0">Weeks Opponent Played Worse</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <h4 class="text-secondary fw-bold">{{ num_even }}</h4>
+                                <p class="text-muted mb-0">Weeks Opponent Matched Handicap</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Handicap and Match Play Stats -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Handicap Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-6 text-center">
+                            <h6 class="text-muted text-uppercase fw-bold mb-2">Starting Handicap</h6>
+                            <h3 class="text-info fw-bold">{{ starting_handicap }}</h3>
+                        </div>
+                        <div class="col-6 text-center">
+                            <h6 class="text-muted text-uppercase fw-bold mb-2">Current Handicap</h6>
+                            <h3 class="text-info fw-bold">{{ current_handicap }}</h3>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <h6 class="text-muted text-uppercase fw-bold mb-2">Season Trend</h6>
+                        <h4 class="{% if handicap_trend != 'N/A' and handicap_trend != 'No change' %}{% if handicap_trend_positive %}text-danger{% else %}text-success{% endif %}{% else %}text-secondary{% endif %} fw-bold">
+                            {{ handicap_trend }}
+                        </h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Match Play Record</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <h3 class="text-success fw-bold">{{ wins }}</h3>
+                            <p class="text-muted mb-0">Wins</p>
+                        </div>
+                        <div class="col-4">
+                            <h3 class="text-danger fw-bold">{{ losses }}</h3>
+                            <p class="text-muted mb-0">Losses</p>
+                        </div>
+                        <div class="col-4">
+                            <h3 class="text-secondary fw-bold">{{ ties }}</h3>
+                            <p class="text-muted mb-0">Ties</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <h6 class="text-muted text-uppercase fw-bold mb-2">Win Percentage</h6>
+                        <h3 class="text-primary fw-bold">{{ win_percentage }}%</h3>
+                        <p class="text-muted mb-0">({{ total_matches }} total matches)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Charts Row 1 -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            {% if charts.handicap %}
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Handicap Progression</h5>
+                </div>
+                <div class="card-body">
+                    <div id="handicap-chart"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="col-lg-6 mb-4">
+            {% if charts.points %}
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Points Performance</h5>
+                </div>
+                <div class="card-body">
+                    <div id="points-chart"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            {% if charts.scores %}
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Score Trends</h5>
+                </div>
+                <div class="card-body">
+                    <div id="scores-chart"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="col-lg-6 mb-4">
+            {% if charts.performance %}
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Performance Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <div id="performance-chart"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Hole-by-Hole Chart -->
+    {% if charts.hole_by_hole %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Hole-by-Hole Performance</h5>
+                </div>
+                <div class="card-body">
+                    <div id="hole-by-hole-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Scoring Breakdown and Consistency -->
+    <div class="row mb-5">
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Scoring Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <div class="scoring-item mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="scoring-color eagle me-2"></div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">Eagles</h6>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.eagle }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="scoring-item mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="scoring-color birdie me-2"></div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">Birdies</h6>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.birdie }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="scoring-item mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="scoring-color par me-2"></div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">Pars</h6>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.par }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="scoring-item mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="scoring-color bogey me-2"></div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">Bogeys</h6>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.bogey }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="scoring-item mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="scoring-color double me-2"></div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">Double Bogeys</h6>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.double }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="scoring-item mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="scoring-color worse me-2"></div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">Worse</h6>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.worse }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Best & Worst Holes</h5>
+                </div>
+                <div class="card-body">
+                    {% if best_hole %}
+                    <div class="mb-3">
+                        <h6 class="text-success fw-bold mb-1">Best Hole</h6>
+                        <p class="mb-0">#{{ best_hole.0 }} ({{ best_hole.1.avg_vs_par }}+ vs par)</p>
+                    </div>
+                    {% endif %}
+                    {% if worst_hole %}
+                    <div class="mb-3">
+                        <h6 class="text-danger fw-bold mb-1">Worst Hole</h6>
+                        <p class="mb-0">#{{ worst_hole.0 }} ({{ worst_hole.1.avg_vs_par }}+ vs par)</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Consistency Stats</h5>
+                </div>
+                <div class="card-body">
+                    {% if consistency_stats.std_dev %}
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-1">Standard Deviation</h6>
+                        <p class="mb-0 text-info fw-bold">{{ consistency_stats.std_dev }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-1">Score Range</h6>
+                        <p class="mb-0">{{ consistency_stats.score_range }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-1">Consistency</h6>
+                        <p class="mb-0 text-success fw-bold">{{ consistency_stats.consistency_percentage }}%</p>
+                        <small class="text-muted">({{ consistency_stats.holes_within_half_stroke }} holes within 0.5 strokes of average)</small>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">Not enough data</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best/Worst Weeks -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Best Performances</h5>
+                </div>
+                <div class="card-body">
+                    {% if best_gross_week %}
+                    <div class="mb-3">
+                        <h6 class="text-primary fw-bold mb-1">Best Gross</h6>
+                        <p class="mb-0">{{ best_gross_week.gross }} (Week {{ best_gross_week.week }})</p>
+                    </div>
+                    {% endif %}
+                    {% if best_net_week %}
+                    <div class="mb-3">
+                        <h6 class="text-success fw-bold mb-1">Best Net</h6>
+                        <p class="mb-0">{{ best_net_week.net }} (Week {{ best_net_week.week }})</p>
+                    </div>
+                    {% endif %}
+                    {% if best_points_week %}
+                    <div class="mb-3">
+                        <h6 class="text-warning fw-bold mb-1">Most Points</h6>
+                        <p class="mb-0">{{ best_points_week.points }} (Week {{ best_points_week.week }})</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Challenging Weeks</h5>
+                </div>
+                <div class="card-body">
+                    {% if worst_gross_week %}
+                    <div class="mb-3">
+                        <h6 class="text-danger fw-bold mb-1">Worst Gross</h6>
+                        <p class="mb-0">{{ worst_gross_week.gross }} (Week {{ worst_gross_week.week }})</p>
+                    </div>
+                    {% endif %}
+                    {% if worst_net_week %}
+                    <div class="mb-3">
+                        <h6 class="text-danger fw-bold mb-1">Worst Net</h6>
+                        <p class="mb-0">{{ worst_net_week.net }} (Week {{ worst_net_week.week }})</p>
+                    </div>
+                    {% endif %}
+                    {% if worst_points_week %}
+                    <div class="mb-3">
+                        <h6 class="text-danger fw-bold mb-1">Fewest Points</h6>
+                        <p class="mb-0">{{ worst_points_week.points }} (Week {{ worst_points_week.week }})</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Performance Table -->
+    {% if weekly_stats %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Weekly Performance Summary</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Week</th>
+                                    <th scope="col">Opponent</th>
+                                    <th scope="col" class="text-center">Gross</th>
+                                    <th scope="col" class="text-center">Net</th>
+                                    <th scope="col" class="text-center">Points</th>
+                                    <th scope="col" class="text-center">Handicap</th>
+                                    <th scope="col" class="text-center">Result</th>
+                                    <th scope="col" class="text-center">Opponent vs Handicap</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in weekly_stats %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">{{ stat.week }}</td>
+                                    <td class="fw-semibold">{{ stat.opponent }}</td>
+                                    <td class="text-center fw-bold text-primary">{{ stat.gross }}</td>
+                                    <td class="text-center fw-bold text-success">{{ stat.net }}</td>
+                                    <td class="text-center fw-bold text-warning">{{ stat.points }}</td>
+                                    <td class="text-center text-muted">{{ stat.handicap }}</td>
+                                    <td class="text-center">
+                                        {% for perf in performance_vs_opponent %}
+                                            {% if perf.week == stat.week %}
+                                                <span class="badge {% if perf.result == 'Win' %}bg-success{% elif perf.result == 'Loss' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                    {{ perf.result }}
+                                                </span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% for opp in opp_vs_hcp_list %}
+                                            {% if opp.week == stat.week %}
+                                                {% if opp.opp_vs_hcp is not None %}
+                                                    <span class="{% if opp.opp_vs_hcp < 0 %}text-success{% elif opp.opp_vs_hcp > 0 %}text-danger{% else %}text-secondary{% endif %} fw-bold">
+                                                        {{ opp.opp_vs_hcp|floatformat:1 }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Performance vs Opponents -->
+    {% if performance_vs_opponent %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Head-to-Head Results</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Week</th>
+                                    <th scope="col">Opponent</th>
+                                    <th scope="col" class="text-center">Net Score Difference</th>
+                                    <th scope="col" class="text-center">Result</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for perf in performance_vs_opponent %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">{{ perf.week }}</td>
+                                    <td class="fw-semibold">{{ perf.opponent }}</td>
+                                    <td class="text-center">
+                                        <span class="{% if perf.net_diff < 0 %}text-success{% elif perf.net_diff > 0 %}text-danger{% else %}text-secondary{% endif %} fw-bold">
+                                            {{ perf.net_diff }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {% if perf.result == 'Win' %}bg-success{% elif perf.result == 'Loss' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                            {{ perf.result }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Subs Information -->
+    {% if subs_as_sub or subs_for_absent %}
+    <div class="row mb-5">
+        {% if subs_as_sub %}
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Weeks as a Sub</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Week</th>
+                                    <th scope="col">Subbed For</th>
+                                    <th scope="col">Team</th>
+                                    <th scope="col" class="text-center">Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in subs_as_sub %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">{{ sub.week.number }}</td>
+                                    <td class="fw-semibold">{{ sub.absent_golfer.name }}</td>
+                                    <td>
+                                        {% for team in sub.team %}
+                                            <span class="badge bg-primary">{{ team }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td class="text-center fw-bold text-warning">
+                                        {% if sub.points is not None %}{{ sub.points|floatformat:1 }}{% else %}-{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if subs_for_absent %}
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Weeks with Subs</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Week</th>
+                                    <th scope="col">Sub Golfer</th>
+                                    <th scope="col" class="text-center">No Sub</th>
+                                    <th scope="col" class="text-center">Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in subs_for_absent %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">{{ sub.week.number }}</td>
+                                    <td class="fw-semibold">
+                                        {% if sub.no_sub %}
+                                            <span class="text-danger">No Sub</span>
+                                        {% elif sub.sub_golfer %}
+                                            {{ sub.sub_golfer.name }}
+                                        {% else %}
+                                            <span class="text-warning">Unknown</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if sub.no_sub %}
+                                            <span class="badge bg-danger">Yes</span>
+                                        {% else %}
+                                            <span class="badge bg-success">No</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold text-info">
+                                        {% if sub.points is not None %}{{ sub.points|floatformat:1 }}{% else %}-{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Plotly Charts Script -->
+<script>
+    {% if charts.handicap %}
+    Plotly.newPlot('handicap-chart', {{ charts.handicap|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
+    {% if charts.points %}
+    Plotly.newPlot('points-chart', {{ charts.points|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
+    {% if charts.scores %}
+    Plotly.newPlot('scores-chart', {{ charts.scores|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
+    {% if charts.performance %}
+    Plotly.newPlot('performance-chart', {{ charts.performance|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
+    {% if charts.hole_by_hole %}
+    Plotly.newPlot('hole-by-hole-chart', {{ charts.hole_by_hole|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
+    // Make charts responsive to window resize
+    window.addEventListener('resize', function() {
+        {% if charts.handicap %}
+        Plotly.relayout('handicap-chart', {
+            'width': document.getElementById('handicap-chart').offsetWidth
+        });
+        {% endif %}
+        
+        {% if charts.points %}
+        Plotly.relayout('points-chart', {
+            'width': document.getElementById('points-chart').offsetWidth
+        });
+        {% endif %}
+        
+        {% if charts.scores %}
+        Plotly.relayout('scores-chart', {
+            'width': document.getElementById('scores-chart').offsetWidth
+        });
+        {% endif %}
+        
+        {% if charts.performance %}
+        Plotly.relayout('performance-chart', {
+            'width': document.getElementById('performance-chart').offsetWidth
+        });
+        {% endif %}
+        
+        {% if charts.hole_by_hole %}
+        Plotly.relayout('hole-by-hole-chart', {
+            'width': document.getElementById('hole-by-hole-chart').offsetWidth
+        });
+        {% endif %}
+    });
+</script>
+
+<!-- Modern styling is handled by main.css -->
 {% endblock %}

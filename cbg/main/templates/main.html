@@ -3,202 +3,375 @@
 
 {% block page_content %}
 
-<a class="weatherwidget-io" href="https://forecast7.com/en/42d12n86d45/benton-harbor/?unit=us" data-label_1="Lake Michigan Hills" data-label_2="Chatterbox Golf League" data-theme="original">Lake Michigan Hills Chatterbox Golf League</a>
-<script>
-  ! function(d, s, id) {
-    var js, fjs = d.getElementsByTagName(s)[0];
-    if (!d.getElementById(id)) {
-      js = d.createElement(s);
-      js.id = id;
-      js.src = 'https://weatherwidget.io/js/widget.min.js';
-      fjs.parentNode.insertBefore(js, fjs);
-    }
-  }(document, 'script', 'weatherwidget-io-js');
-</script>
+<!-- Title Section -->
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="py-4 mb-3 text-center border-bottom" style="background: #f8f9fa; border-radius: 12px;">
+        <h1 class="fw-bold mb-1" style="font-size: 2.7rem; letter-spacing: 1px; color: #18453B;">
+          Chatterbox Golf League
+        </h1>
+        <div class="mb-2" style="font-size: 1.1rem; color: #6c757d;">
+          Lake Michigan Hills &mdash; Official League Site
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next Game Section -->
+  {% if initialized and next_game %}
+  <div class="row justify-content-center mb-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body text-center">
+          <div class="mb-1" style="font-size: 1.2rem; color: #888;">Next Week</div>
+          <h2 class="fw-bold mb-1" style="color: #228B22;">
+            Week {{ next_week.number }}: {{ next_game.name }}
+          </h2>
+          {% if next_game.desc %}
+          <div class="mb-2 text-muted" style="font-size: 1.05rem;">
+            {{ next_game.desc }}
+          </div>
+          {% endif %}
+          {% if next_week.date %}
+          <div class="small text-secondary">
+            {{ next_week.date|date:"l, F jS" }}
+          </div>
+          {% endif %}
+          <div id="weather-content" class="mt-3">
+            <div class="text-center text-muted">Loading forecast...</div>
+          </div>
+          <script>
+            const latitude = 42.12;
+            const longitude = -86.45;
+            const nextTuesday = "{{ next_tuesday_date }}";
+            const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&temperature_unit=fahrenheit&timezone=America/Detroit`;
+
+            fetch(apiUrl)
+              .then(response => response.json())
+              .then(data => {
+                const days = data.daily;
+                const idx = days.time.findIndex(date => date === nextTuesday);
+                if (idx === -1) {
+                  document.getElementById('weather-content').innerHTML = '<div class="text-warning small mb-2">No forecast available for the next league day.</div>';
+                  return;
+                }
+                const weatherCodes = {
+                  0: 'Clear', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+                  45: 'Fog', 48: 'Depositing rime fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+                  56: 'Freezing drizzle', 57: 'Dense freezing drizzle', 61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
+                  66: 'Freezing rain', 67: 'Heavy freezing rain', 71: 'Slight snow', 73: 'Snow', 75: 'Heavy snow',
+                  77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers', 82: 'Violent rain showers',
+                  85: 'Slight snow showers', 86: 'Heavy snow showers', 95: 'Thunderstorm', 96: 'Thunderstorm w/ hail', 99: 'Thunderstorm w/ heavy hail'
+                };
+                const code = days.weathercode[idx];
+                const weatherDesc = weatherCodes[code] || 'Unknown';
+                const html = `
+                  <div class="text-center">
+                    <div class="mb-2" style="font-size:1.5rem;">
+                      ${days.temperature_2m_max[idx]}&deg; / ${days.temperature_2m_min[idx]}&deg;F
+                    </div>
+                    <div class="mb-2 text-info">${weatherDesc}</div>
+                    <div class="small text-muted">Precipitation: ${days.precipitation_sum[idx]} in</div>
+                  </div>
+                `;
+                document.getElementById('weather-content').innerHTML = html;
+              })
+              .catch(error => {
+                document.getElementById('weather-content').innerHTML = '<div class="text-danger">Could not load weather data.</div>';
+              });
+          </script>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
 <div class="container">
-  <div class="row text-center p-4">
-    <h1>The Official Chatterbox Golf League Site</h1>
-  </div>
-  <div class="row text-center">
-    {% if unestablished|length > 0 %}
-    <p>Scores are subject to change when all league members post three rounds of scores. Current scores use one or two rounds of scores to compute handicaps for those who have yet to post three or more rounds.</p>
-
-    <br>
-
-    <p>These are the golfers whos handicaps will change after they play 3 weeks</p>
-
-    <ul>
-      {% for golfer in unestablished %}
-      <li>{{ golfer.name }}</li>
-      {% endfor %}
-    </ul>
-
-    {% endif %}
-
-    <br>
-  </div>
   {% if initialized %}
-    {% if next_game %}
-    <div class="row mb-2 text-center">
-      <h2 class="text-center mb-2">Week {{ next_week.number }}'s Game: {{ next_game.name }}</h2>
-    </div>
-    {% endif %}
-
     {% if is_second_half or last_week %}
+    <div class="row mb-4">
+      <div class="col-12">
+        <h3 class="text-center mb-4 text-primary">League Standings</h3>
+      </div>
+    </div>
+    
     <div class="row">
-      {% if is_second_half %}
-        <div class="col">
-          <p class="text-center">Full Season Standings</p>
-          <table id='standings'>
-            <thead>
-              <tr>
-                <th rowspan="2">Team</th>
-                <th colspan="2">2nd Half</th>
-              </tr>
-              <tr>
-                <th>Points</th>
-                <th>Hcp</th>
-              </tr>
-            </thead>
-            <tbody>
-
-              {% for team in fullStandings %}
-                <tr>
-                  <td class="name">{{ team.golfer1 }}</td>
-                  <td class="score" rowspan="2">{{ team.total }}</td>
-                  <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
-                </tr>
-
-                <tr>
-                  <td class="name">{{ team.golfer2 }}</td>
-                  <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% endif %}
       {% if last_week %}
-      <div class="col">
-        <p class="text-center">First Half Standings</p>
-        <table id='standings'>
-          <thead>
-            <tr>
-              <th rowspan="2">Team</th>
-              <th colspan="2">1st Half</th>
-            </tr>
-            <tr>
-              <th>Points</th>
-              <th>Hcp</th>
-            </tr>
-          </thead>
-          <tbody>
-
-            {% for team in firstHalfStandings %}
-              <tr>
-                <td class="name">{{ team.golfer1 }}</td>
-                <td class="score" rowspan="2">{{ team.first }}</td>
-                <td class="hcp">{{ team.golfer1FirstHcp|floatformat:2 }}</td>
-              </tr>
-
-              <tr>
-                <td class="name">{{ team.golfer2 }}</td>
-                <td class="hcp">{{ team.golfer2FirstHcp|floatformat:2 }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="col-lg-6 col-md-12 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-primary text-white text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-trophy me-2"></i>First Half Standings
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0 modern-standings">
+                <thead class="table-dark">
+                  <tr>
+                    <th scope="col" class="text-center">Rank</th>
+                    <th scope="col">Team</th>
+                    <th scope="col" class="text-center">Points</th>
+                    <th scope="col" class="text-center">Avg Hcp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for team in firstHalfStandings %}
+                  <tr class="{% cycle 'table-light' 'table-white' %}">
+                    <td class="text-center fw-bold text-primary">{{ forloop.counter }}</td>
+                    <td>
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold">{{ team.golfer1 }}</span>
+                        <span class="fw-semibold">{{ team.golfer2 }}</span>
+                      </div>
+                    </td>
+                    <td class="text-center fw-bold fs-5 text-success">{{ team.first }}</td>
+                    <td class="text-center">
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold">{{ team.golfer1FirstHcp|floatformat:1 }}</span>
+                        <span class="fw-semibold">{{ team.golfer2FirstHcp|floatformat:1 }}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
       {% endif %}
 
-      {% if is_second_half %} 
-        <div class="col">
-          <p class="text-center"> Second Half Standings</p>
-          <table id='standings'>
-            <thead>
-              <tr>
-                <th rowspan="2">Team</th>
-                <th colspan="2">2nd Half</th>
-              </tr>
-              <tr>
-                <th>Points</th>
-                <th>Hcp</th>
-              </tr>
-            </thead>
-            <tbody>
-
-              {% for team in secondHalfStandings %}
-                <tr>
-                  <td class="name">{{ team.golfer1 }}</td>
-                  <td class="score" rowspan="2">{{ team.second }}</td>
-                  <td class="hcp">{{ team.golfer1SecondHcp|floatformat:2 }}</td>
-                </tr>
-
-                <tr>
-                  <td class="name">{{ team.golfer2 }}</td>
-                  <td class="hcp">{{ team.golfer2SecondHcp|floatformat:2 }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+      {% if is_second_half %}
+      <div class="col-lg-6 col-md-12 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-success text-white text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-medal me-2"></i>Second Half Standings
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0 modern-standings">
+                <thead class="table-dark">
+                  <tr>
+                    <th scope="col" class="text-center">Rank</th>
+                    <th scope="col">Team</th>
+                    <th scope="col" class="text-center">Points</th>
+                    <th scope="col" class="text-center">Avg Hcp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for team in secondHalfStandings %}
+                  <tr class="{% cycle 'table-light' 'table-white' %}">
+                    <td class="text-center fw-bold text-success">{{ forloop.counter }}</td>
+                    <td>
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold">{{ team.golfer1 }}</span>
+                        <span class="fw-semibold">{{ team.golfer2 }}</span>
+                      </div>
+                    </td>
+                    <td class="text-center fw-bold fs-5 text-success">{{ team.second }}</td>
+                    <td class="text-center">
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold">{{ team.golfer1SecondHcp|floatformat:1 }}</span>
+                        <span class="fw-semibold">{{ team.golfer2SecondHcp|floatformat:1 }}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
+      </div>
+      {% endif %}
+
+      {% if is_second_half %}
+      <div class="col-12 mb-4">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-warning text-dark text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-crown me-2"></i>Full Season Standings
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0 modern-standings">
+                <thead class="table-dark">
+                  <tr>
+                    <th scope="col" class="text-center">Rank</th>
+                    <th scope="col">Team</th>
+                    <th scope="col" class="text-center">Total Points</th>
+                    <th scope="col" class="text-center">1st Half</th>
+                    <th scope="col" class="text-center">2nd Half</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for team in fullStandings %}
+                  <tr class="{% cycle 'table-light' 'table-white' %}">
+                    <td class="text-center fw-bold text-warning">{{ forloop.counter }}</td>
+                    <td>
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold">{{ team.golfer1 }}</span>
+                        <span class="fw-semibold">{{ team.golfer2 }}</span>
+                      </div>
+                    </td>
+                    <td class="text-center fw-bold fs-5 text-warning">{{ team.total }}</td>
+                    <td class="text-center text-primary">{{ team.first }}</td>
+                    <td class="text-center text-success">{{ team.second }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
       {% endif %}
     </div>
     {% endif %}
 
     {% if last_week %}
-    <div class="row">
-      <h4>Week {{ last_week.number }} Skins Winner{{ lastSkinWinner|pluralize }}:</h4>
-      <ul>
-      {% for skinWinner in lastSkinWinner %}
-        <li>{{ skinWinner.golfer }} - ${{ skinWinner.winnings|floatformat:2 }}</li>
-      {% endfor %}
-      </ul>
+    <div class="row mb-4">
+      <div class="col-12">
+        <h3 class="text-center mb-4 text-success">Week {{ last_week.number }} Results</h3>
+      </div>
     </div>
+    
+    <div class="row">
+      <div class="col-lg-6 col-md-12 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-success text-white text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-dollar-sign me-2"></i>Skins Winners
+            </h5>
+          </div>
+          <div class="card-body">
+            {% if grouped_skin_winners %}
+              <div class="list-group list-group-flush">
+                {% for golfer_name, golfer_data in grouped_skin_winners.items %}
+                <div class="list-group-item border-0 px-0">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                      <h6 class="mb-1 fw-bold text-success">{{ golfer_name }}</h6>
+                      <p class="mb-1 text-muted small">
+                        {% for skin in golfer_data.skins %}
+                          Hole {{ skin.hole }} ({{ skin.score }}){% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                      </p>
+                    </div>
+                    <span class="badge bg-success fs-6">${{ golfer_data.total_payout|floatformat:2 }}</span>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-center text-muted py-4">
+                <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <p class="mb-0">No skin winners this week</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
 
-    {% if game_winners and last_week %}
-    <div class="row">
-      <h4>Week {{ last_week.number }} Game Winner:</h4>
-      <ul>
-        {% for game_winner in game_winners %}
-          <li>{{ game_winner }} - ${{ game_winner_payout|floatformat:2 }}</li>
-        {% endfor %}
-      </ul>
+      {% if game_winners %}
+      <div class="col-lg-6 col-md-12 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-primary text-white text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-trophy me-2"></i>Game Winners
+            </h5>
+          </div>
+          <div class="card-body">
+            <div class="list-group list-group-flush">
+              {% for game_winner in game_winners %}
+              <div class="list-group-item border-0 px-0">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-1 fw-bold text-primary">{{ game_winner.golfer.name }}</h6>
+                    <p class="mb-0 text-muted small">{{ game_winner.game.name }}</p>
+                  </div>
+                  <span class="badge bg-primary fs-6">${{ game_winner_payout|floatformat:2 }}</span>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
     {% endif %}
 
     {% if next_week_schedule %}
+    <div class="row mb-4">
+      <div class="col-12">
+        <h3 class="text-center mb-4 text-info">Next Week Schedule</h3>
+      </div>
+    </div>
+    
     <div class="row">
-        <p class="text-center">Schedule</p>
-        <table id="schedule">
-          <thead>
-            <tr>
-              <th>Match</th>
-              <th>Golfers</th>
-              <th>Opponent</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for matchup in next_week_schedule %}
-              <tr>
-                <td class="team" rowspan="2">{{ forloop.counter }}</td>
-                <td class="name">{{ matchup.high_match.0 }}</td>
-                <td class="name">{{ matchup.high_match.1 }}</td>
-              </tr>
-              <tr>
-                <td class="name">{{ matchup.low_match.0 }}</td>
-                <td class="name">{{ matchup.low_match.1 }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-info text-white text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-calendar-alt me-2"></i>Week {{ next_week.number }} Matchups
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0 modern-schedule">
+                <thead class="table-dark">
+                  <tr>
+                    <th scope="col" class="text-center">Match #</th>
+                    <th scope="col" class="text-center">Team A</th>
+                    <th scope="col" class="text-center">vs</th>
+                    <th scope="col" class="text-center">Team B</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for matchup in next_week_schedule %}
+                  <tr class="{% cycle 'table-light' 'table-white' %}">
+                    <td class="text-center fw-bold text-info">{{ forloop.counter }}</td>
+                    <td class="text-center">
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold">{{ matchup.high_match.0 }}</span>
+                        <span class="fw-semibold">{{ matchup.low_match.0 }}</span>
+                      </div>
+                    </td>
+                    <td class="text-center">
+                      <span class="badge bg-secondary">vs</span>
+                    </td>
+                    <td class="text-center">
+                      <div class="d-flex flex-column">
+                        <span class="fw-semibold">{{ matchup.high_match.1 }}</span>
+                        <span class="fw-semibold">{{ matchup.low_match.1 }}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     {% else %}
-      <div>
-        <p class="text-center">The schedule is not entered yet.</p>
+    <div class="row">
+      <div class="col-12">
+        <div class="card shadow-sm border-0">
+          <div class="card-body text-center py-5">
+            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">Schedule Not Available</h5>
+            <p class="text-muted mb-0">The schedule for next week has not been entered yet.</p>
+          </div>
+        </div>
       </div>
+    </div>
     {% endif %}
     
   {% else %}

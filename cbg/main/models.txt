@@ -1,0 +1,215 @@
+from django.db import models
+
+
+class Golfer(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=40)
+    team = models.IntegerField()
+    year = models.IntegerField()
+    established = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+
+    class Meta:
+       indexes = [
+           models.Index(fields=['year', 'id']),
+           models.Index(fields=['team', 'year']),
+    ]
+
+
+class Date(models.Model):
+    id = models.AutoField(primary_key=True)
+    date = models.DateTimeField()
+    rain = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+
+class Game(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=80)
+    desc = models.TextField(max_length=480)
+    week = models.IntegerField()
+    year = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+
+class Skin(models.Model):
+    id = models.AutoField(primary_key=True)
+    week = models.IntegerField()
+    year = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+class GameEntry(models.Model):
+    id = models.AutoField(primary_key=True)
+    golfer = models.IntegerField()
+    week = models.IntegerField()
+    year = models.IntegerField()
+    won = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    def name(self):
+        return Golfer.objects.get(id=self.golfer).name
+
+
+class SkinEntry(models.Model):
+    id = models.AutoField(primary_key=True)
+    golfer = models.IntegerField()
+    week = models.IntegerField()
+    year = models.IntegerField()
+    won = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    def name(self):
+        return Golfer.objects.get(id=self.golfer).name
+
+class Round(models.Model):
+    id = models.AutoField(primary_key=True)
+    golfer = models.IntegerField()
+    opp = models.IntegerField()
+    front = models.BooleanField()
+    opp_net = models.IntegerField()
+    opp_gross = models.IntegerField()
+    opp_points = models.FloatField()
+    opp_hcp = models.FloatField()
+    hcp = models.FloatField()
+    week = models.IntegerField()
+    year = models.IntegerField()
+    points = models.FloatField()
+    gross = models.IntegerField()
+    pars = models.IntegerField()
+    birdies = models.IntegerField()
+    bogeys = models.IntegerField()
+    doubles = models.IntegerField()
+    triples = models.IntegerField()
+    fours = models.IntegerField()
+    worse = models.IntegerField()
+    net = models.IntegerField()
+    std_dev = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def name(self):
+        return Golfer.objects.get(id=self.golfer).name
+
+class Hole(models.Model):
+    id = models.AutoField(primary_key=True)
+    hole = models.IntegerField()
+    par = models.IntegerField()
+    handicap = models.IntegerField()
+    handicap9 = models.IntegerField()
+    yards = models.IntegerField()
+    year = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    class Meta:
+       indexes = [
+           models.Index(fields=['year', 'hole']),
+    ]
+
+
+class Score(models.Model):
+    id = models.AutoField(primary_key=True)
+    golfer = models.IntegerField()
+    hole = models.IntegerField()
+    score = models.IntegerField()
+    tookMax = models.BooleanField()
+    week = models.IntegerField()
+    year = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    class Meta:
+       indexes = [
+           models.Index(fields=['golfer', 'week', 'year']),
+           models.Index(fields=['golfer', 'week']),
+           models.Index(fields=['week', 'year']),
+    ]
+
+    def name(self):
+        return Golfer.objects.get(id=self.golfer).name
+
+
+class HandicapReal(models.Model):
+    id = models.AutoField(primary_key=True)
+    golfer = models.IntegerField()
+    handicap = models.FloatField()
+    week = models.IntegerField()
+    year = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    class Meta:
+       indexes = [
+           models.Index(fields=['year', 'week', 'golfer']),
+    ]
+
+    def name(self):
+        return Golfer.objects.get(id=self.golfer).name
+
+
+class Matchup(models.Model):
+    id = models.AutoField(primary_key=True)
+    team1 = models.IntegerField()
+    team2 = models.IntegerField()
+    week = models.IntegerField()
+    front = models.BooleanField()
+    year = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    
+    class Meta:
+       indexes = [
+           models.Index(fields=['year', 'week']),
+    ]
+
+class Subrecord(models.Model):
+    id = models.AutoField(primary_key=True)
+    week = models.IntegerField()
+    absent_id = models.IntegerField()
+    sub_id = models.IntegerField()
+    year = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    def absent_name(self):
+        return Golfer.objects.get(id=self.absent_id).name
+
+    def sub_name(self):
+        return Golfer.objects.get(id=self.sub_id).name
+
+
+class Tiebreaker(models.Model):
+    golfer = models.IntegerField(primary_key=True)
+    week_1 = models.IntegerField()
+    week_2 = models.IntegerField()
+    week_3 = models.IntegerField()
+    week_4 = models.IntegerField()
+    week_5 = models.IntegerField()
+    week_6 = models.IntegerField()
+    week_7 = models.IntegerField()
+    week_8 = models.IntegerField()
+    week_9 = models.IntegerField()
+    week_10 = models.IntegerField()
+    week_11 = models.IntegerField()
+    week_12 = models.IntegerField()
+    week_13 = models.IntegerField()
+    week_14 = models.IntegerField()
+    week_15 = models.IntegerField()
+    week_16 = models.IntegerField()
+    week_17 = models.IntegerField()
+    week_18 = models.IntegerField()
+    week_19 = models.IntegerField()
+    week_20 = models.IntegerField()
+    year = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+
+    def name(self):
+        return Golfer.objects.get(id=self.golfer).name

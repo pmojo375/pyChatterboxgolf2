@@ -70,6 +70,9 @@ class SkinEntry(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     winner = models.BooleanField(default=False)
     
+    class Meta:
+        unique_together = ('golfer', 'week')
+    
     def __str__(self):
         return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
 
@@ -137,7 +140,8 @@ class Round(models.Model):
     net = models.IntegerField()
     round_points = models.FloatField()
     total_points = models.FloatField(null=True)
-    
+    subbing_for = models.ForeignKey(Golfer, null=True, blank=True, on_delete=models.SET_NULL, related_name='rounds_subbed_for')
+
     class Meta:
         unique_together = ('golfer_matchup', 'week')
         

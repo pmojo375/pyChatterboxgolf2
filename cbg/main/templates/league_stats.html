@@ -1,0 +1,651 @@
+{% extends 'base.html' %}
+{% load scorecard_filters %}
+
+{% block page_content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row text-center p-5 bg-gradient-primary text-white mb-5">
+        <div class="col">
+            <h1 class="display-4 fw-bold mb-3">
+                {{ season.year }} League Statistics
+            </h1>
+            <p class="lead opacity-75">Comprehensive league-wide analysis and leaderboards</p>
+        </div>
+    </div>
+
+    <!-- League Overview Cards -->
+    <div class="row mb-5">
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">League Average Gross</h6>
+                    <h2 class="text-primary fw-bold mb-0">{{ league_stats.avg_gross|floatformat:1 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">League Average Net</h6>
+                    <h2 class="text-success fw-bold mb-0">{{ league_stats.avg_net|floatformat:1 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">League Average Points</h6>
+                    <h2 class="text-warning fw-bold mb-0">{{ league_stats.avg_points|floatformat:1 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Total Rounds</h6>
+                    <h2 class="text-info fw-bold mb-0">{{ total_rounds }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Money/Earnings Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        Money & Earnings Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Total Money Wagered -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Total Money Wagered</h6>
+                                    <h3 class="text-success fw-bold mb-1">${{ money_stats.total_wagered }}</h3>
+                                    <div class="row text-muted small">
+                                        <div class="col-6">
+                                            <span>Skins: ${{ money_stats.total_skins_wagered }}</span>
+                                        </div>
+                                        <div class="col-6">
+                                            <span>Games: ${{ money_stats.total_games_wagered }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Most Money Won -->
+                        <div class="col-lg-6 mb-4">
+                            <div class="card border-0 bg-light h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-muted text-uppercase fw-bold mb-3">Biggest Winners</h6>
+                                    {% if money_stats.most_skins_golfer %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-semibold">Most Skins Money:</span>
+                                        <span class="fw-bold text-success">{{ money_stats.most_skins_golfer.name }} - ${{ money_stats.most_skins_golfer.amount }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if money_stats.most_games_golfer %}
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-semibold">Most Games Money:</span>
+                                        <span class="fw-bold text-success">{{ money_stats.most_games_golfer.name }} - ${{ money_stats.most_games_golfer.amount }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top 5 Earnings Leaderboard -->
+                    {% if money_stats.earnings_leaderboard %}
+                    <div class="mt-4">
+                        <h6 class="text-muted text-uppercase fw-bold mb-3">Top 5 Total Earnings</h6>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 modern-stats-table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th scope="col" class="text-center">Rank</th>
+                                        <th scope="col">Golfer</th>
+                                        <th scope="col" class="text-center">Skins Won</th>
+                                        <th scope="col" class="text-center">Games Won</th>
+                                        <th scope="col" class="text-center">Total Earnings</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for golfer_name, earnings in money_stats.earnings_leaderboard %}
+                                    <tr class="{% cycle 'table-light' 'table-white' %}">
+                                        <td class="text-center fw-bold">
+                                            {% if forloop.counter == 1 %}
+                                                <span class="badge bg-warning text-dark">🥇</span>
+                                            {% elif forloop.counter == 2 %}
+                                                <span class="badge bg-secondary">🥈</span>
+                                            {% elif forloop.counter == 3 %}
+                                                <span class="badge bg-warning">🥉</span>
+                                            {% else %}
+                                                {{ forloop.counter }}
+                                            {% endif %}
+                                        </td>
+                                        <td class="fw-semibold">{{ golfer_name }}</td>
+                                        <td class="text-center text-success">${{ earnings.skins_earned }}</td>
+                                        <td class="text-center text-primary">${{ earnings.games_earned }}</td>
+                                        <td class="text-center fw-bold text-success">${{ earnings.total_earned }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best and Worst Scores -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        Best Scores of the Season
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 px-0">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">Best Gross</h6>
+                                <p class="mb-0 text-muted">{{ league_stats.best_gross.score }} by {{ league_stats.best_gross.golfer }} (Week {{ league_stats.best_gross.week }})</p>
+                            </div>
+                        </div>
+                        <div class="list-group-item border-0 px-0">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">Best Net</h6>
+                                <p class="mb-0 text-muted">{{ league_stats.best_net.score }} by {{ league_stats.best_net.golfer }} (Week {{ league_stats.best_net.week }})</p>
+                            </div>
+                        </div>
+                        <div class="list-group-item border-0 px-0">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">Most Points</h6>
+                                <p class="mb-0 text-muted">{{ league_stats.best_points.score|floatformat:1 }} by {{ league_stats.best_points.golfer }} (Week {{ league_stats.best_points.week }})</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        Challenging Scores of the Season
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 px-0">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">Worst Gross</h6>
+                                <p class="mb-0 text-muted">{{ league_stats.worst_gross.score }} by {{ league_stats.worst_gross.golfer }} (Week {{ league_stats.worst_gross.week }})</p>
+                            </div>
+                        </div>
+                        <div class="list-group-item border-0 px-0">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">Worst Net</h6>
+                                <p class="mb-0 text-muted">{{ league_stats.worst_net.score }} by {{ league_stats.worst_net.golfer }} (Week {{ league_stats.worst_net.week }})</p>
+                            </div>
+                        </div>
+                        <div class="list-group-item border-0 px-0">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">Fewest Points</h6>
+                                <p class="mb-0 text-muted">{{ league_stats.worst_points.score|floatformat:1 }} by {{ league_stats.worst_points.golfer }} (Week {{ league_stats.worst_points.week }})</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        {% if charts.hole_by_hole %}
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <div id="hole-by-hole-chart"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if charts.scoring_breakdown %}
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <div id="scoring-breakdown-chart"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Scoring Breakdown -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        League Scoring Breakdown
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="scoring-item mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="scoring-color eagle me-2"></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0 fw-bold">Eagles</h6>
+                                        <p class="mb-0 text-muted small">{{ scoring_breakdown.eagle }} ({{ scoring_percentages.eagle }}%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="scoring-item mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="scoring-color birdie me-2"></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0 fw-bold">Birdies</h6>
+                                        <p class="mb-0 text-muted small">{{ scoring_breakdown.birdie }} ({{ scoring_percentages.birdie }}%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="scoring-item mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="scoring-color par me-2"></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0 fw-bold">Pars</h6>
+                                        <p class="mb-0 text-muted small">{{ scoring_breakdown.par }} ({{ scoring_percentages.par }}%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="scoring-item mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="scoring-color bogey me-2"></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0 fw-bold">Bogeys</h6>
+                                        <p class="mb-0 text-muted small">{{ scoring_breakdown.bogey }} ({{ scoring_percentages.bogey }}%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="scoring-item mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="scoring-color double me-2"></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0 fw-bold">Double Bogeys</h6>
+                                        <p class="mb-0 text-muted small">{{ scoring_breakdown.double }} ({{ scoring_percentages.double }}%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="scoring-item mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="scoring-color worse me-2"></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0 fw-bold">Worse</h6>
+                                        <p class="mb-0 text-muted small">{{ scoring_breakdown.worse }} ({{ scoring_percentages.worse }}%)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <h6 class="text-muted mb-0">Total Holes Played: <span class="fw-bold text-primary">{{ total_holes }}</span></h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        Hole-by-Hole League Averages
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Hole</th>
+                                    <th scope="col" class="text-center">Avg Score</th>
+                                    <th scope="col" class="text-center">vs Par</th>
+                                    <th scope="col" class="text-center">Best</th>
+                                    <th scope="col" class="text-center">Worst</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hole_num in hole_stats.keys %}
+                                <tr class="table-white">
+                                    <td class="text-center fw-bold">{{ hole_num }}</td>
+                                    <td class="text-center">{{ hole_stats|get_item:hole_num|get_item:'avg_score' }}</td>
+                                    <td class="text-center">
+                                        <span class="badge {% if hole_stats|get_item:hole_num|get_item:'avg_vs_par' > 0 %}bg-danger{% elif hole_stats|get_item:hole_num|get_item:'avg_vs_par' < 0 %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ hole_stats|get_item:hole_num|get_item:'avg_vs_par' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center text-success fw-bold">{{ hole_stats|get_item:hole_num|get_item:'best_score' }}</td>
+                                    <td class="text-center text-danger fw-bold">{{ hole_stats|get_item:hole_num|get_item:'worst_score' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Golfer Rankings -->
+    <div class="row mb-5">
+        <div class="col-12 mb-4">
+            <h3 class="text-center mb-4 text-primary">
+                Golfer Rankings
+            </h3>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        Gross Score Rankings
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Rank</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Avg Gross</th>
+                                    <th scope="col" class="text-center">Rounds</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for golfer in gross_rankings %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">
+                                        {% if golfer.gross_rank == 1 %}
+                                            <span class="badge bg-warning text-dark">🥇</span>
+                                        {% elif golfer.gross_rank == 2 %}
+                                            <span class="badge bg-secondary">🥈</span>
+                                        {% elif golfer.gross_rank == 3 %}
+                                            <span class="badge bg-warning">🥉</span>
+                                        {% else %}
+                                            {{ golfer.gross_rank }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-semibold">{{ golfer.name }}</td>
+                                    <td class="text-center fw-bold text-primary">{{ golfer.avg_gross }}</td>
+                                    <td class="text-center text-muted">{{ golfer.rounds_played }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        Net Score Rankings
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Rank</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Avg Net</th>
+                                    <th scope="col" class="text-center">Rounds</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for golfer in net_rankings %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">
+                                        {% if golfer.net_rank == 1 %}
+                                            <span class="badge bg-warning text-dark">🥇</span>
+                                        {% elif golfer.net_rank == 2 %}
+                                            <span class="badge bg-secondary">🥈</span>
+                                        {% elif golfer.net_rank == 3 %}
+                                            <span class="badge bg-warning">🥉</span>
+                                        {% else %}
+                                            {{ golfer.net_rank }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-semibold">{{ golfer.name }}</td>
+                                    <td class="text-center fw-bold text-success">{{ golfer.avg_net }}</td>
+                                    <td class="text-center text-muted">{{ golfer.rounds_played }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        Points Rankings
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Rank</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Avg Points</th>
+                                    <th scope="col" class="text-center">Rounds</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for golfer in points_rankings %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">
+                                        {% if golfer.points_rank == 1 %}
+                                            <span class="badge bg-warning text-dark">🥇</span>
+                                        {% elif golfer.points_rank == 2 %}
+                                            <span class="badge bg-secondary">🥈</span>
+                                        {% elif golfer.points_rank == 3 %}
+                                            <span class="badge bg-warning">🥉</span>
+                                        {% else %}
+                                            {{ golfer.points_rank }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-semibold">{{ golfer.name }}</td>
+                                    <td class="text-center fw-bold text-warning">{{ golfer.avg_points }}</td>
+                                    <td class="text-center text-muted">{{ golfer.rounds_played }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consistency Rankings -->
+    {% if consistency_rankings %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        Most Consistent Golfers (Lowest Net Score Variance)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Rank</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Std Deviation</th>
+                                    <th scope="col" class="text-center">Rounds</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for golfer in consistency_rankings %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">
+                                        {% if golfer.rank == 1 %}
+                                            <span class="badge bg-warning text-dark">🥇</span>
+                                        {% elif golfer.rank == 2 %}
+                                            <span class="badge bg-secondary">🥈</span>
+                                        {% elif golfer.rank == 3 %}
+                                            <span class="badge bg-warning">🥉</span>
+                                        {% else %}
+                                            {{ golfer.rank }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-semibold">{{ golfer.name }}</td>
+                                    <td class="text-center fw-bold text-info">{{ golfer.std_dev }}</td>
+                                    <td class="text-center text-muted">{{ golfer.rounds_played }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Weekly Leaders Table -->
+    {% if weekly_leaders %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        Weekly Leaders
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Week</th>
+                                    <th scope="col" class="text-center">Date</th>
+                                    <th scope="col" class="text-center">Course</th>
+                                    <th scope="col" class="text-center">Best Gross</th>
+                                    <th scope="col" class="text-center">Worst Gross</th>
+                                    <th scope="col" class="text-center">Best Net</th>
+                                    <th scope="col" class="text-center">Worst Net</th>
+                                    <th scope="col" class="text-center">Most Points</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for week in weekly_leaders %}
+                                <tr class="table-white">
+                                    <td class="text-center fw-bold text-secondary">{{ week.week }}</td>
+                                    <td class="text-center">{{ week.date }}</td>
+                                    <td class="text-center">
+                                        <span class="badge {% if week.is_front %}bg-primary{% else %}bg-success{% endif %}">
+                                            {% if week.is_front %}Front 9{% else %}Back 9{% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-success">{{ week.best_gross.score }}</span>
+                                            <span class="small text-muted">{{ week.best_gross.golfer }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-danger">{{ week.worst_gross.score }}</span>
+                                            <span class="small text-muted">{{ week.worst_gross.golfer }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-success">{{ week.best_net.score }}</span>
+                                            <span class="small text-muted">{{ week.best_net.golfer }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-danger">{{ week.worst_net.score }}</span>
+                                            <span class="small text-muted">{{ week.worst_net.golfer }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-warning">{{ week.best_points.score|floatformat:1 }}</span>
+                                            <span class="small text-muted">{{ week.best_points.golfer }}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Plotly Charts Script -->
+<script>
+    {% if charts.hole_by_hole %}
+    Plotly.newPlot('hole-by-hole-chart', {{ charts.hole_by_hole|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
+    {% if charts.scoring_breakdown %}
+    Plotly.newPlot('scoring-breakdown-chart', {{ charts.scoring_breakdown|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
+    // Make charts responsive to window resize
+    window.addEventListener('resize', function() {
+        {% if charts.hole_by_hole %}
+        Plotly.relayout('hole-by-hole-chart', {
+            'width': document.getElementById('hole-by-hole-chart').offsetWidth
+        });
+        {% endif %}
+        
+        {% if charts.scoring_breakdown %}
+        Plotly.relayout('scoring-breakdown-chart', {
+            'width': document.getElementById('scoring-breakdown-chart').offsetWidth
+        });
+        {% endif %}
+    });
+</script>
+
+<!-- Modern styling is handled by main.css -->
+{% endblock %} 

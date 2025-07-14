@@ -1,0 +1,126 @@
+Connecting to old database: old.sqlite3
+
+=== Available weeks in old database ===
+Weeks with matchups: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+Weeks with scores: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+Weeks with subs: [1, 2, 3, 4, 5, 7, 8, 9, 10]
+
+=== Checking for absent golfers without subs (weeks 4-10) ===
+
+Week 4:
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Jerry Fechner absent, has sub: John Withrow
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Don Fulton absent, has sub: Jay Renfro
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Ken Rosenbrock absent, has sub: Jeff Grau
+    All absent golfers had subs
+
+Week 5:
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Parker Mojsiejenko absent, has sub: Dave Lange
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+
+Week 6:
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+
+Week 7:
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Phil Williamson absent, has sub: Butch Price
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Ryan Fechner absent, has sub: Ralf Mojsiejenko
+    Kevin Stewart absent, has sub: Jeff Grau
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+
+Week 8:
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Phil Grogan absent, has sub: Danny
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Lee Hutinga absent, has sub: Jerry Kemmer
+    Don Fulton absent, has sub: Jay Renfro
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+
+Week 9:
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Mark Weir absent, has sub: Matt Macy
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Dan Mcconomy absent, has sub: Butch Price
+    All absent golfers had subs
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    All absent golfers had subs
+
+Week 10:
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Erich Kirchner absent, has sub: John Knecht
+    Absent without subs: ['Jeff Beck', 'Jerry Fechner', 'Kevin Stewart']
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Absent without subs: ['Parker Mojsiejenko', 'Ryan Fechner', 'Phil Williamson', 'Dan Mcconomy']
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Tom Aukerman absent, has sub: Jay Renfro
+    Don Fulton absent, has sub: Josh Fulton
+    Absent without subs: ['Mark Weir', 'Mike Augustine']
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Jerry Kemmer absent, has sub: Tony Hamann
+    Absent without subs: ['Lee Hutinga', 'Dave Linderman', 'Phil Grogan']
+  Matchup: Team1(2 golfers) vs Team2(2 golfers)
+    Absent without subs: ['Brandon Smith', 'Kyle Totzke', 'Ken Rosenbrock', 'James Thomas']
+
+=== Direct subrecord inspection (weeks 4-10) ===
+Week 4: Don Fulton absent, Jay Renfro subbed in
+Week 4: Jerry Fechner absent, John Withrow subbed in
+Week 4: Ken Rosenbrock absent, Jeff Grau subbed in
+Week 5: Parker Mojsiejenko absent, Dave Lange subbed in
+Week 7: Kevin Stewart absent, Jeff Grau subbed in
+Week 7: Ryan Fechner absent, Ralf Mojsiejenko subbed in
+Week 7: Phil Williamson absent, Butch Price subbed in
+Week 8: Don Fulton absent, Jay Renfro subbed in
+Week 8: Phil Grogan absent, Danny subbed in
+Week 8: Lee Hutinga absent, Jerry Kemmer subbed in
+Week 9: Mark Weir absent, Matt Macy subbed in
+Week 9: Dan Mcconomy absent, Butch Price subbed in
+Week 10: Tom Aukerman absent, Jay Renfro subbed in
+Week 10: Jerry Kemmer absent, Tony Hamann subbed in
+Week 10: Don Fulton absent, Josh Fulton subbed in
+Week 10: Erich Kirchner absent, John Knecht subbed in
