@@ -718,14 +718,23 @@ def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
                     Handicap.objects.create(golfer=golfer, week=week, handicap=most_recent_handicap.handicap)
         if not golfer in normal_season_golfers and weeks_played > 0:
             first_week = weeks_played_list[0]
-            second_week = weeks_played_list[1]
-            second_week_handicap = Handicap.objects.filter(golfer=golfer, week=second_week).first()
-            try:
-                handicap_obj = Handicap.objects.get(golfer=golfer, week=first_week)
-                handicap_obj.handicap = second_week_handicap
-                handicap_obj.save()
-            except Handicap.DoesNotExist:
-                Handicap.objects.create(golfer=golfer, week=first_week, handicap=second_week_handicap)   
+            if weeks_played == 1:
+                most_recent_handicap = Handicap.objects.filter(golfer=golfer).order_by('-week__date').first()
+                try:
+                    handicap_obj = Handicap.objects.get(golfer=golfer, week=first_week)
+                    handicap_obj.handicap = most_recent_handicap
+                    handicap_obj.save()
+                except Handicap.DoesNotExist:
+                    Handicap.objects.create(golfer=golfer, week=first_week, handicap=most_recent_handicap)  
+            else:
+                second_week = weeks_played_list[1]
+                second_week_handicap = Handicap.objects.filter(golfer=golfer, week=second_week).first()
+                try:
+                    handicap_obj = Handicap.objects.get(golfer=golfer, week=first_week)
+                    handicap_obj.handicap = second_week_handicap
+                    handicap_obj.save()
+                except Handicap.DoesNotExist:
+                    Handicap.objects.create(golfer=golfer, week=first_week, handicap=second_week_handicap)   
 
 def get_standings(season, week):
     """
