@@ -259,6 +259,8 @@ def generate_round(golfer_matchup, **kwargs):
             round.matchup = matchup
             round.round_points = round_points
             round.total_points = total_points
+            if is_sub:
+                round.subbing_for = golfer_matchup.subbing_for_golfer
             round.points.set(points_objs)
             round.scores.set(scores)
             round.save()
@@ -266,6 +268,8 @@ def generate_round(golfer_matchup, **kwargs):
             round = Round(golfer=golfer, week=week, matchup=matchup, golfer_matchup=golfer_matchup, handicap=handicap, gross=gross_score, net=net_score, round_points=round_points, total_points=total_points, is_sub=is_sub)
             round.save()
             round.points.set(points_objs)
+            if is_sub:
+                round.subbing_for = golfer_matchup.subbing_for_golfer
             round.scores.set(scores)
             round.save()
 
