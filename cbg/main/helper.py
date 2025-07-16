@@ -722,19 +722,19 @@ def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
                 most_recent_handicap = Handicap.objects.filter(golfer=golfer).order_by('-week__date').first()
                 try:
                     handicap_obj = Handicap.objects.get(golfer=golfer, week=first_week)
-                    handicap_obj.handicap = most_recent_handicap
+                    handicap_obj.handicap = most_recent_handicap.handicap
                     handicap_obj.save()
                 except Handicap.DoesNotExist:
-                    Handicap.objects.create(golfer=golfer, week=first_week, handicap=most_recent_handicap)  
+                    Handicap.objects.create(golfer=golfer, week=first_week, handicap=most_recent_handicap.handicap)  
             else:
                 second_week = weeks_played_list[1]
                 second_week_handicap = Handicap.objects.filter(golfer=golfer, week=second_week).first()
                 try:
                     handicap_obj = Handicap.objects.get(golfer=golfer, week=first_week)
-                    handicap_obj.handicap = second_week_handicap
+                    handicap_obj.handicap = second_week_handicap.handicap
                     handicap_obj.save()
                 except Handicap.DoesNotExist:
-                    Handicap.objects.create(golfer=golfer, week=first_week, handicap=second_week_handicap)   
+                    Handicap.objects.create(golfer=golfer, week=first_week, handicap=second_week_handicap.handicap)   
 
 def get_standings(season, week):
     """
