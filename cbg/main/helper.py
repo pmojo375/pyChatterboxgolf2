@@ -619,6 +619,9 @@ def calculate_handicap(golfer, season, week):
     # Get all the scores for the golfer in those 10 weeks
     scores = Score.objects.filter(golfer=golfer, week__in=subquery).order_by('-week__date')
 
+    # gets the golfers on the teams for the season (exludes subs unless sub is a team member)
+    normal_season_golfers = Golfer.objects.filter(team__season=season)
+
     # If there are scores for the golfer in the 10 most recent weeks, calculate the handicap
     if len(scores) != 0:
         # Group the scores by week
@@ -633,10 +636,10 @@ def calculate_handicap(golfer, season, week):
 
         # Compute the handicap based on the number of weeks and whether to drop any
         num_weeks = len(weeks)
-        if num_weeks < 5:
+        if num_weeks < 5 or not golfer in normal_season_golfers:
             # If there are fewer than 5 weeks, use all the scores and subtract 36 (par) from each score
             handicap = (sum(score for scores in scores_by_week.values() for score in scores) / num_weeks - 36) * 0.8
-        else:
+        elif golfer in normal_season_golfers:
             # If there are 5 or more weeks, drop the highest- and lowest-scoring weeks and use the remaining scores
             drop_weeks = [weeks[0], weeks[-1]]
             scores = [score for week in weeks if week not in drop_weeks for score in scores_by_week[week]]
@@ -664,6 +667,9 @@ def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
         # Get all the golfers who played in the season
         golfers = Golfer.objects.filter(score__week__season=season).distinct()
 
+    # gets the golfers on the teams for the season (exludes subs unless sub is a team member)
+    normal_season_golfers = Golfer.objects.filter(team__season=season)
+
     if weeks is None:
         # Get all the weeks in the season
         weeks = season.week_set.all().order_by('number')
@@ -690,7 +696,7 @@ def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
                 handicap_obj.save()
 
             # Update the first three weeks with the handicap calculated using the fourth week
-            if weeks_played == 4 and not backset_first_three:
+            if weeks_played == 4 and not backset_first_three and golfer in normal_season_golfers:
                 backset_first_three = True
                 first_three_weeks = weeks_played_list[:3]
                 for prev_week in first_three_weeks:
@@ -700,7 +706,7 @@ def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
                         handicap_obj.save()
                     except Handicap.DoesNotExist:
                         Handicap.objects.create(golfer=golfer, week=prev_week, handicap=handicap)   
-        if weeks_played < 4:
+        if weeks_played < 4 and golfer in normal_season_golfers:
             # If golfer didnt play 4 weeks yet, apply the handicap of their last round to the first 3 or less weeks of the season
             most_recent_handicap = Handicap.objects.filter(golfer=golfer).order_by('-week__date').first()
             for week in weeks_played_list:
@@ -710,7 +716,16 @@ def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
                     handicap_obj.save()
                 except Handicap.DoesNotExist:
                     Handicap.objects.create(golfer=golfer, week=week, handicap=most_recent_handicap.handicap)
-
+        if not golfer in normal_season_golfers and weeks_played > 0:
+            first_week = weeks_played_list[0]
+            second_week = weeks_played_list[1]
+            second_week_handicap = Handicap.objects.filter(golfer=golfer, week=second_week).first()
+            try:
+                handicap_obj = Handicap.objects.get(golfer=golfer, week=first_week)
+                handicap_obj.handicap = second_week_handicap
+                handicap_obj.save()
+            except Handicap.DoesNotExist:
+                Handicap.objects.create(golfer=golfer, week=first_week, handicap=second_week_handicap)   
 
 def get_standings(season, week):
     """
