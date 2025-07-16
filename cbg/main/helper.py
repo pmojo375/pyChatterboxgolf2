@@ -929,12 +929,15 @@ def generate_golfer_matchups(week):
         print(f'{team2_B_golfer.name} is subbing for {team2_B_subbing_for.name}') if team2_B_subbing_for else print(f'{team2_B_golfer.name} is not subbing')
 
 def process_week(week):
-    # get the golfer matchups for the week
-    golfer_matchups = GolferMatchup.objects.filter(week=week)
     
     # generate the handicaps for the next week
     calculate_and_save_handicaps_for_season(week.season)
+
+    generate_golfer_matchups(week)
     
+    # get the golfer matchups for the week
+    golfer_matchups = GolferMatchup.objects.filter(week=week)
+
     for golfer_matchup in golfer_matchups:
         generate_round(golfer_matchup)
         

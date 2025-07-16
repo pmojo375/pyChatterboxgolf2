@@ -1837,6 +1837,8 @@ def generate_rounds_page(request):
                 
                 # First, ensure handicaps are calculated for the season
                 calculate_and_save_handicaps_for_season(week.season)
+
+                generate_golfer_matchups(week)
                 
                 # Generate rounds for the week
                 golfer_matchups = GolferMatchup.objects.filter(week=week)
