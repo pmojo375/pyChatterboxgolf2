@@ -4,6 +4,7 @@ from django.db.models import Sum
 from django.utils import timezone
 import random
 import math
+from cbg.main.models import Sub, GolferMatchup
 
 def conventional_round(value):
     """
@@ -565,14 +566,28 @@ def get_golfer_points(golfer_matchup, **kwargs):
     opp_hole_points = opp_points
 
     # Calculate the points for the 9th hole based on the net scores
-    # Check if opponent is absent with no sub
-    opponent_absent_no_sub = False
-    sub_record = Sub.objects.filter(week=week_model, absent_golfer=opponent).first()
-    if sub_record and sub_record.no_sub:
-        opponent_absent_no_sub = True
+    # Check if this golfer is subbing for an absent teammate with no_sub
+    golfer_absent_no_sub = False
+    if golfer_matchup.subbing_for_golfer:
+        sub_record = Sub.objects.filter(week=week_model, absent_golfer=golfer_matchup.subbing_for_golfer).first()
+        if sub_record and sub_record.no_sub:
+            golfer_absent_no_sub = True
 
-    if opponent_absent_no_sub:
-        # Opponent is absent with no sub, present golfer gets 3 round points
+    # Check if opponent is subbing for an absent teammate with no_sub
+    opponent_absent_no_sub = False
+    opp_gm = GolferMatchup.objects.filter(week=week_model, golfer=opponent).first()
+    if opp_gm and opp_gm.subbing_for_golfer:
+        sub_record = Sub.objects.filter(week=week_model, absent_golfer=opp_gm.subbing_for_golfer).first()
+        if sub_record and sub_record.no_sub:
+            opponent_absent_no_sub = True
+
+    if golfer_absent_no_sub:
+        # Present golfer is subbing for an absent teammate with no sub: opponent gets 3 round points
+        opp_points += 3
+        opp_round_points = 3
+        round_points = 0
+    elif opponent_absent_no_sub:
+        # Opponent is subbing for an absent teammate with no sub: present golfer gets 3 round points
         points += 3
         round_points = 3
         opp_round_points = 0
