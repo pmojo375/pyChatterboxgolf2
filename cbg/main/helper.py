@@ -890,98 +890,88 @@ def generate_golfer_matchups(week):
         team1 = teams[0]
         team2 = teams[1]
 
-        team1_golfers = team1.golfers.all()
-        team2_golfers = team2.golfers.all()
+        team1_golfers = list(team1.golfers.all())
+        team2_golfers = list(team2.golfers.all())
 
-        team1_golfer1 = team1_golfers[0]
-        team1_golfer2 = team1_golfers[1]
-        team2_golfer1 = team2_golfers[0]
-        team2_golfer2 = team2_golfers[1]
+        # Determine original A/B for team1
+        t1_hcp1 = get_hcp(team1_golfers[0], week)
+        t1_hcp2 = get_hcp(team1_golfers[1], week)
+        if t1_hcp1 <= t1_hcp2:
+            t1_orig_A, t1_orig_B = team1_golfers[0], team1_golfers[1]
+        else:
+            t1_orig_A, t1_orig_B = team1_golfers[1], team1_golfers[0]
 
-        # Check if any golfers are absent and set sub details
-        team1_golfer1_sub = Sub.objects.filter(week=week, absent_golfer=team1_golfer1).first()
-        team1_golfer2_sub = Sub.objects.filter(week=week, absent_golfer=team1_golfer2).first()
-        team2_golfer1_sub = Sub.objects.filter(week=week, absent_golfer=team2_golfer1).first()
-        team2_golfer2_sub = Sub.objects.filter(week=week, absent_golfer=team2_golfer2).first()
+        # Determine original A/B for team2
+        t2_hcp1 = get_hcp(team2_golfers[0], week)
+        t2_hcp2 = get_hcp(team2_golfers[1], week)
+        if t2_hcp1 <= t2_hcp2:
+            t2_orig_A, t2_orig_B = team2_golfers[0], team2_golfers[1]
+        else:
+            t2_orig_A, t2_orig_B = team2_golfers[1], team2_golfers[0]
 
-        # Replace absent golfers with subs or teammates
-        if team1_golfer1_sub:
-            if team1_golfer1_sub.no_sub:
-                team1_golfer1 = team1_golfer2  # Replace with teammate
-                team1_golfer1_subbing_for = team1_golfer1_sub.absent_golfer  # Set subbing for absent golfer
+        # Team 1 A slot
+        t1_A_sub = Sub.objects.filter(week=week, absent_golfer=t1_orig_A).first()
+        if t1_A_sub:
+            if t1_A_sub.no_sub:
+                t1_A_golfer = t1_orig_B  # present teammate fills A slot
+                t1_A_subbing_for = t1_orig_A
             else:
-                team1_golfer1 = team1_golfer1_sub.sub_golfer
-                team1_golfer1_subbing_for = team1_golfer1_sub.absent_golfer
+                t1_A_golfer = t1_A_sub.sub_golfer
+                t1_A_subbing_for = t1_orig_A
         else:
-            team1_golfer1_subbing_for = None
+            t1_A_golfer = t1_orig_A
+            t1_A_subbing_for = None
 
-        if team1_golfer2_sub:
-            if team1_golfer2_sub.no_sub:
-                team1_golfer2 = team1_golfer1  # Replace with teammate
-                team1_golfer2_subbing_for = team1_golfer2_sub.absent_golfer
+        # Team 1 B slot
+        t1_B_sub = Sub.objects.filter(week=week, absent_golfer=t1_orig_B).first()
+        if t1_B_sub:
+            if t1_B_sub.no_sub:
+                t1_B_golfer = t1_orig_A  # present teammate fills B slot
+                t1_B_subbing_for = t1_orig_B
             else:
-                team1_golfer2 = team1_golfer2_sub.sub_golfer
-                team1_golfer2_subbing_for = team1_golfer2_sub.absent_golfer
+                t1_B_golfer = t1_B_sub.sub_golfer
+                t1_B_subbing_for = t1_orig_B
         else:
-            team1_golfer2_subbing_for = None
+            t1_B_golfer = t1_orig_B
+            t1_B_subbing_for = None
 
-        if team2_golfer1_sub:
-            if team2_golfer1_sub.no_sub:
-                team2_golfer1 = team2_golfer2  # Replace with teammate
-                team2_golfer1_subbing_for = team2_golfer1_sub.absent_golfer
+        # Team 2 A slot
+        t2_A_sub = Sub.objects.filter(week=week, absent_golfer=t2_orig_A).first()
+        if t2_A_sub:
+            if t2_A_sub.no_sub:
+                t2_A_golfer = t2_orig_B
+                t2_A_subbing_for = t2_orig_A
             else:
-                team2_golfer1 = team2_golfer1_sub.sub_golfer
-                team2_golfer1_subbing_for = team2_golfer1_sub.absent_golfer
+                t2_A_golfer = t2_A_sub.sub_golfer
+                t2_A_subbing_for = t2_orig_A
         else:
-            team2_golfer1_subbing_for = None
+            t2_A_golfer = t2_orig_A
+            t2_A_subbing_for = None
 
-        if team2_golfer2_sub:
-            if team2_golfer2_sub.no_sub:
-                team2_golfer2 = team2_golfer1  # Replace with teammate
-                team2_golfer2_subbing_for = team2_golfer2_sub.absent_golfer
+        # Team 2 B slot
+        t2_B_sub = Sub.objects.filter(week=week, absent_golfer=t2_orig_B).first()
+        if t2_B_sub:
+            if t2_B_sub.no_sub:
+                t2_B_golfer = t2_orig_A
+                t2_B_subbing_for = t2_orig_B
             else:
-                team2_golfer2 = team2_golfer2_sub.sub_golfer
-                team2_golfer2_subbing_for = team2_golfer2_sub.absent_golfer
+                t2_B_golfer = t2_B_sub.sub_golfer
+                t2_B_subbing_for = t2_orig_B
         else:
-            team2_golfer2_subbing_for = None
+            t2_B_golfer = t2_orig_B
+            t2_B_subbing_for = None
 
-        # Set handicaps and create matchups
-        team1_golfer1_hcp = get_hcp(team1_golfer1, week)
-        team1_golfer2_hcp = get_hcp(team1_golfer2, week)
-        team2_golfer1_hcp = get_hcp(team2_golfer1, week)
-        team2_golfer2_hcp = get_hcp(team2_golfer2, week)
+        # Create matchups (A vs A, B vs B)
+        GolferMatchup.objects.create(week=week, golfer=t1_A_golfer, is_A=True, opponent=t2_A_golfer, subbing_for_golfer=t1_A_subbing_for)
+        GolferMatchup.objects.create(week=week, golfer=t2_A_golfer, is_A=True, opponent=t1_A_golfer, subbing_for_golfer=t2_A_subbing_for)
+        GolferMatchup.objects.create(week=week, golfer=t1_B_golfer, is_A=False, opponent=t2_B_golfer, subbing_for_golfer=t1_B_subbing_for)
+        GolferMatchup.objects.create(week=week, golfer=t2_B_golfer, is_A=False, opponent=t1_B_golfer, subbing_for_golfer=t2_B_subbing_for)
 
-        # Assign A and B golfers based on handicaps
-        if team1_golfer1_hcp <= team1_golfer2_hcp:
-            team1_A_golfer, team1_B_golfer = team1_golfer1, team1_golfer2
-            # set subbing for field correctly
-            team1_A_subbing_for = team1_golfer1_subbing_for
-            team1_B_subbing_for = team1_golfer2_subbing_for
-        else:
-            team1_A_golfer, team1_B_golfer = team1_golfer2, team1_golfer1
-            team1_A_subbing_for = team1_golfer2_subbing_for
-            team1_B_subbing_for = team1_golfer1_subbing_for
-
-        if team2_golfer1_hcp <= team2_golfer2_hcp:
-            team2_A_golfer, team2_B_golfer = team2_golfer1, team2_golfer2
-            team2_A_subbing_for = team2_golfer1_subbing_for
-            team2_B_subbing_for = team2_golfer2_subbing_for
-        else:
-            team2_A_golfer, team2_B_golfer = team2_golfer2, team2_golfer1
-            team2_A_subbing_for = team2_golfer2_subbing_for
-            team2_B_subbing_for = team2_golfer1_subbing_for
-
-        # Create golfer matchups, setting the subbing_for field correctly
-        GolferMatchup.objects.create(week=week, golfer=team1_A_golfer, is_A=True, opponent=team2_A_golfer, subbing_for_golfer=team1_A_subbing_for)
-        GolferMatchup.objects.create(week=week, golfer=team2_A_golfer, is_A=True, opponent=team1_A_golfer, subbing_for_golfer=team2_A_subbing_for)
-        GolferMatchup.objects.create(week=week, golfer=team1_B_golfer, is_A=False, opponent=team2_B_golfer, subbing_for_golfer=team1_B_subbing_for)
-        GolferMatchup.objects.create(week=week, golfer=team2_B_golfer, is_A=False, opponent=team1_B_golfer, subbing_for_golfer=team2_B_subbing_for)
-        
         # print subbing for golfers
-        print(f'{team1_A_golfer.name} is subbing for {team1_A_subbing_for.name}') if team1_A_subbing_for else print(f'{team1_A_golfer.name} is not subbing')
-        print(f'{team2_A_golfer.name} is subbing for {team2_A_subbing_for.name}') if team2_A_subbing_for else print(f'{team2_A_golfer.name} is not subbing')
-        print(f'{team1_B_golfer.name} is subbing for {team1_B_subbing_for.name}') if team1_B_subbing_for else print(f'{team1_B_golfer.name} is not subbing')
-        print(f'{team2_B_golfer.name} is subbing for {team2_B_subbing_for.name}') if team2_B_subbing_for else print(f'{team2_B_golfer.name} is not subbing')
+        print(f'{t1_A_golfer.name} is subbing for {t1_A_subbing_for.name}') if t1_A_subbing_for else print(f'{t1_A_golfer.name} is not subbing')
+        print(f'{t2_A_golfer.name} is subbing for {t2_A_subbing_for.name}') if t2_A_subbing_for else print(f'{t2_A_golfer.name} is not subbing')
+        print(f'{t1_B_golfer.name} is subbing for {t1_B_subbing_for.name}') if t1_B_subbing_for else print(f'{t1_B_golfer.name} is not subbing')
+        print(f'{t2_B_golfer.name} is subbing for {t2_B_subbing_for.name}') if t2_B_subbing_for else print(f'{t2_B_golfer.name} is not subbing')
 
 def process_week(week):
     
