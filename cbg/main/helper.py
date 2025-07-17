@@ -565,19 +565,31 @@ def get_golfer_points(golfer_matchup, **kwargs):
     opp_hole_points = opp_points
 
     # Calculate the points for the 9th hole based on the net scores
-    if net_score < opp_net_score:
+    # Check if opponent is absent with no sub
+    opponent_absent_no_sub = False
+    sub_record = Sub.objects.filter(week=week_model, absent_golfer=opponent).first()
+    if sub_record and sub_record.no_sub:
+        opponent_absent_no_sub = True
+
+    if opponent_absent_no_sub:
+        # Opponent is absent with no sub, present golfer gets 3 round points
         points += 3
         round_points = 3
         opp_round_points = 0
-    elif net_score == opp_net_score:
-        points += 1.5
-        round_points = 1.5
-        opp_points += 1.5
-        opp_round_points = 1.5
     else:
-        opp_points += 3
-        opp_round_points = 3
-        round_points = 0
+        if net_score < opp_net_score:
+            points += 3
+            round_points = 3
+            opp_round_points = 0
+        elif net_score == opp_net_score:
+            points += 1.5
+            round_points = 1.5
+            opp_points += 1.5
+            opp_round_points = 1.5
+        else:
+            opp_points += 3
+            opp_round_points = 3
+            round_points = 0
 
     if detail:
         return {'golfer': golfer_model, 'golfer_points': points, 'opponent': opponent, 'opp_points': opp_points, 'hole_points': hole_points, 'opp_hole_points': opp_hole_points, 'round_points': round_points, 'opp_round_points': opp_round_points}
