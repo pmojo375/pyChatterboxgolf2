@@ -50,6 +50,20 @@ def sub_deleted(sender, instance, **kwargs):
     instance.week.save()
 
     generate_golfer_matchups(instance.week)
-    
 
-    
+@receiver(post_save, sender=Matchup)
+def matchup_created(sender, instance, created, **kwargs):
+    """
+    When a matchup is created (schedule is entered), generate initial golfer matchups
+    when all matchups for the week have been entered.
+    """
+    if created:
+        week = instance.week
+        total_teams = Team.objects.filter(season=week.season).count()
+        total_matchups = Matchup.objects.filter(week=week).count()
+        
+        # Generate matchups when we have all the matchups (teams/2 since each matchup has 2 teams)
+        # and no golfer matchups exist yet
+        if total_matchups == total_teams // 2 and not GolferMatchup.objects.filter(week=week).exists():
+            print(f'All matchups entered for Week {week.number}. Generating initial golfer matchups.')
+            generate_golfer_matchups(week)

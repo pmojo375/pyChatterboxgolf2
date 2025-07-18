@@ -10,6 +10,7 @@ urlpatterns = [
     path('add_sub', views.add_sub, name='add_sub'),
     path('enter_schedule', views.enter_schedule, name='enter_schedule'),
     path('<int:week>/', views.scorecards, name="scorecards"),
+    path('blank_scorecards/', views.blank_scorecards, name="blank_scorecards"),
     path('stats/<int:golfer_id>/', views.golfer_stats, name="golfer_stats"),
     path('sub_stats/', views.sub_stats, name="sub_stats"),
     path('sub_stats/<int:golfer_id>/', views.sub_stats, name="sub_stats_detail"),

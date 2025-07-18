@@ -407,7 +407,7 @@ def add_scores(request):
                     defaults={'score': score_value}
                 )
 
-        return redirect('add_round.html', week=week.number)
+        return redirect('add_round')
 
     else:
         # Load the next week + matchup info for the form
@@ -503,6 +503,12 @@ def add_sub(request):
                 print(f'Sub Golfer: {sub_golfer.name}')
             
             sub.save()
+            
+            # Preserve the selected week for the form reload
+            # Create a new form with the same week selected
+            form = SubForm(absent_golfers, sub_golfers, weeks)
+            form.initial['week'] = week_id
+            
         else:
             print('Invalid Form\n')
             print(form.errors.items())
@@ -544,6 +550,11 @@ def enter_schedule(request):
             print(f'Week: {week}')
             print(f'Team 1: {team1}')
             print(f'Team 2: {team2}')
+            
+            # Preserve the selected week for the form reload
+            # Create a new form with the same week selected
+            form = ScheduleForm(weeks, teams)
+            form.initial['week'] = week_id
             
         else:
             print('Invalid Form\n')
@@ -1516,6 +1527,11 @@ def scorecards(request, week):
     # Get all matchups for the week (each matchup = one scorecard)
     matchups = Matchup.objects.filter(week=week).prefetch_related('teams__golfers')
     
+    if not matchups.exists():
+        return render(request, 'blank_scorecards.html', {
+            'error': f'No matchups found for Week {week.number}. Please enter the schedule first.'
+        })
+    
     # Get all golfer matchups for the week
     golfer_matchups = GolferMatchup.objects.filter(week=week).select_related(
         'golfer', 'opponent', 'subbing_for_golfer'
@@ -1621,7 +1637,7 @@ def _build_golfer_data(golfer_matchup, rounds, holes, week):
     hcp = round_obj.handicap.handicap if round_obj.handicap else 0
     
     # Get opponent handicap for stroke calculations
-    opponent_hcp = golfer_matchup.opponent.handicap_set.filter(week=week).first()
+    opponent_hcp = Handicap.objects.filter(golfer=golfer_matchup.opponent, week=week).first()
     opponent_hcp_value = opponent_hcp.handicap if opponent_hcp else 0
     
     # Calculate handicap difference for strokes
@@ -2571,3 +2587,160 @@ def manage_games(request):
         'selected_game': selected_game,
     }
     return render(request, 'manage_games.html', context)
+
+def blank_scorecards(request):
+    """View for blank scorecards for the next week to be played"""
+    
+    # Get the next week
+    week = get_next_week()
+    
+    if not week:
+        return render(request, 'blank_scorecards.html', {
+            'error': 'No next week found. The season may be complete or not started.'
+        })
+    
+    holes = list(Hole.objects.filter(
+        number__in=(range(1, 10) if week.is_front else range(10, 19)),
+        season=week.season
+    ).order_by('number'))
+    
+    hole_string = "Front 9" if week.is_front else "Back 9"
+    total_yards = sum(h.yards for h in holes)
+
+    # Get all matchups for the week (each matchup = one scorecard)
+    matchups = Matchup.objects.filter(week=week).prefetch_related('teams__golfers')
+    
+    # Get all golfer matchups for the week
+    golfer_matchups = GolferMatchup.objects.filter(week=week).select_related(
+        'golfer', 'opponent', 'subbing_for_golfer'
+    )
+    
+    if not golfer_matchups.exists():
+        return render(request, 'blank_scorecards.html', {
+            'error': f'No golfer matchups found for Week {week.number}. Please generate rounds first.'
+        })
+    
+    cards = []
+    
+    for matchup in matchups:
+        teams = list(matchup.teams.all())
+            
+        team1, team2 = teams[0], teams[1]
+        
+        # Get all golfers from both teams
+        team1_golfers = list(team1.golfers.all())
+        team2_golfers = list(team2.golfers.all())
+        
+        # Find golfer matchups for each team's golfers
+        team1_golfer_matchups = []
+        team2_golfer_matchups = []
+        
+        # For team1 golfers
+        for golfer in team1_golfers:
+            golfer_matchup = golfer_matchups.filter(
+                Q(golfer=golfer) | Q(subbing_for_golfer=golfer)
+            ).first()
+            
+            if golfer_matchup:
+                team1_golfer_matchups.append(golfer_matchup)
+        
+        # For team2 golfers  
+        for golfer in team2_golfers:
+            golfer_matchup = golfer_matchups.filter(
+                Q(golfer=golfer) | Q(subbing_for_golfer=golfer)
+            ).first()
+            
+            if golfer_matchup:
+                team2_golfer_matchups.append(golfer_matchup)
+        
+        # Sort golfer matchups by is_A (A golfers first)
+        team1_golfer_matchups.sort(key=lambda x: not x.is_A)
+        team2_golfer_matchups.sort(key=lambda x: not x.is_A)
+        
+        # Create card data structure
+        card = {
+            'team1_golferA': None,
+            'team1_golferB': None,
+            'team2_golferA': None,
+            'team2_golferB': None,
+        }
+        
+        # Process team1 golfers (A and B positions)
+        for i, golfer_matchup in enumerate(team1_golfer_matchups[:2]):
+            golfer_data = _build_blank_golfer_data(golfer_matchup, holes, week)
+            if i == 0:
+                card['team1_golferA'] = golfer_data
+            else:
+                card['team1_golferB'] = golfer_data
+        
+        # Process team2 golfers (A and B positions)
+        for i, golfer_matchup in enumerate(team2_golfer_matchups[:2]):
+            golfer_data = _build_blank_golfer_data(golfer_matchup, holes, week)
+            if i == 0:
+                card['team2_golferA'] = golfer_data
+            else:
+                card['team2_golferB'] = golfer_data
+        
+        # Only add card if we have at least one golfer from each team
+        if card['team1_golferA'] or card['team1_golferB'] or card['team2_golferA'] or card['team2_golferB']:
+            cards.append(card)
+    
+    return render(request, 'blank_scorecards.html', {
+        "week_number": week.number,
+        "holes": holes,
+        "hole_string": hole_string,
+        "cards": cards,
+        "total": total_yards,
+        "week": week,
+        "hole_pars": [hole.par for hole in holes],
+    })
+
+def _build_blank_golfer_data(golfer_matchup, holes, week):
+    """Helper function to build blank golfer data for scorecard"""
+    
+    # Determine the actual golfer (could be the golfer or the sub)
+    actual_golfer = golfer_matchup.golfer
+    is_sub = golfer_matchup.subbing_for_golfer is not None
+    sub_for = golfer_matchup.subbing_for_golfer.name if golfer_matchup.subbing_for_golfer else None
+    
+    # Get handicap
+    hcp_obj = Handicap.objects.filter(golfer=actual_golfer, week=week).first()
+    hcp = hcp_obj.handicap if hcp_obj else 0
+    
+    # Get opponent handicap for stroke calculations
+    opponent_hcp = golfer_matchup.opponent.handicap_set.filter(week=week).first()
+    opponent_hcp_value = opponent_hcp.handicap if opponent_hcp else 0
+    
+    # Calculate handicap difference for strokes
+    hcp_diff = conventional_round(hcp - opponent_hcp_value)
+    if hcp_diff > 9:
+        hcp_diff = hcp_diff - 9
+        rollover = 1
+    else:
+        rollover = 0
+    
+    # Calculate stroke info for each hole (for visual indication)
+    stroke_info = []
+    
+    for hole in holes:
+        strokes = 0
+        if hcp_diff > 0:  # Golfer is getting strokes
+            if hole.handicap9 <= hcp_diff:
+                strokes = 1 + rollover
+            elif rollover == 1:
+                strokes = 1
+        stroke_info.append(strokes)
+    
+    return {
+        'golfer': actual_golfer,
+        'is_sub': is_sub,
+        'sub_for': sub_for,
+        'hcp': hcp,
+        'stroke_info': stroke_info,
+        'scores': ['' for _ in holes],  # Empty scores
+        'hole_points': ['' for _ in holes],  # Empty points
+        'gross': '',
+        'net': '',
+        'round_points': '',
+        'total_points': '',
+    }

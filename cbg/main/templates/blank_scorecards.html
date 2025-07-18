@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+{% load static %}
+{% load scorecard_filters %}
+
+{% block page_content %}
+
+<style>
+/* Stroke indicators for blank scorecards - using background shading */
+.scorecard .score.stroke-1 { 
+    background-color: #e0e0e0 !important; /* Light gray for 1 stroke */
+    border: 1px solid #000 !important;
+    position: relative;
+}
+
+.scorecard .score.stroke-2 { 
+    background-color: #b0b0b0 !important; /* Darker gray for 2 strokes */
+    border: 1px solid #000 !important;
+    position: relative;
+}
+
+/* Ensure all scorecard cells have borders */
+.scorecard td, .scorecard th {
+    border: 1px solid #000 !important;
+}
+
+/* Make header sections lighter */
+.scorecard .descriptor {
+    background-color: #4a4a4a !important;
+    color: white !important;
+}
+
+.scorecard .data {
+    background-color: #4a4a4a !important;
+    color: white !important;
+}
+
+/* Make hole info cells dark */
+.scorecard .hole-data {
+    background-color: #4a4a4a !important;
+    color: white !important;
+    font-weight: bold !important;
+}
+
+/* Make rightmost column cells dark for middle rows */
+.scorecard .score[style*="background-color:#4a4a4a"] {
+    background-color: #4a4a4a !important;
+    color: white !important;
+}
+
+/* Ensure score and points cells have proper borders and styling */
+.scorecard .score {
+    border: 1px solid #000 !important;
+    background-color: white !important;
+    color: black !important;
+    min-height: 30px;
+    position: relative;
+}
+
+.scorecard .points {
+    border: 1px solid #000 !important;
+    background-color: white !important;
+    color: black !important;
+    min-height: 25px;
+}
+
+/* Simple header styling for non-print */
+.no-print {
+    background: #f8f9fa;
+    color: #333;
+    padding: 20px;
+    margin-bottom: 30px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+}
+
+.no-print h2 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.no-print .btn {
+    background: #007bff;
+    border: 1px solid #007bff;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.no-print .btn:hover {
+    background: #0056b3;
+    border-color: #0056b3;
+}
+
+/* Print styles for one card per page */
+@media print {
+    /* Hide header and navigation */
+    nav, .navbar, header, .no-print {
+        display: none !important;
+    }
+    
+    /* Hide browser print header/footer */
+    @page {
+        margin: 0;
+        size: A4;
+    }
+    
+    body {
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+    
+    .table-responsive {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: center;
+        margin: 0;
+        padding: 20px;
+        page-break-inside: avoid;
+        page-break-after: always;
+    }
+    
+    .scorecard {
+        margin: 0 auto;
+        border-collapse: collapse !important;
+        box-shadow: none;
+        width: 95% !important; /* Wider cards to fill page */
+        max-width: 800px !important;
+    }
+    
+    .scorecard:last-child {
+        page-break-after: avoid;
+    }
+    
+    /* Ensure borders print */
+    .scorecard td, .scorecard th {
+        border: 1px solid #000 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .scorecard .descriptor {
+        background-color: #4a4a4a !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .scorecard .data {
+        background-color: #4a4a4a !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .scorecard .hole-data {
+        background-color: #4a4a4a !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .scorecard .score {
+        border: 1px solid #000 !important;
+        background-color: white !important;
+        color: black !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .scorecard .points {
+        border: 1px solid #000 !important;
+        background-color: white !important;
+        color: black !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    /* Ensure stroke indicators print */
+    .scorecard .score.stroke-1 {
+        background-color: #e0e0e0 !important;
+        border: 1px solid #000 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .scorecard .score.stroke-2 {
+        background-color: #b0b0b0 !important;
+        border: 1px solid #000 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    /* Make rightmost column cells dark for middle rows when printing */
+    .scorecard .score[style*="background-color:#4a4a4a"] {
+        background-color: #4a4a4a !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    /* Show card header info in print */
+    .card-header-info {
+        display: block !important;
+        margin-bottom: 20px;
+        width: 100%;
+        max-width: 568px;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+}
+
+/* Card header info for print */
+.card-header-info {
+    display: none; /* Hidden by default, shown only in print */
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #f8f9fa;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.card-header-info .stroke-info {
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.card-header-info .website-reminder {
+    color: #666;
+    font-style: italic;
+}
+
+/* Legend for stroke indicators */
+.stroke-legend {
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.stroke-legend h5 {
+    margin-bottom: 15px;
+    color: #333;
+    font-weight: 600;
+}
+
+.stroke-legend .legend-item {
+    display: inline-block;
+    margin: 0 20px;
+    font-size: 14px;
+    color: #333;
+}
+
+.stroke-legend .legend-box {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #000;
+    margin-right: 8px;
+    position: relative;
+    vertical-align: middle;
+}
+
+.stroke-legend .legend-box.stroke-1 {
+    background-color: #e0e0e0;
+}
+
+.stroke-legend .legend-box.stroke-2 {
+    background-color: #b0b0b0;
+}
+</style>
+
+<div class="no-print">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h2>Blank Scorecards - Week {{ week_number }}</h2>
+        <button type="button" class="btn btn-primary" onClick="window.print();">
+            <i class="fas fa-print me-2"></i>Print Scorecards
+        </button>
+    </div>
+
+    <div class="stroke-legend">
+        <h5>Stroke Indicators</h5>
+        <div class="legend-item">
+            <span class="legend-box stroke-1"></span>
+            <span>1 Stroke Given</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-box stroke-2"></span>
+            <span>2 Strokes Given</span>
+        </div>
+    </div>
+</div>
+
+{% if error %}
+    <div class="alert alert-warning" role="alert">
+        {{ error }}
+    </div>
+{% else %}
+    {% for card in cards %}
+    <div class="table-responsive">
+      <!-- Stroke description and website reminder for print -->
+      <div class="card-header-info">
+        <div class="stroke-info">
+          <strong>Stroke Indicators:</strong> Light gray = 1 stroke given, Darker gray = 2 strokes given
+        </div>
+        <div class="website-reminder">
+          Visit the website for live stats, standings, schedules, and subs: <strong>www.chatterboxgolf.com</strong>
+        </div>
+      </div>
+      
+      <table class="scorecard" style="table-layout: fixed; width: 568px; border-collapse: collapse;">
+        <colgroup>
+          <col style="width: 139px">
+          <col style="width: 32px">
+          <col style="width: 35px">
+          <col style="width: 35px">
+          <col style="width: 33px">
+          <col style="width: 35px">
+          <col style="width: 35px">
+          <col style="width: 35px">
+          <col style="width: 35px">
+          <col style="width: 35px">
+          <col style="width: 35px">
+          <col style="width: 43px">
+          <col style="width: 41px">
+        </colgroup>
+        <tr class="data">
+          <th class="descriptor" colspan="2">Week {{ week_number }}</th>
+          <th class="descriptor" colspan="9">{{ hole_string }}</th>
+          <th class="descriptor" colspan="2">{{ week.season.year }}</th>
+        </tr>
+        <tr class="scores">
+          <td class="descriptor">
+            {{ card.team1_golferA.golfer.name }}
+            {% if card.team1_golferA.is_sub %}<span class="sub-info">(Sub for {{ card.team1_golferA.sub_for }})</span>{% endif %}
+          </td>
+          <td class="hcp">{{ card.team1_golferA.hcp|floatformat:0 }}</td>
+          {% for score in card.team1_golferA.scores %}
+            {% with forloop.counter0 as hole_index %}
+              {% with card.team1_golferA.stroke_info|index:hole_index as strokes %}
+                {% if strokes >= 2 %}
+                  <td class="score stroke-2">{{ score }}</td>
+                {% elif strokes == 1 %}
+                  <td class="score stroke-1">{{ score }}</td>
+                {% else %}
+                  <td class="score">{{ score }}</td>
+                {% endif %}
+              {% endwith %}
+            {% endwith %}
+          {% endfor %}
+          <td class="score">{{ card.team1_golferA.gross }}</td>
+          <td class="total">{{ card.team1_golferA.net }}</td>
+        </tr>
+        <tr class="points">
+          <td class="descriptor" colspan="2">POINTS:</td>
+          {% for points in card.team1_golferA.hole_points %}
+          <td class="points">{{ points }}</td>
+          {% endfor %}
+          <td class="points">{{ card.team1_golferA.round_points }}</td>
+          <td class="total">{{ card.team1_golferA.total_points }}</td>
+        </tr>
+        <tr class="scores">
+          <td class="descriptor">
+            {{ card.team2_golferA.golfer.name }}
+            {% if card.team2_golferA.is_sub %}<span class="sub-info">(Sub for {{ card.team2_golferA.sub_for }})</span>{% endif %}
+          </td>
+          <td class="hcp">{{ card.team2_golferA.hcp|floatformat:0 }}</td>
+          {% for score in card.team2_golferA.scores %}
+            {% with forloop.counter0 as hole_index %}
+              {% with card.team2_golferA.stroke_info|index:hole_index as strokes %}
+                {% if strokes >= 2 %}
+                  <td class="score stroke-2">{{ score }}</td>
+                {% elif strokes == 1 %}
+                  <td class="score stroke-1">{{ score }}</td>
+                {% else %}
+                  <td class="score">{{ score }}</td>
+                {% endif %}
+              {% endwith %}
+            {% endwith %}
+          {% endfor %}
+          <td class="score">{{ card.team2_golferA.gross }}</td>
+          <td class="total">{{ card.team2_golferA.net }}</td>
+        </tr>
+        <tr class="points">
+          <td class="descriptor" colspan="2">POINTS:</td>
+          {% for points in card.team2_golferA.hole_points %}
+          <td class="points">{{ points }}</td>
+          {% endfor %}
+          <td class="points">{{ card.team2_golferA.round_points }}</td>
+          <td class="total">{{ card.team2_golferA.total_points }}</td>
+        </tr>
+        <tr class="data">
+          <td class="hole-data left-align" colspan="2">HOLE</td>
+          {% for hole in holes %}
+          <td class="hole-data center-align">{{ hole.number }}</td>
+          {% endfor %}
+          <td class="hole-data center-align" rowspan="2">IN</td>
+          <td class="score" style="background-color:#4a4a4a; color:white;"></td>
+        </tr>
+        <tr class="data">
+          <td class="hole-data left-align" colspan="2">HANDICAP</td>
+          {% for hole in holes %}
+          <td class="hole-data center-align">{{ hole.handicap }}</td>
+          {% endfor %}
+          <td class="score" style="background-color:#4a4a4a; color:white;"></td>
+        </tr>
+        <tr class="data">
+          <td class="hole-data left-align" colspan="2">YARDS</td>
+          {% for hole in holes %}
+          <td class="hole-data center-align">{{ hole.yards }}</td>
+          {% endfor %}
+          <td class="hole-data center-align">{{ total }}</td>
+          <td class="score" style="background-color:#4a4a4a; color:white;"></td>
+        </tr>
+        <tr class="data">
+          <td class="hole-data left-align" colspan="2">PAR</td>
+          {% for hole in holes %}
+          <td class="hole-data center-align">{{ hole.par }}</td>
+          {% endfor %}
+          <td class="hole-data center-align">36</td>
+          <td class="score" style="background-color:#4a4a4a; color:white;"></td>
+        </tr>
+        <tr class="scores">
+          <td class="descriptor">
+            {{ card.team1_golferB.golfer.name }}
+            {% if card.team1_golferB.is_sub %}<span class="sub-info">(Sub for {{ card.team1_golferB.sub_for }})</span>{% endif %}
+          </td>
+          <td class="hcp">{{ card.team1_golferB.hcp|floatformat:0 }}</td>
+          {% for score in card.team1_golferB.scores %}
+            {% with forloop.counter0 as hole_index %}
+              {% with card.team1_golferB.stroke_info|index:hole_index as strokes %}
+                {% if strokes >= 2 %}
+                  <td class="score stroke-2">{{ score }}</td>
+                {% elif strokes == 1 %}
+                  <td class="score stroke-1">{{ score }}</td>
+                {% else %}
+                  <td class="score">{{ score }}</td>
+                {% endif %}
+              {% endwith %}
+            {% endwith %}
+          {% endfor %}
+          <td class="score">{{ card.team1_golferB.gross }}</td>
+          <td class="total">{{ card.team1_golferB.net }}</td>
+        </tr>
+        <tr class="points">
+          <td class="descriptor" colspan="2">POINTS:</td>
+          {% for points in card.team1_golferB.hole_points %}
+          <td class="points">{{ points }}</td>
+          {% endfor %}
+          <td class="points">{{ card.team1_golferB.round_points }}</td>
+          <td class="total">{{ card.team1_golferB.total_points }}</td>
+        </tr>
+        <tr class="scores">
+          <td class="descriptor">
+            {{ card.team2_golferB.golfer.name }}
+            {% if card.team2_golferB.is_sub %}<span class="sub-info">(Sub for {{ card.team2_golferB.sub_for }})</span>{% endif %}
+          </td>
+          <td class="hcp">{{ card.team2_golferB.hcp|floatformat:0 }}</td>
+          {% for score in card.team2_golferB.scores %}
+            {% with forloop.counter0 as hole_index %}
+              {% with card.team2_golferB.stroke_info|index:hole_index as strokes %}
+                {% if strokes >= 2 %}
+                  <td class="score stroke-2">{{ score }}</td>
+                {% elif strokes == 1 %}
+                  <td class="score stroke-1">{{ score }}</td>
+                {% else %}
+                  <td class="score">{{ score }}</td>
+                {% endif %}
+              {% endwith %}
+            {% endwith %}
+          {% endfor %}
+          <td class="score">{{ card.team2_golferB.gross }}</td>
+          <td class="total">{{ card.team2_golferB.net }}</td>
+        </tr>
+        <tr class="points">
+          <td class="descriptor" colspan="2">POINTS:</td>
+          {% for points in card.team2_golferB.hole_points %}
+          <td class="points">{{ points }}</td>
+          {% endfor %}
+          <td class="points">{{ card.team2_golferB.round_points }}</td>
+          <td class="total">{{ card.team2_golferB.total_points }}</td>
+        </tr>
+      </table>
+    </div>
+    <br>
+    {% endfor %}
+{% endif %}
+{% endblock %} 

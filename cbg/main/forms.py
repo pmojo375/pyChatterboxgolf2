@@ -3,7 +3,7 @@ from django.db.models import Q
 from main.models import *
 from main.helper import *
 from django.utils import timezone
-from main.helper import get_playing_golfers_for_week, get_earliest_week_without_full_matchups
+from main.helper import get_playing_golfers_for_week, get_earliest_week_without_full_matchups, get_next_week
 
 class SeasonForm(forms.Form):
     year = forms.IntegerField(label='Year', min_value=2022, max_value=2100)
@@ -136,10 +136,10 @@ class SubForm(forms.Form):
         self.fields['sub_golfer'].choices = [(g.id, g.name) for g in sub_golfers]
         self.fields['week'].choices = [(w.id, f"{w} - {'Front' if w.is_front else 'Back'}") for w in weeks]
         
-        # Find the earliest week without full matchups and set it as initial
-        earliest_week = get_earliest_week_without_full_matchups()
-        if earliest_week:
-            self.initial['week'] = earliest_week.id
+        # Find the next week without scores entered and set it as initial
+        next_week = get_next_week()
+        if next_week:
+            self.initial['week'] = next_week.id
     
     # custom validation to ensure that a sub is selected if the no_sub checkbox is not checked
     def clean(self):
@@ -201,10 +201,10 @@ class WeekSelectionForm(forms.Form):
                 label="Select Week"
             )
         
-        # Find the earliest week without full matchups and set it as initial
-        earliest_week = get_earliest_week_without_full_matchups()
-        if earliest_week:
-            self.initial['week'] = earliest_week
+        # Find the next week without scores entered and set it as initial
+        next_week = get_next_week()
+        if next_week:
+            self.initial['week'] = next_week
         
 class TeamForm(forms.Form):
     season = forms.ModelChoiceField(queryset=Season.objects.all().order_by('-year'), label="Select Season")

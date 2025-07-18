@@ -144,12 +144,18 @@ class Round(models.Model):
 
     class Meta:
         unique_together = ('golfer_matchup', 'week')
+    
+    def __str__(self):
+        sub_text = " (SUB)" if self.is_sub else ""
+        subbing_text = f" for {self.subbing_for.name}" if self.subbing_for else ""
+        return f"{self.golfer.name}{sub_text}{subbing_text} - {self.week.date.strftime('%Y-%m-%d')} - Gross: {self.gross}, Net: {self.net}"
         
 class GolferMatchup(models.Model):
     week = models.ForeignKey(Week, related_name='week', on_delete=models.CASCADE)
     is_A = models.BooleanField(default=False)
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     opponent = models.ForeignKey(Golfer, related_name='opponent', on_delete=models.CASCADE)
+    is_teammate_subbing = models.BooleanField(default=False)
 
     # If the golfer is subbing for another golfer, this field will be set otherwise it will be null
     subbing_for_golfer = models.ForeignKey(Golfer, related_name='subbing_for_golfer', on_delete=models.CASCADE, null=True)
