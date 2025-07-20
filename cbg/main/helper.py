@@ -125,7 +125,7 @@ def get_last_week():
         weeks = Week.objects.filter(season=current_season, date__lt=timezone.now()).order_by('-date')
         
         for week in weeks:
-            if Score.objects.filter(week=week).exists():
+            if Score.objects.filter(week=week).count() == week.num_scores:
                 return week
             
         return None
