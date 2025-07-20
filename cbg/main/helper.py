@@ -140,7 +140,20 @@ def get_next_week():
     for week in weeks:
         if not week.rained_out:
             score_count = Score.objects.filter(week=week).count()
-            if score_count == 0:
+            
+            # Calculate expected number of scores for this week
+            # Get the number of golfer matchups for this week
+            golfer_matchup_count = GolferMatchup.objects.filter(week=week).count()
+            expected_scores = golfer_matchup_count * 9  # Each golfer plays 9 holes
+            
+            # Only move to next week if no scores are entered OR if all expected scores are entered
+            if score_count == 0 or score_count >= expected_scores:
+                if score_count == 0:
+                    return week  # This week has no scores, so it's the next week to enter
+                # If we have all scores for this week, continue to next week
+                continue
+            else:
+                # This week has some scores but not all, so we should stay on this week
                 return week
     return None
 
