@@ -252,10 +252,10 @@ class SkinEntryForm(forms.Form):
         if current_season:
             self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-date')
             
-            # Find the earliest week without full matchups and set it as initial
-            earliest_week = get_earliest_week_without_full_matchups(current_season)
-            if earliest_week:
-                self.initial['week'] = earliest_week.id
+            # Find the next week (active week that needs scores) and set it as initial
+            next_week = get_next_week()
+            if next_week:
+                self.initial['week'] = next_week.id
         week = None
         # Priority: POST data > initial['week']
         if self.data.get('week'):
@@ -322,10 +322,10 @@ class CreateGameForm(forms.Form):
         if current_season:
             self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-number')
             
-            # Find the earliest week without full matchups and set it as initial
-            earliest_week = get_earliest_week_without_full_matchups(current_season)
-            if earliest_week:
-                self.initial['week'] = earliest_week
+            # Find the next week (active week that needs scores) and set it as initial
+            next_week = get_next_week()
+            if next_week:
+                self.initial['week'] = next_week
 
 class GameEntryForm(forms.Form):
     week = forms.ModelChoiceField(
@@ -360,11 +360,11 @@ class GameEntryForm(forms.Form):
             except Exception:
                 week = None
         else:
-            # Find the earliest week without full matchups and set it as initial
-            earliest_week = get_earliest_week_without_full_matchups(current_season)
-            if earliest_week:
-                self.initial['week'] = earliest_week.id
-                week = earliest_week
+            # Find the next week (active week that needs scores) and set it as initial
+            next_week = get_next_week()
+            if next_week:
+                self.initial['week'] = next_week.id
+                week = next_week
         if week:
             playing_golfers = get_playing_golfers_for_week(week)
             self.fields['golfers'].queryset = Golfer.objects.filter(id__in=[g.id for g in playing_golfers]).order_by('name')
@@ -435,11 +435,11 @@ class GameWinnerForm(forms.Form):
         elif initial_week:
             week = initial_week
         else:
-            # Find the earliest week without full matchups and set it as initial
-            earliest_week = get_earliest_week_without_full_matchups(current_season)
-            if earliest_week:
-                self.initial['week'] = earliest_week
-                week = earliest_week
+            # Find the next week (active week that needs scores) and set it as initial
+            next_week = get_next_week()
+            if next_week:
+                self.initial['week'] = next_week
+                week = next_week
         if week:
             # Only golfers who have entries for this week/game
             game = Game.objects.filter(week=week).first()

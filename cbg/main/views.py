@@ -2408,7 +2408,7 @@ def manage_skins(request):
                     selected_week = form.cleaned_data['week']
     else:
         # Set default week in form initial for GET
-        default_week = get_earliest_week_without_full_matchups(current_season)
+        default_week = get_next_week()
         initial = {}
         if default_week:
             initial['week'] = default_week.id
@@ -2537,7 +2537,7 @@ def manage_games(request):
                 selected_week = None
         if not selected_week:
             # Set default week in form data for GET
-            default_week = get_earliest_week_without_full_matchups(current_season)
+            default_week = get_next_week()
             if default_week:
                 selected_week = default_week
         form_data = {}
