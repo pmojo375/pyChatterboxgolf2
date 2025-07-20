@@ -2685,6 +2685,9 @@ def blank_scorecards(request):
         if card['team1_golferA'] or card['team1_golferB'] or card['team2_golferA'] or card['team2_golferB']:
             cards.append(card)
     
+    # Define senior tee holes (holes where seniors can play up)
+    senior_tee_holes = {1, 2, 4, 6, 9, 10, 12, 14, 17}
+    
     return render(request, 'blank_scorecards.html', {
         "week_number": week.number,
         "holes": holes,
@@ -2693,6 +2696,7 @@ def blank_scorecards(request):
         "total": total_yards,
         "week": week,
         "hole_pars": [hole.par for hole in holes],
+        "senior_tee_holes": senior_tee_holes,
     })
 
 def _build_blank_golfer_data(golfer_matchup, holes, week):
