@@ -25,14 +25,14 @@
             <input type="hidden" name="week_id" value="{{ week.id }}">
             <input type="hidden" name="matchup_id" id="matchup_id">
 
-            <div class="table-responsive mb-3" style="max-width: 960px; margin: 0 auto;">
-                <table class="scorecard" style="table-layout: fixed; width: 568px" id="scorecard_table">
+            <div class="table-responsive mb-3" style="max-width: 1100px; margin: 0 auto;">
+                <table class="scorecard" style="table-layout: fixed; width: 750px" id="scorecard_table">
                     <colgroup>
-                        <col style="width: 139px">
-                        <col style="width: 32px">
-                        {% for hole in hole_numbers %}<col style="width: 35px">{% endfor %}
-                        <col style="width: 43px">
-                        <col style="width: 41px">
+                        <col style="width: 180px">
+                        <col style="width: 45px">
+                        {% for hole in hole_numbers %}<col style="width: 45px">{% endfor %}
+                        <col style="width: 55px">
+                        <col style="width: 55px">
                     </colgroup>
                     <tbody id="scorecard_body">
                         <!-- Empty structure shown before matchup selection -->
