@@ -26,58 +26,80 @@
             <input type="hidden" name="matchup_id" id="matchup_id">
 
             <div class="table-responsive mb-3" style="max-width: 960px; margin: 0 auto;">
-                <table class="scorecard" style="table-layout: fixed; width: 100%;" id="scorecard_table">
+                <table class="scorecard" style="table-layout: fixed; width: 568px" id="scorecard_table">
                     <colgroup>
-                        <col style="width: 160px">
-                        <col style="width: 50px">
+                        <col style="width: 139px">
+                        <col style="width: 32px">
                         {% for hole in hole_numbers %}<col style="width: 35px">{% endfor %}
+                        <col style="width: 43px">
+                        <col style="width: 41px">
                     </colgroup>
-                    <thead>
-                        <tr>
-                            <th>Golfer</th>
-                            <th>HCP</th>
-                            {% for hole in hole_numbers %}<th style="text-align: center">{{ hole }}</th>{% endfor %}
-                        </tr>
-                    </thead>
                     <tbody id="scorecard_body">
                         <!-- Empty structure shown before matchup selection -->
-                        <tr class="empty-row">
-                            <td class="descriptor">Select a matchup to begin</td>
-                            <td class="hcp">-</td>
-                            {% for hole in hole_numbers %}
-                                <td><input type="number" min="1" max="10" disabled></td>
-                            {% endfor %}
+                        <tr class="data">
+                            <th class="descriptor" colspan="2">Week {{ week.number }}</th>
+                            <th class="descriptor" colspan="{{ hole_numbers|length }}">Holes</th>
+                            <th class="descriptor" colspan="2">{{ week.season.year }}</th>
                         </tr>
-                        <tr class="empty-row">
+                        <tr class="scores empty-row">
                             <td class="descriptor">-</td>
                             <td class="hcp">-</td>
                             {% for hole in hole_numbers %}
-                                <td><input type="number" min="1" max="10" disabled></td>
+                                <td class="score"><input type="number" min="1" max="10" disabled></td>
                             {% endfor %}
-                        </tr>                        <!-- Hole info rows in default state -->
-                        <tr class="hole-info-row">
-                            <td colspan="2" class="text-end fw-bold">Par</td>
-                            {% for hole in hole_data %}<td style="text-align: center">{{ hole.0 }}</td>{% endfor %}
+                            <td class="score" style="background-color:#97A2A2">-</td>
+                            <td class="total" style="background-color:#97A2A2">-</td>
                         </tr>
-                        <tr class="hole-info-row">
-                            <td colspan="2" class="text-end fw-bold">Yards</td>
-                            {% for hole in hole_data %}<td style="text-align: center">{{ hole.2 }}</td>{% endfor %}
-                        </tr>
-                        <tr class="empty-row">
+                        <tr class="scores empty-row">
                             <td class="descriptor">-</td>
                             <td class="hcp">-</td>
                             {% for hole in hole_numbers %}
-                                <td><input type="number" min="1" max="10" disabled></td>
+                                <td class="score"><input type="number" min="1" max="10" disabled></td>
                             {% endfor %}
+                            <td class="score" style="background-color:#97A2A2">-</td>
+                            <td class="total" style="background-color:#97A2A2">-</td>
                         </tr>
-                        <tr class="empty-row">
+                        <tr class="data">
+                            <td class="hole-data left-align" colspan="2">HOLE</td>
+                            {% for hole in hole_numbers %}<td class="hole-data center-align">{{ hole }}</td>{% endfor %}
+                            <td class="hole-data center-align" rowspan="2">IN</td>
+                            <td class="score" style="background-color:#4a4a4a; color:white;"></td>
+                        </tr>
+                        <tr class="data">
+                            <td class="hole-data left-align" colspan="2">HANDICAP</td>
+                            {% for hole in hole_data %}<td class="hole-data center-align">{{ hole.1 }}</td>{% endfor %}
+                            <td class="score" style="background-color:#4a4a4a; color:white;"></td>
+                        </tr>
+                        <tr class="data">
+                            <td class="hole-data left-align" colspan="2">YARDS</td>
+                            {% for hole in hole_data %}<td class="hole-data center-align">{{ hole.2 }}</td>{% endfor %}
+                            <td class="hole-data center-align">-</td>
+                            <td class="score" style="background-color:#4a4a4a; color:white;"></td>
+                        </tr>
+                        <tr class="data">
+                            <td class="hole-data left-align" colspan="2">PAR</td>
+                            {% for hole in hole_data %}<td class="hole-data center-align">{{ hole.0 }}</td>{% endfor %}
+                            <td class="hole-data center-align">36</td>
+                            <td class="score" style="background-color:#4a4a4a; color:white;"></td>
+                        </tr>
+                        <tr class="scores empty-row">
                             <td class="descriptor">-</td>
                             <td class="hcp">-</td>
                             {% for hole in hole_numbers %}
-                                <td><input type="number" min="1" max="10" disabled></td>
+                                <td class="score"><input type="number" min="1" max="10" disabled></td>
                             {% endfor %}
+                            <td class="score" style="background-color:#97A2A2">-</td>
+                            <td class="total" style="background-color:#97A2A2">-</td>
                         </tr>
-
+                        <tr class="scores empty-row">
+                            <td class="descriptor">-</td>
+                            <td class="hcp">-</td>
+                            {% for hole in hole_numbers %}
+                                <td class="score"><input type="number" min="1" max="10" disabled></td>
+                            {% endfor %}
+                            <td class="score" style="background-color:#97A2A2">-</td>
+                            <td class="total" style="background-color:#97A2A2">-</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -89,70 +111,167 @@
     </div>
 
 <style>
+    /* Use the existing scorecard styles from main.css */
+    .scorecard {
+        alignment: center;
+        border-spacing: 0;
+        border-collapse: collapse;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .scorecard td {
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        padding: 3px 5px;
+        border-style: solid;
+        border-width: 1px;
+        overflow: hidden;
+        word-break: normal;
+        border-color: black;
+    }
+    
+    .scorecard .scores {
+        color: #FFFFFF;
+    }
+    
+    .scorecard .data {
+        color: #FFFFFF;
+        background-color: #272727;
+    }
+    
+    .scorecard .descriptor {
+        font-weight: bold;
+        border-color: inherit;
+        text-align: left;
+        vertical-align: top;
+        color: #FFFFFF;
+        background-color: #272727;
+    }
+    
+    .scorecard .hcp {
+        text-align: center;
+        font-weight: bold;
+        font-size: 10px;
+        border-color: inherit;
+        vertical-align: center;
+        color: #FFFFFF;
+        background-color: #272727;
+    }
+    
+    .scorecard .hole-data {
+        font-weight: bold;
+        font-style: italic;
+        border-color: inherit;
+        vertical-align: top;
+    }
+    
+    .scorecard .score {
+        border-color: inherit;
+        text-align: center;
+        vertical-align: middle;
+        padding: 0 !important;
+        background: white;
+        border: 1px solid black;
+    }
+    
+    .scorecard .total {
+        border-left: 2px solid black;
+        border-color: black;
+        text-align: center;
+        vertical-align: middle;
+        border: 1px solid black;
+    }
+    
+    .left-align {
+        text-align: left;
+    }
+    
+    .center-align {
+        text-align: center;
+    }
+    
+    /* Input styling that looks like scorecard cells */
     .scorecard input[type="number"] {
         width: 100%;
-        padding: 2px;
-        box-sizing: border-box;
-        font-size: 0.9rem;
-        text-align: center;
-    }
-    .scorecard td {
+        height: 100%;
         padding: 0;
-        vertical-align: middle;
+        margin: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        font-weight: bold;
         text-align: center;
+        border: none;
+        background: white;
+        color: #000;
+        outline: none;
+        -moz-appearance: textfield;
     }
-    .scorecard .descriptor {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        text-align: left;
-        padding-left: 4px;
+    
+    .scorecard input[type="number"]::-webkit-outer-spin-button,
+    .scorecard input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
     }
+    
+    .scorecard input[type="number"]:focus {
+        background: white;
+        color: #000;
+    }
+    
+    .scorecard input[type="number"]:disabled {
+        background: transparent;
+        color: #6c757d;
+    }
+    
+    /* Empty row styling */
     .scorecard .empty-row {
-        background-color: #f8f9fa;
+        background-color: #97A2A2;
+    }
+    
+    .scorecard .empty-row .descriptor {
+        background-color: #97A2A2;
         color: #6c757d;
     }
-    .scorecard .empty-row input {
-        background-color: #e9ecef;
-        color: #6c757d;
+    
+    .scorecard .empty-row .hcp {
+        background-color: #272727;
+        color: #FFFFFF;
     }
+    
+    /* Sub row styling */
     .scorecard .sub-row {
-        background-color: #e3f2fd;
+        background-color: #97A2A2;
+    }
+    
+    .scorecard .sub-row .descriptor {
+        background-color: #97A2A2;
         font-style: italic;
     }
-    .scorecard .sub-indicator {
-        font-size: 0.75rem;
-        color: #666;
-        display: block;
-    }
-    .scorecard input:disabled {
-        background-color: #e9ecef;
-        color: #6c757d;
-    }
-    .scorecard .pairing-separator {
-        background-color: #f8f9fa;
-        border-top: 2px solid #dee2e6;
-        border-bottom: 2px solid #dee2e6;
-    }
+    
+
+    
+    /* Handicap-based styling */
     .scorecard .handicap-high {
-        background-color: #fff8e1;
+        background-color: #97A2A2;
+    }
+    
+    .scorecard .handicap-high .descriptor {
+        background-color: #97A2A2;
         border-left: 3px solid #ffc107;
     }
+    
     .scorecard .handicap-low {
-        background-color: #f1f8e9;
+        background-color: #97A2A2;
+    }
+    
+    .scorecard .handicap-low .descriptor {
+        background-color: #97A2A2;
         border-left: 3px solid #4caf50;
     }
-    .scorecard .handicap-label {
-        font-size: 0.7rem;
-        color: #666;
-        display: block;
-        font-weight: bold;
-    }
-    .scorecard .hole-info-row {
-        background-color: #f8f9fa;
-        font-weight: 500;
-        font-size: 0.75rem;
-    }
+    
+
 </style>
 
 <script>
@@ -182,195 +301,363 @@
         function populateScorecard(rows) {
             clearScorecard();
             
-            let currentPairing = -1;
+            // Add header row
+            const headerRow = document.createElement('tr');
+            headerRow.className = 'data';
             
-            rows.forEach((row, index) => {
-                // Add pairing separator with hole info if this is the start of a new pairing
-                if (row.is_pairing_start && currentPairing !== -1) {
-                    addPairingSeparator();
+            const headerCell1 = document.createElement('th');
+            headerCell1.className = 'descriptor';
+            headerCell1.colSpan = 2;
+            headerCell1.textContent = `Week {{ week.number }}`;
+            headerRow.appendChild(headerCell1);
+            
+            const headerCell2 = document.createElement('th');
+            headerCell2.className = 'descriptor';
+            headerCell2.colSpan = holeNumbers.length;
+            headerCell2.textContent = 'Holes';
+            headerRow.appendChild(headerCell2);
+            
+            const headerCell3 = document.createElement('th');
+            headerCell3.className = 'descriptor';
+            headerCell3.colSpan = 2;
+            headerCell3.textContent = '{{ week.season.year }}';
+            headerRow.appendChild(headerCell3);
+            
+            scorecardBody.appendChild(headerRow);
+            
+            // Add first two golfers (Team 1 Golfer A and Team 2 Golfer A)
+            for (let i = 0; i < 2; i++) {
+                if (rows[i]) {
+                    addGolferRow(rows[i]);
                 }
-                
-                if (row.is_pairing_start) {
-                    currentPairing = row.pairing_index;
+            }
+            
+            // Add hole info rows
+            addHoleInfoRows();
+            
+            // Add last two golfers (Team 1 Golfer B and Team 2 Golfer B)
+            for (let i = 2; i < 4; i++) {
+                if (rows[i]) {
+                    addGolferRow(rows[i]);
                 }
-                
-                const tr = document.createElement('tr');
-                tr.id = `golfer${row.row_num}_row`;
-                
-                // Add CSS classes based on row type
-                if (row.playing_for) {
-                    tr.classList.add('sub-row');
-                }
-                
-                // Add handicap-based styling
-                if (row.pairing_index === 0) {
-                    tr.classList.add('handicap-high');
-                } else {
-                    tr.classList.add('handicap-low');
-                }
-
-                // Golfer name cell
-                const nameCell = document.createElement('td');
-                nameCell.className = 'descriptor';
-                
-                const handicapLabel = row.pairing_index === 0 ? 'Higher HCP' : 'Lower HCP';
-                
-                nameCell.innerHTML = `
-                    ${row.golfer_name}
-                    <span class="handicap-label">${handicapLabel}</span>
-                    ${row.playing_for ? `<span class="sub-indicator">(sub for ${row.playing_for})</span>` : ''}
-                `;
-                tr.appendChild(nameCell);
-
-                // Hidden inputs for form processing
-                const nameInput = document.createElement('input');
-                nameInput.type = 'hidden';
-                nameInput.name = `golfer${row.row_num}_name`;
-                nameInput.value = row.golfer_name;
-                tr.appendChild(nameInput);
-
-                const activeInput = document.createElement('input');
-                activeInput.type = 'hidden';
-                activeInput.name = `golfer${row.row_num}_active`;
-                activeInput.value = 'true';
-                tr.appendChild(activeInput);
-
-                // Handicap cell
-                const hcpCell = document.createElement('td');
-                hcpCell.className = 'hcp';
-                hcpCell.textContent = row.handicap;
-                tr.appendChild(hcpCell);
-
-                // Score input cells
-                holeNumbers.forEach(holeNum => {
-                    const td = document.createElement('td');
-                    const input = document.createElement('input');
-                    input.name = `hole${holeNum}_${row.row_num}`;
-                    input.type = 'number';
-                    input.min = '1';
-                    input.max = '10';
-                    input.disabled = false; // All rows are editable now
-                    
-                    td.appendChild(input);
-                    tr.appendChild(td);
-                });
-
-                scorecardBody.appendChild(tr);
-            });
+            }
         }
 
-        function addPairingSeparator() {
-            // Add par row
-            const parRow = document.createElement('tr');
-            parRow.className = 'pairing-separator hole-info-row';
+        function addGolferRow(row) {
+            const scoreRow = document.createElement('tr');
+            scoreRow.id = `golfer${row.row_num}_row`;
+            scoreRow.className = 'scores';
             
-            const parCell = document.createElement('td');
-            parCell.colSpan = 2;
-            parCell.className = 'text-end fw-bold';
-            parCell.textContent = 'Par';
-            parRow.appendChild(parCell);
+            if (row.playing_for) {
+                scoreRow.classList.add('sub-row');
+            }
             
-            holeData.forEach(hole => {
+            if (row.pairing_index === 0) {
+                scoreRow.classList.add('handicap-high');
+            } else {
+                scoreRow.classList.add('handicap-low');
+            }
+
+            // Golfer name cell
+            const nameCell = document.createElement('td');
+            nameCell.className = 'descriptor';
+            
+
+            
+            nameCell.innerHTML = row.golfer_name;
+            scoreRow.appendChild(nameCell);
+
+            // Hidden inputs for form processing
+            const nameInput = document.createElement('input');
+            nameInput.type = 'hidden';
+            nameInput.name = `golfer${row.row_num}_name`;
+            nameInput.value = row.golfer_name;
+            scoreRow.appendChild(nameInput);
+
+            const activeInput = document.createElement('input');
+            activeInput.type = 'hidden';
+            activeInput.name = `golfer${row.row_num}_active`;
+            activeInput.value = 'true';
+            scoreRow.appendChild(activeInput);
+
+            // Handicap cell with conventional rounding
+            const hcpCell = document.createElement('td');
+            hcpCell.className = 'hcp';
+            const conventionalHcp = Math.floor(row.handicap + 0.5); // Conventional rounding
+            hcpCell.textContent = conventionalHcp;
+            scoreRow.appendChild(hcpCell);
+
+            // Score input cells
+            holeNumbers.forEach(holeNum => {
                 const td = document.createElement('td');
-                td.style.textAlign = 'center';
-                td.textContent = hole[0];
-                parRow.appendChild(td);
+                td.className = 'score';
+                const input = document.createElement('input');
+                input.name = `hole${holeNum}_${row.row_num}`;
+                input.type = 'number';
+                input.min = '1';
+                input.max = '10';
+                input.disabled = false;
+                input.dataset.rowNum = row.row_num;
+                input.dataset.holeNum = holeNum;
+                
+                // Add event listener for live calculations
+                input.addEventListener('input', function() {
+                    updateScores(row.row_num);
+                });
+                
+                td.appendChild(input);
+                scoreRow.appendChild(td);
+            });
+
+            // Gross and Net cells with live calculations
+            const grossCell = document.createElement('td');
+            grossCell.className = 'score';
+            grossCell.style.backgroundColor = '#97A2A2';
+            grossCell.textContent = '-';
+            grossCell.id = `gross_${row.row_num}`;
+            scoreRow.appendChild(grossCell);
+
+            const netCell = document.createElement('td');
+            netCell.className = 'total';
+            netCell.style.backgroundColor = '#97A2A2';
+            netCell.textContent = '-';
+            netCell.id = `net_${row.row_num}`;
+            scoreRow.appendChild(netCell);
+
+            scorecardBody.appendChild(scoreRow);
+        }
+
+        function addHoleInfoRows() {
+            // Hole numbers row
+            const holeRow = document.createElement('tr');
+            holeRow.className = 'data';
+            
+            const holeCell = document.createElement('td');
+            holeCell.colSpan = 2;
+            holeCell.className = 'hole-data left-align';
+            holeCell.textContent = 'HOLE';
+            holeRow.appendChild(holeCell);
+            
+            holeNumbers.forEach(holeNum => {
+                const td = document.createElement('td');
+                td.className = 'hole-data center-align';
+                td.textContent = holeNum;
+                holeRow.appendChild(td);
             });
             
-            scorecardBody.appendChild(parRow);
+            const inCell = document.createElement('td');
+            inCell.className = 'hole-data center-align';
+            inCell.rowSpan = 2;
+            inCell.textContent = 'IN';
+            holeRow.appendChild(inCell);
             
-            // Add yards row
-            const yardsRow = document.createElement('tr');
-            yardsRow.className = 'pairing-separator hole-info-row';
+            const emptyCell = document.createElement('td');
+            emptyCell.className = 'score';
+            emptyCell.style.backgroundColor = '#4a4a4a';
+            emptyCell.style.color = 'white';
+            holeRow.appendChild(emptyCell);
             
-            const yardsCell = document.createElement('td');
-            yardsCell.colSpan = 2;
-            yardsCell.className = 'text-end fw-bold';
-            yardsCell.textContent = 'Yards';
-            yardsRow.appendChild(yardsCell);
+            scorecardBody.appendChild(holeRow);
+            
+            // Handicap row
+            const hcpRow = document.createElement('tr');
+            hcpRow.className = 'data';
+            
+            const hcpLabelCell = document.createElement('td');
+            hcpLabelCell.colSpan = 2;
+            hcpLabelCell.className = 'hole-data left-align';
+            hcpLabelCell.textContent = 'HANDICAP';
+            hcpRow.appendChild(hcpLabelCell);
             
             holeData.forEach(hole => {
                 const td = document.createElement('td');
-                td.style.textAlign = 'center';
+                td.className = 'hole-data center-align';
+                td.textContent = hole[1];
+                hcpRow.appendChild(td);
+            });
+            
+            const emptyCell2 = document.createElement('td');
+            emptyCell2.className = 'score';
+            emptyCell2.style.backgroundColor = '#4a4a4a';
+            emptyCell2.style.color = 'white';
+            hcpRow.appendChild(emptyCell2);
+            
+            scorecardBody.appendChild(hcpRow);
+            
+            // Yards row
+            const yardsRow = document.createElement('tr');
+            yardsRow.className = 'data';
+            
+            const yardsLabelCell = document.createElement('td');
+            yardsLabelCell.colSpan = 2;
+            yardsLabelCell.className = 'hole-data left-align';
+            yardsLabelCell.textContent = 'YARDS';
+            yardsRow.appendChild(yardsLabelCell);
+            
+            holeData.forEach(hole => {
+                const td = document.createElement('td');
+                td.className = 'hole-data center-align';
                 td.textContent = hole[2];
                 yardsRow.appendChild(td);
             });
             
+            const totalYardsCell = document.createElement('td');
+            totalYardsCell.className = 'hole-data center-align';
+            totalYardsCell.textContent = '-';
+            yardsRow.appendChild(totalYardsCell);
+            
+            const emptyCell3 = document.createElement('td');
+            emptyCell3.className = 'score';
+            emptyCell3.style.backgroundColor = '#4a4a4a';
+            emptyCell3.style.color = 'white';
+            yardsRow.appendChild(emptyCell3);
+            
             scorecardBody.appendChild(yardsRow);
+            
+            // Par row
+            const parRow = document.createElement('tr');
+            parRow.className = 'data';
+            
+            const parLabelCell = document.createElement('td');
+            parLabelCell.colSpan = 2;
+            parLabelCell.className = 'hole-data left-align';
+            parLabelCell.textContent = 'PAR';
+            parRow.appendChild(parLabelCell);
+            
+            holeData.forEach(hole => {
+                const td = document.createElement('td');
+                td.className = 'hole-data center-align';
+                td.textContent = hole[0];
+                parRow.appendChild(td);
+            });
+            
+            const totalParCell = document.createElement('td');
+            totalParCell.className = 'hole-data center-align';
+            totalParCell.textContent = '36';
+            parRow.appendChild(totalParCell);
+            
+            const emptyCell4 = document.createElement('td');
+            emptyCell4.className = 'score';
+            emptyCell4.style.backgroundColor = '#4a4a4a';
+            emptyCell4.style.color = 'white';
+            parRow.appendChild(emptyCell4);
+            
+            scorecardBody.appendChild(parRow);
         }
 
         function showEmptyScorecard() {
             clearScorecard();
             
-            // Add empty rows
+            // Add header
+            const headerRow = document.createElement('tr');
+            headerRow.className = 'data';
+            
+            const headerCell1 = document.createElement('th');
+            headerCell1.className = 'descriptor';
+            headerCell1.colSpan = 2;
+            headerCell1.textContent = `Week {{ week.number }}`;
+            headerRow.appendChild(headerCell1);
+            
+            const headerCell2 = document.createElement('th');
+            headerCell2.className = 'descriptor';
+            headerCell2.colSpan = holeNumbers.length;
+            headerCell2.textContent = 'Holes';
+            headerRow.appendChild(headerCell2);
+            
+            const headerCell3 = document.createElement('th');
+            headerCell3.className = 'descriptor';
+            headerCell3.colSpan = 2;
+            headerCell3.textContent = '{{ week.season.year }}';
+            headerRow.appendChild(headerCell3);
+            
+            scorecardBody.appendChild(headerRow);
+            
+            // Add empty golfer rows (2 before hole info, 2 after)
             for (let i = 1; i <= 4; i++) {
-                const tr = document.createElement('tr');
-                tr.className = 'empty-row';
+                const scoreRow = document.createElement('tr');
+                scoreRow.className = 'scores empty-row';
                 
                 const nameCell = document.createElement('td');
                 nameCell.className = 'descriptor';
-                nameCell.textContent = i === 1 ? 'Select a matchup to begin' : '-';
-                tr.appendChild(nameCell);
+                nameCell.textContent = '-';
+                scoreRow.appendChild(nameCell);
                 
                 const hcpCell = document.createElement('td');
                 hcpCell.className = 'hcp';
                 hcpCell.textContent = '-';
-                tr.appendChild(hcpCell);
+                scoreRow.appendChild(hcpCell);
                 
                 holeNumbers.forEach(holeNum => {
                     const td = document.createElement('td');
+                    td.className = 'score';
                     const input = document.createElement('input');
                     input.type = 'number';
                     input.min = '1';
                     input.max = '10';
                     input.disabled = true;
                     td.appendChild(input);
-                    tr.appendChild(td);
+                    scoreRow.appendChild(td);
                 });
                 
-                scorecardBody.appendChild(tr);
+                const grossCell = document.createElement('td');
+                grossCell.className = 'score';
+                grossCell.style.backgroundColor = '#97A2A2';
+                grossCell.textContent = '-';
+                scoreRow.appendChild(grossCell);
+
+                const netCell = document.createElement('td');
+                netCell.className = 'total';
+                netCell.style.backgroundColor = '#97A2A2';
+                netCell.textContent = '-';
+                scoreRow.appendChild(netCell);
+                
+                scorecardBody.appendChild(scoreRow);
+                
+                // Add hole info after the second golfer
+                if (i === 2) {
+                    addHoleInfoRows();
+                }
             }
-            
-            // Add hole info rows
-            const parRow = document.createElement('tr');
-            parRow.className = 'hole-info-row';
-            
-            const parCell = document.createElement('td');
-            parCell.colSpan = 2;
-            parCell.className = 'text-end fw-bold';
-            parCell.textContent = 'Par';
-            parRow.appendChild(parCell);
-            
-            holeData.forEach(hole => {
-                const td = document.createElement('td');
-                td.style.textAlign = 'center';
-                td.textContent = hole[0];
-                parRow.appendChild(td);
-            });
-            
-            scorecardBody.appendChild(parRow);
-            
-            const yardsRow = document.createElement('tr');
-            yardsRow.className = 'hole-info-row';
-            
-            const yardsCell = document.createElement('td');
-            yardsCell.colSpan = 2;
-            yardsCell.className = 'text-end fw-bold';
-            yardsCell.textContent = 'Yards';
-            yardsRow.appendChild(yardsCell);
-            
-            holeData.forEach(hole => {
-                const td = document.createElement('td');
-                td.style.textAlign = 'center';
-                td.textContent = hole[2];
-                yardsRow.appendChild(td);
-            });
-            
-            scorecardBody.appendChild(yardsRow);
         }
 
         function clearScorecard() {
             scorecardBody.innerHTML = '';
+        }
+
+        // Function to update gross and net scores in real-time
+        function updateScores(rowNum) {
+            let grossTotal = 0;
+            let validScores = 0;
+            
+            // Calculate gross total
+            holeNumbers.forEach(holeNum => {
+                const input = document.querySelector(`input[name="hole${holeNum}_${rowNum}"]`);
+                if (input && input.value !== '' && !isNaN(input.value)) {
+                    grossTotal += parseInt(input.value);
+                    validScores++;
+                }
+            });
+            
+            // Update gross score
+            const grossCell = document.getElementById(`gross_${rowNum}`);
+            if (grossCell) {
+                grossCell.textContent = validScores === holeNumbers.length ? grossTotal : '-';
+            }
+            
+            // Calculate net score (gross - conventional rounded handicap)
+            const netCell = document.getElementById(`net_${rowNum}`);
+            if (netCell && validScores === holeNumbers.length) {
+                const hcpCell = document.querySelector(`#golfer${rowNum}_row .hcp`);
+                if (hcpCell && hcpCell.textContent !== '-') {
+                    const handicap = parseInt(hcpCell.textContent);
+                    const netScore = grossTotal - handicap;
+                    netCell.textContent = netScore;
+                } else {
+                    netCell.textContent = grossTotal;
+                }
+            } else if (netCell) {
+                netCell.textContent = '-';
+            }
         }
     });
 </script>
