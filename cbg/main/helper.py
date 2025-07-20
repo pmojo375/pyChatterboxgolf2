@@ -140,7 +140,7 @@ def get_next_week():
     for week in weeks:
         if not week.rained_out:
             score_count = Score.objects.filter(week=week).count()
-            if score_count == 0:
+            if score_count < week.num_scores:
                 return week
     return None
 
