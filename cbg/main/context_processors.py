@@ -8,16 +8,20 @@ def weeks_context(request):
         current_season = Season.objects.latest('year')
         
         # Get all weeks for the current season that have been fully entered
-        # A week is considered "fully entered" if it has golfer matchups
-        from main.models import GolferMatchup
+        # A week is considered "fully entered" if it has scores and the number of scores equals week.num_scores
+        from main.models import GolferMatchup, Score
         
-        # Get weeks that have golfer matchups
-        weeks_with_matchups = Week.objects.filter(
+        # Get weeks that have all scores entered (more than 0 scores and equals week.num_scores)
+        weeks_with_complete_scores = []
+        all_weeks = Week.objects.filter(
             season=current_season,
             rained_out=False
-        ).filter(
-            id__in=GolferMatchup.objects.filter(week__season=current_season).values_list('week_id', flat=True)
         ).order_by('number')
+        
+        for week in all_weeks:
+            score_count = Score.objects.filter(week=week).count()
+            if score_count > 0 and score_count == week.num_scores:
+                weeks_with_complete_scores.append(week)
         
         # Get all golfers for the current season (main league golfers only)
         from main.models import Golfer
@@ -29,7 +33,7 @@ def weeks_context(request):
         ).distinct().order_by('name')
         
         return {
-            'available_weeks': weeks_with_matchups,
+            'available_weeks': weeks_with_complete_scores,
             'current_season': current_season,
             'golfer_list': golfer_list,
             'sub_golfer_list': sub_golfer_list,
