@@ -759,7 +759,7 @@ def golfer_stats(request, golfer_id):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Handicap'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['handicap'] = json.dumps(handicap_chart)
@@ -779,7 +779,7 @@ def golfer_stats(request, golfer_id):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Points'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['points'] = json.dumps(points_chart)
@@ -812,7 +812,7 @@ def golfer_stats(request, golfer_id):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Score'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['scores'] = json.dumps(scores_chart)
@@ -834,7 +834,7 @@ def golfer_stats(request, golfer_id):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Net Score Difference'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['performance'] = json.dumps(perf_chart)
@@ -950,7 +950,7 @@ def golfer_stats(request, golfer_id):
                 'xaxis': {'title': 'Hole Number'},
                 'yaxis': {'title': 'Strokes vs Par'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['hole_by_hole'] = json.dumps(hole_chart)
@@ -1266,7 +1266,7 @@ def sub_stats(request, golfer_id=None):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Handicap'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['handicap'] = json.dumps(handicap_chart)
@@ -1286,7 +1286,7 @@ def sub_stats(request, golfer_id=None):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Points'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['points'] = json.dumps(points_chart)
@@ -1319,7 +1319,7 @@ def sub_stats(request, golfer_id=None):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Score'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['scores'] = json.dumps(scores_chart)
@@ -1341,7 +1341,7 @@ def sub_stats(request, golfer_id=None):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Net Score Difference'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['performance'] = json.dumps(perf_chart)
@@ -1457,7 +1457,7 @@ def sub_stats(request, golfer_id=None):
                 'xaxis': {'title': 'Hole Number'},
                 'yaxis': {'title': 'Strokes vs Par'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['hole_by_hole'] = json.dumps(hole_chart)
@@ -2270,7 +2270,7 @@ def league_stats(request):
                 'xaxis': {'title': 'Hole Number'},
                 'yaxis': {'title': 'Strokes vs Par'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['hole_by_hole'] = json.dumps(hole_chart)
@@ -2291,7 +2291,7 @@ def league_stats(request):
             'layout': {
                 'title': 'League Scoring Breakdown',
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 50, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
             }
         }
         charts['scoring_breakdown'] = json.dumps(pie_chart)

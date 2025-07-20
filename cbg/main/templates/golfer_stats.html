@@ -595,6 +595,25 @@
     {% endif %}
 </div>
 
+<style>
+/* Completely hide Plotly modebar */
+.js-plotly-plot .plotly .modebar {
+    display: none !important;
+}
+
+.js-plotly-plot .plotly .modebar-container {
+    display: none !important;
+}
+
+.js-plotly-plot .plotly .modebar--hover {
+    display: none !important;
+}
+
+.js-plotly-plot .plotly .modebar-group {
+    display: none !important;
+}
+</style>
+
 <!-- Plotly Charts Script -->
 <script>
     {% if charts.handicap %}
