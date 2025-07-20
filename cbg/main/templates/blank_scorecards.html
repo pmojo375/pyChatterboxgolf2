@@ -250,11 +250,20 @@
     font-weight: 600;
 }
 
+.stroke-legend .legend-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
 .stroke-legend .legend-item {
-    display: inline-block;
-    margin: 0 20px;
+    display: flex;
+    align-items: center;
     font-size: 14px;
     color: #333;
+    white-space: nowrap;
 }
 
 .stroke-legend .legend-box {
@@ -265,6 +274,7 @@
     margin-right: 8px;
     position: relative;
     vertical-align: middle;
+    flex-shrink: 0;
 }
 
 .stroke-legend .legend-box.stroke-1 {
@@ -273,6 +283,57 @@
 
 .stroke-legend .legend-box.stroke-2 {
     background-color: #b0b0b0;
+}
+
+/* Mobile responsive styles for legend */
+@media (max-width: 768px) {
+    .stroke-legend {
+        padding: 12px;
+        margin: 15px 0;
+    }
+    
+    .stroke-legend h5 {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .stroke-legend .legend-container {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .stroke-legend .legend-item {
+        font-size: 13px;
+    }
+    
+    .stroke-legend .legend-box {
+        width: 25px;
+        height: 25px;
+        margin-right: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stroke-legend {
+        padding: 10px;
+        margin: 10px 0;
+    }
+    
+    .stroke-legend h5 {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    
+    .stroke-legend .legend-item {
+        font-size: 12px;
+    }
+    
+    .stroke-legend .legend-box {
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+    }
 }
 </style>
 
@@ -286,13 +347,15 @@
 
     <div class="stroke-legend">
         <h5>Stroke Indicators</h5>
-        <div class="legend-item">
-            <span class="legend-box stroke-1"></span>
-            <span>1 Stroke Given</span>
-        </div>
-        <div class="legend-item">
-            <span class="legend-box stroke-2"></span>
-            <span>2 Strokes Given</span>
+        <div class="legend-container">
+            <div class="legend-item">
+                <span class="legend-box stroke-1"></span>
+                <span>1 Stroke Given</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-box stroke-2"></span>
+                <span>2 Strokes Given</span>
+            </div>
         </div>
     </div>
 </div>
