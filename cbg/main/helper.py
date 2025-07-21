@@ -135,12 +135,14 @@ def get_next_week():
     current_season = get_current_season()
     if not current_season:
         return None
-    # Get all weeks in order (by number or date)
+    # Get all weeks in order (by number) starting from week 1
     weeks = Week.objects.filter(season=current_season).order_by('number')
     for week in weeks:
         if not week.rained_out:
             score_count = Score.objects.filter(week=week).count()
-            if score_count < week.num_scores:
+            # Find first week with 0 scores or fewer scores than expected
+            if score_count == 0 or score_count < week.num_scores:
+                print(f'Found next week: {week.number} (scores: {score_count}/{week.num_scores})')
                 return week
     return None
 
