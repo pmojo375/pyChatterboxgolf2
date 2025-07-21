@@ -52,20 +52,36 @@ def get_first_half_standings(season):
             golfer_points[golfer.name] = golfer_total
             team_total_points += golfer_total
         
-        # Get current handicaps for the golfers (use latest available)
+        # Get current handicaps for the golfers (use week 9 handicap, or latest if week 9 hasn't been played)
         golfer1 = team_golfers[0]
         golfer2 = team_golfers[1]
         
-        # Get latest handicap for each golfer
+        # Try to get week 9 handicap first, fall back to latest available
         golfer1_hcp = Handicap.objects.filter(
             golfer=golfer1, 
-            week__season=season
-        ).order_by('-week__number').first()
+            week__season=season,
+            week__number=9
+        ).first()
+        
+        if not golfer1_hcp:
+            # If week 9 handicap doesn't exist, get the latest available
+            golfer1_hcp = Handicap.objects.filter(
+                golfer=golfer1, 
+                week__season=season
+            ).order_by('-week__number').first()
         
         golfer2_hcp = Handicap.objects.filter(
             golfer=golfer2, 
-            week__season=season
-        ).order_by('-week__number').first()
+            week__season=season,
+            week__number=9
+        ).first()
+        
+        if not golfer2_hcp:
+            # If week 9 handicap doesn't exist, get the latest available
+            golfer2_hcp = Handicap.objects.filter(
+                golfer=golfer2, 
+                week__season=season
+            ).order_by('-week__number').first()
         
         # Create team standings entry
         team_standings[team.id] = {
