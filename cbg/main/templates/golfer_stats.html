@@ -217,6 +217,121 @@
     </div>
     {% endif %}
 
+    <!-- Yearly Gross Score Statistics -->
+    {% if yearly_gross_stats %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Best & Worst Gross Scores by Year</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Year</th>
+                                    <th>Best Gross</th>
+                                    <th>Worst Gross</th>
+                                    <th>Average Gross</th>
+                                    <th>Total Rounds</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for year_stat in yearly_gross_stats %}
+                                <tr>
+                                    <td class="fw-bold">{{ year_stat.year }}</td>
+                                    <td class="text-success fw-bold">
+                                        {{ year_stat.best_gross.gross_score }} 
+                                        <small class="text-muted">(Week {{ year_stat.best_gross.week.number }})</small>
+                                    </td>
+                                    <td class="text-danger fw-bold">
+                                        {{ year_stat.worst_gross.gross_score }} 
+                                        <small class="text-muted">(Week {{ year_stat.worst_gross.week.number }})</small>
+                                    </td>
+                                    <td class="text-primary fw-bold">{{ year_stat.avg_gross|floatformat:1 }}</td>
+                                    <td class="text-muted">{{ year_stat.total_rounds }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Yearly Hole-by-Hole Heat Map -->
+    {% if charts.yearly_hole_heatmap %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Yearly Hole-by-Hole Performance Heat Map</h5>
+                </div>
+                <div class="card-body">
+                    <div id="yearly-hole-heatmap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Yearly Hole-by-Hole Statistics Table -->
+    {% if yearly_hole_table_data %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Yearly Hole-by-Hole Average Scores</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-success">
+                                <tr>
+                                    <th>Year</th>
+                                    {% for hole in "123456789012345678"|make_list %}
+                                    <th class="text-center">Hole {{ forloop.counter }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for year_data in yearly_hole_table_data %}
+                                <tr>
+                                    <td class="fw-bold">{{ year_data.year }}</td>
+                                    {% for hole_data in year_data.holes %}
+                                    <td class="text-center">
+                                        {% if hole_data.avg_score %}
+                                            <span class="fw-bold">
+                                                {{ hole_data.avg_score }}
+                                            </span>
+                                            {% if hole_data.trend %}
+                                                {% if hole_data.trend == "down" %}
+                                                    <span class="text-success">↓</span>
+                                                {% elif hole_data.trend == "up" %}
+                                                    <span class="text-danger">↑</span>
+                                                {% else %}
+                                                    <span class="text-muted">→</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Scoring Breakdown and Consistency -->
     <div class="row mb-5">
         <div class="col-lg-4 mb-4">
@@ -651,6 +766,13 @@
     });
     {% endif %}
     
+    {% if charts.yearly_hole_heatmap %}
+    Plotly.newPlot('yearly-hole-heatmap', {{ charts.yearly_hole_heatmap|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
     // Make charts responsive to window resize
     window.addEventListener('resize', function() {
         {% if charts.handicap %}
@@ -680,6 +802,12 @@
         {% if charts.hole_by_hole %}
         Plotly.relayout('hole-by-hole-chart', {
             'width': document.getElementById('hole-by-hole-chart').offsetWidth
+        });
+        {% endif %}
+        
+        {% if charts.yearly_hole_heatmap %}
+        Plotly.relayout('yearly-hole-heatmap', {
+            'width': document.getElementById('yearly-hole-heatmap').offsetWidth
         });
         {% endif %}
     });

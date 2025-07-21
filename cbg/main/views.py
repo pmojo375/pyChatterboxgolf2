@@ -566,7 +566,7 @@ def enter_schedule(request):
 
 def golfer_stats(request, golfer_id):
     import json
-    from django.db.models import Avg, Count, Q
+    from django.db.models import Avg, Count, Q, Min, Max
     
     # Get the golfer object
     golfer = Golfer.objects.get(id=golfer_id)
@@ -576,6 +576,111 @@ def golfer_stats(request, golfer_id):
     
     # Get all weeks for the season
     weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
+    
+    # Get best and worst gross scores per year for all years the golfer has played
+    yearly_gross_stats = []
+    
+    # Get all unique seasons where this golfer has scores
+    golfer_seasons = Score.objects.filter(
+        golfer=golfer
+    ).values_list('week__season__year', flat=True).distinct().order_by('week__season__year')
+    
+    for year in golfer_seasons:
+        # Get all scores for this golfer in this year
+        year_scores = Score.objects.filter(
+            golfer=golfer,
+            week__season__year=year
+        ).select_related('week', 'hole')
+        
+        # Group scores by week to calculate gross scores per round
+        weekly_gross_scores = {}
+        for score in year_scores:
+            week_key = score.week.id
+            if week_key not in weekly_gross_scores:
+                weekly_gross_scores[week_key] = {
+                    'week': score.week,
+                    'scores': []
+                }
+            weekly_gross_scores[week_key]['scores'].append(score.score)
+        
+        # Calculate gross scores for each week
+        gross_scores_for_year = []
+        for week_data in weekly_gross_scores.values():
+            if len(week_data['scores']) >= 9:  # Only count rounds with at least 9 holes
+                gross_score = sum(week_data['scores'])
+                gross_scores_for_year.append({
+                    'week': week_data['week'],
+                    'gross_score': gross_score
+                })
+        
+        if gross_scores_for_year:
+            best_gross = min(gross_scores_for_year, key=lambda x: x['gross_score'])
+            worst_gross = max(gross_scores_for_year, key=lambda x: x['gross_score'])
+            
+            yearly_gross_stats.append({
+                'year': year,
+                'best_gross': best_gross,
+                'worst_gross': worst_gross,
+                'total_rounds': len(gross_scores_for_year),
+                'avg_gross': sum(round_data['gross_score'] for round_data in gross_scores_for_year) / len(gross_scores_for_year)
+            })
+    
+    # Calculate yearly hole-by-hole statistics
+    yearly_hole_stats = {}
+    hole_trends = {}
+    
+    for year in golfer_seasons:
+        # Get all scores for this golfer in this year
+        year_scores = Score.objects.filter(
+            golfer=golfer,
+            week__season__year=year
+        ).select_related('week', 'hole')
+        
+        # Group scores by hole number
+        hole_scores = {}
+        for score in year_scores:
+            hole_num = score.hole.number
+            if hole_num not in hole_scores:
+                hole_scores[hole_num] = []
+            hole_scores[hole_num].append(score.score)
+        
+        # Calculate average score for each hole
+        yearly_hole_stats[year] = {}
+        for hole_num in range(1, 19):
+            if hole_num in hole_scores and hole_scores[hole_num]:
+                avg_score = sum(hole_scores[hole_num]) / len(hole_scores[hole_num])
+                yearly_hole_stats[year][hole_num] = {
+                    'avg_score': round(avg_score, 2),
+                    'rounds_played': len(hole_scores[hole_num]),
+                    'par': year_scores.filter(hole__number=hole_num).first().hole.par if year_scores.filter(hole__number=hole_num).exists() else None
+                }
+            else:
+                yearly_hole_stats[year][hole_num] = {
+                    'avg_score': None,
+                    'rounds_played': 0,
+                    'par': None
+                }
+    
+    # Calculate trends (comparing to previous year)
+    sorted_years = sorted(golfer_seasons)
+    for i, year in enumerate(sorted_years):
+        if i > 0:  # Skip first year (no previous year to compare)
+            prev_year = sorted_years[i-1]
+            hole_trends[year] = {}
+            
+            for hole_num in range(1, 19):
+                current_avg = yearly_hole_stats[year][hole_num]['avg_score']
+                prev_avg = yearly_hole_stats[prev_year][hole_num]['avg_score']
+                
+                if current_avg is not None and prev_avg is not None:
+                    if current_avg < prev_avg:
+                        hole_trends[year][hole_num] = 'down'  # Improved (green)
+                    elif current_avg > prev_avg:
+                        hole_trends[year][hole_num] = 'up'    # Worsened (red)
+                    else:
+                        hole_trends[year][hole_num] = 'same'  # No change
+                else:
+                    hole_trends[year][hole_num] = None
     
     # Get all rounds for this golfer in the season
     rounds = Round.objects.filter(
@@ -955,6 +1060,57 @@ def golfer_stats(request, golfer_id):
         }
         charts['hole_by_hole'] = json.dumps(hole_chart)
     
+    # Create yearly hole-by-hole heat map
+    if yearly_hole_stats and len(yearly_hole_stats) > 1:
+        # Prepare data for heat map
+        years = sorted(yearly_hole_stats.keys())
+        holes = list(range(1, 19))
+        
+        # Create z-values for heat map (average scores)
+        z_values = []
+        for year in years:
+            year_data = []
+            for hole in holes:
+                if yearly_hole_stats[year][hole]['avg_score'] is not None:
+                    year_data.append(yearly_hole_stats[year][hole]['avg_score'])
+                else:
+                    year_data.append(None)
+            z_values.append(year_data)
+        
+        # Create heat map chart
+        hole_heatmap = {
+            'data': [{
+                'z': z_values,
+                'x': holes,
+                'y': years,
+                'type': 'heatmap',
+                'colorscale': 'RdYlGn_r',  # Red to Green (red = higher scores, green = lower scores)
+                'colorbar': {
+                    'title': 'Average Score',
+                    'titleside': 'right'
+                },
+                'hovertemplate': 'Year: %{y}<br>Hole: %{x}<br>Avg Score: %{z:.2f}<extra></extra>'
+            }],
+            'layout': {
+                'title': 'Yearly Hole-by-Hole Average Scores',
+                'xaxis': {
+                    'title': 'Hole Number',
+                    'tickmode': 'linear',
+                    'tick0': 1,
+                    'dtick': 1
+                },
+                'yaxis': {
+                    'title': 'Year',
+                    'tickmode': 'linear',
+                    'tick0': min(years),
+                    'dtick': 1
+                },
+                'height': 500,
+                'margin': {'l': 80, 'r': 80, 't': 80, 'b': 80}
+            }
+        }
+        charts['yearly_hole_heatmap'] = json.dumps(hole_heatmap)
+    
     # --- Opponent vs Handicap Analysis ---
     opponent_vs_hcp_list = []
     for week in weeks:
@@ -1049,6 +1205,30 @@ def golfer_stats(request, golfer_id):
         'num_better': num_better,
         'num_worse': num_worse,
         'num_even': num_even,
+        
+        # Yearly gross score statistics
+        'yearly_gross_stats': yearly_gross_stats,
+        
+        # Yearly hole-by-hole statistics
+        'yearly_hole_stats': yearly_hole_stats,
+        'hole_trends': hole_trends,
+        'sorted_years': sorted(yearly_hole_stats.keys()) if yearly_hole_stats else [],
+        
+        # Create flattened data for easier template rendering
+        'yearly_hole_table_data': [
+            {
+                'year': year,
+                'holes': [
+                    {
+                        'hole_num': hole_num,
+                        'avg_score': yearly_hole_stats[year][hole_num]['avg_score'] if yearly_hole_stats[year][hole_num]['avg_score'] else None,
+                        'trend': hole_trends.get(year, {}).get(hole_num) if year in hole_trends else None
+                    }
+                    for hole_num in range(1, 19)
+                ]
+            }
+            for year in sorted(yearly_hole_stats.keys()) if yearly_hole_stats
+        ],
     }
     
     return render(request, 'golfer_stats.html', context)
