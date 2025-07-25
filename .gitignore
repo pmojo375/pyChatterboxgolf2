@@ -143,3 +143,10 @@ GitHub.sublime-settings
 .idea/inspectionProfiles/profiles_settings.xml
 .vscode/launch.json
 note.txt
+db.sqlite3
+cbg/latest_db.sqlite3
+old.sqlite3
+latest_db.sqlite3
+dbIDK.sqlite3
+db12.sqlite3
+data.sqlite3
