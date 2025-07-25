@@ -2912,7 +2912,7 @@ def _build_blank_golfer_data(golfer_matchup, holes, week):
     opponent_hcp_value = opponent_hcp.handicap if opponent_hcp else 0
     
     # Calculate handicap difference for strokes
-    hcp_diff = conventional_round(hcp - opponent_hcp_value)
+    hcp_diff = conventional_round(hcp) - conventional_round(opponent_hcp_value)
     if hcp_diff > 9:
         hcp_diff = hcp_diff - 9
         rollover = 1
