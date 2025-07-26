@@ -359,7 +359,7 @@
         <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Yearly Hole-by-Hole Average Scores</h5>
+                    <h5 class="mb-0">Yearly Hole-by-Hole Performance vs Par</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -378,10 +378,12 @@
                                     <td class="fw-bold">{{ year_data.year }}</td>
                                     {% for hole_data in year_data.holes %}
                                     <td class="text-center">
-                                        {% if hole_data.avg_score %}
-                                            <span class="fw-bold">
-                                                {{ hole_data.avg_score }}
+                                        {% if hole_data.vs_par is not None %}
+                                            <span class="fw-bold {% if hole_data.vs_par < 0 %}text-success{% elif hole_data.vs_par > 0 %}text-danger{% else %}text-warning{% endif %}">
+                                                {% if hole_data.vs_par > 0 %}+{% endif %}{{ hole_data.vs_par|floatformat:1 }}
                                             </span>
+                                            <br>
+                                            <small class="text-muted">({{ hole_data.avg_score|floatformat:1 }}/{{ hole_data.par }})</small>
                                             {% if hole_data.trend %}
                                                 {% if hole_data.trend == "down" %}
                                                     <span class="text-success">↓</span>
@@ -415,12 +417,13 @@
                     <h5 class="mb-0">Scoring Breakdown</h5>
                 </div>
                 <div class="card-body">
+                    {% with total_holes=scoring_breakdown.eagle|add:scoring_breakdown.birdie|add:scoring_breakdown.par|add:scoring_breakdown.bogey|add:scoring_breakdown.double|add:scoring_breakdown.worse %}
                     <div class="scoring-item mb-3">
                         <div class="d-flex align-items-center">
                             <div class="scoring-color eagle me-2"></div>
                             <div class="flex-grow-1">
                                 <h6 class="mb-0 fw-bold">Eagles</h6>
-                                <p class="mb-0 text-muted">{{ scoring_breakdown.eagle }}</p>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.eagle }} ({% widthratio scoring_breakdown.eagle total_holes 100 %}%)</p>
                             </div>
                         </div>
                     </div>
@@ -429,7 +432,7 @@
                             <div class="scoring-color birdie me-2"></div>
                             <div class="flex-grow-1">
                                 <h6 class="mb-0 fw-bold">Birdies</h6>
-                                <p class="mb-0 text-muted">{{ scoring_breakdown.birdie }}</p>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.birdie }} ({% widthratio scoring_breakdown.birdie total_holes 100 %}%)</p>
                             </div>
                         </div>
                     </div>
@@ -438,7 +441,7 @@
                             <div class="scoring-color par me-2"></div>
                             <div class="flex-grow-1">
                                 <h6 class="mb-0 fw-bold">Pars</h6>
-                                <p class="mb-0 text-muted">{{ scoring_breakdown.par }}</p>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.par }} ({% widthratio scoring_breakdown.par total_holes 100 %}%)</p>
                             </div>
                         </div>
                     </div>
@@ -447,7 +450,7 @@
                             <div class="scoring-color bogey me-2"></div>
                             <div class="flex-grow-1">
                                 <h6 class="mb-0 fw-bold">Bogeys</h6>
-                                <p class="mb-0 text-muted">{{ scoring_breakdown.bogey }}</p>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.bogey }} ({% widthratio scoring_breakdown.bogey total_holes 100 %}%)</p>
                             </div>
                         </div>
                     </div>
@@ -456,7 +459,7 @@
                             <div class="scoring-color double me-2"></div>
                             <div class="flex-grow-1">
                                 <h6 class="mb-0 fw-bold">Double Bogeys</h6>
-                                <p class="mb-0 text-muted">{{ scoring_breakdown.double }}</p>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.double }} ({% widthratio scoring_breakdown.double total_holes 100 %}%)</p>
                             </div>
                         </div>
                     </div>
@@ -465,10 +468,11 @@
                             <div class="scoring-color worse me-2"></div>
                             <div class="flex-grow-1">
                                 <h6 class="mb-0 fw-bold">Worse</h6>
-                                <p class="mb-0 text-muted">{{ scoring_breakdown.worse }}</p>
+                                <p class="mb-0 text-muted">{{ scoring_breakdown.worse }} ({% widthratio scoring_breakdown.worse total_holes 100 %}%)</p>
                             </div>
                         </div>
                     </div>
+                    {% endwith %}
                 </div>
             </div>
         </div>

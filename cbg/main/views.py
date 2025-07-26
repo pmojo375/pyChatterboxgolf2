@@ -1082,16 +1082,38 @@ def golfer_stats(request, golfer_id):
         years = sorted(yearly_hole_stats.keys())
         holes = list(range(1, 19))
         
-        # Create z-values for heat map (average scores)
+        # Create z-values for heat map (strokes over/under par)
         z_values = []
+        all_vs_par = []  # Collect all valid vs par values for min/max calculation
+        
         for year in years:
             year_data = []
             for hole in holes:
-                if yearly_hole_stats[year][hole]['avg_score'] is not None:
-                    year_data.append(yearly_hole_stats[year][hole]['avg_score'])
+                if yearly_hole_stats[year][hole]['avg_score'] is not None and yearly_hole_stats[year][hole]['par'] is not None:
+                    avg_score = yearly_hole_stats[year][hole]['avg_score']
+                    par = yearly_hole_stats[year][hole]['par']
+                    vs_par = avg_score - par  # Positive = over par, negative = under par
+                    year_data.append(vs_par)
+                    all_vs_par.append(vs_par)
                 else:
                     year_data.append(None)
             z_values.append(year_data)
+        
+        # Calculate min and max vs par values for better color scaling
+        if all_vs_par:
+            min_vs_par = min(all_vs_par)
+            max_vs_par = max(all_vs_par)
+            # Ensure the range is symmetric around 0 (par) for proper color scaling
+            abs_max = max(abs(min_vs_par), abs(max_vs_par))
+            zmin = -abs_max - 0.5  # Extend range to ensure 0 is centered
+            zmax = abs_max + 0.5
+        else:
+            zmin = -2  # Default range: 2 under par to 2 over par
+            zmax = 2
+        
+        # Create custom color scale that centers white at 0
+        # Calculate the position of 0 in the normalized range
+        zero_position = (0 - zmin) / (zmax - zmin)
         
         # Create heat map chart
         hole_heatmap = {
@@ -1100,15 +1122,26 @@ def golfer_stats(request, golfer_id):
                 'x': holes,
                 'y': years,
                 'type': 'heatmap',
-                'colorscale': 'RdYlGn_r',  # Red to Green (red = higher scores, green = lower scores)
+                'colorscale': [
+                    [0, 'rgb(0, 128, 0)'],      # Dark green for under par
+                    [zero_position - 0.2, 'rgb(144, 238, 144)'], # Light green for near par
+                    [zero_position, 'rgb(255, 255, 255)'], # White for par (0)
+                    [zero_position + 0.2, 'rgb(255, 165, 0)'],  # Orange for over par
+                    [1, 'rgb(255, 0, 0)']        # Red for well over par
+                ],
+                'zmin': zmin,
+                'zmax': zmax,
                 'colorbar': {
-                    'title': 'Average Score',
-                    'titleside': 'right'
+                    'title': 'Strokes vs Par',
+                    'titleside': 'right',
+                    'tickformat': '+.1f',
+                    'tickmode': 'auto',
+                    'nticks': 7
                 },
-                'hovertemplate': 'Year: %{y}<br>Hole: %{x}<br>Avg Score: %{z:.2f}<extra></extra>'
+                'hovertemplate': 'Year: %{y}<br>Hole: %{x}<br>Avg vs Par: %{z:+.2f}<extra></extra>'
             }],
             'layout': {
-                'title': 'Yearly Hole-by-Hole Average Scores',
+                'title': 'Yearly Hole-by-Hole Performance vs Par',
                 'xaxis': {
                     'title': 'Hole Number',
                     'tickmode': 'linear',
@@ -1292,6 +1325,8 @@ def golfer_stats(request, golfer_id):
                     {
                         'hole_num': hole_num,
                         'avg_score': yearly_hole_stats[year][hole_num]['avg_score'] if yearly_hole_stats[year][hole_num]['avg_score'] else None,
+                        'par': yearly_hole_stats[year][hole_num]['par'] if yearly_hole_stats[year][hole_num]['par'] else None,
+                        'vs_par': (yearly_hole_stats[year][hole_num]['avg_score'] - yearly_hole_stats[year][hole_num]['par']) if (yearly_hole_stats[year][hole_num]['avg_score'] is not None and yearly_hole_stats[year][hole_num]['par'] is not None) else None,
                         'trend': hole_trends.get(year, {}).get(hole_num) if year in hole_trends else None
                     }
                     for hole_num in range(1, 19)
