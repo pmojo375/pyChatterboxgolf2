@@ -152,7 +152,7 @@ class Round(models.Model):
         
 class GolferMatchup(models.Model):
     week = models.ForeignKey(Week, related_name='week', on_delete=models.CASCADE)
-    is_A = models.BooleanField(default=False)
+    is_A = models.BooleanField(db_column="is_a"default=False)
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     opponent = models.ForeignKey(Golfer, related_name='opponent', on_delete=models.CASCADE)
     is_teammate_subbing = models.BooleanField(default=False)
