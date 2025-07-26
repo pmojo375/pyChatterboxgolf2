@@ -1170,6 +1170,60 @@ def golfer_stats(request, golfer_id):
         avg_opp_vs_hcp = 0
         num_better = num_worse = num_even = 0
 
+    # Calculate wager statistics for this golfer
+    wager_stats = {}
+    
+    # Calculate skins money wagered and won
+    skin_entries = SkinEntry.objects.filter(golfer=golfer, week__season=season)
+    total_skins_wagered = skin_entries.count() * 5  # $5 per skin entry
+    
+    # Calculate skins won by this golfer
+    skins_won = 0
+    for week in weeks:
+        skin_winners = calculate_skin_winners(week)
+        if skin_winners:
+            # Check if this golfer won any skins this week
+            week_winners = [winner for winner in skin_winners if winner['golfer'].id == golfer.id]
+            if week_winners:
+                # Calculate payout for this week
+                week_skin_entries = SkinEntry.objects.filter(week=week)
+                week_skins_pot = week_skin_entries.count() * 5
+                skin_winner_payout = week_skins_pot / len(skin_winners) if len(skin_winners) > 0 else 0
+                skins_won += skin_winner_payout * len(week_winners)
+    
+    # Calculate games money wagered and won
+    game_entries = GameEntry.objects.filter(golfer=golfer, week__season=season)
+    total_games_wagered = game_entries.count() * 2  # $2 per game entry
+    
+    # Calculate games won by this golfer
+    games_won = 0
+    for week in weeks:
+        game_winners = GameEntry.objects.filter(week=week, golfer=golfer, winner=True)
+        if game_winners.exists():
+            # Calculate payout for this week
+            week_game_entries = GameEntry.objects.filter(week=week)
+            week_games_pot = week_game_entries.count() * 2
+            total_winners = GameEntry.objects.filter(week=week, winner=True).count()
+            game_winner_payout = week_games_pot / total_winners if total_winners > 0 else 0
+            games_won += game_winner_payout * game_winners.count()
+    
+    # Calculate total earnings
+    total_earned = skins_won + games_won
+    total_wagered = total_skins_wagered + total_games_wagered
+    net_earnings = total_earned - total_wagered
+    
+    wager_stats = {
+        'total_skins_wagered': total_skins_wagered,
+        'total_games_wagered': total_games_wagered,
+        'total_wagered': total_wagered,
+        'skins_won': round(skins_won, 2),
+        'games_won': round(games_won, 2),
+        'total_earned': round(total_earned, 2),
+        'net_earnings': round(net_earnings, 2),
+        'skins_entries': skin_entries.count(),
+        'games_entries': game_entries.count(),
+    }
+
     context = {
         'golfer': golfer,
         'season': season,
@@ -1245,6 +1299,9 @@ def golfer_stats(request, golfer_id):
             }
             for year in sorted(yearly_hole_stats.keys()) if yearly_hole_stats
         ],
+        
+        # Wager statistics
+        'wager_stats': wager_stats,
     }
     
     return render(request, 'golfer_stats.html', context)
