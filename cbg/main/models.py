@@ -119,6 +119,14 @@ class Sub(models.Model):
     absent_golfer = models.ForeignKey(Golfer, related_name='absent', on_delete=models.CASCADE)
     sub_golfer = models.ForeignKey(Golfer, related_name='sub', on_delete=models.CASCADE, null=True)
     no_sub = models.BooleanField(default=False)
+    
+
+    
+    def save(self, *args, **kwargs):
+        # Ensure consistency: if no_sub is True, clear sub_golfer
+        if self.no_sub:
+            self.sub_golfer = None
+        super().save(*args, **kwargs)
 
 class Points(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)

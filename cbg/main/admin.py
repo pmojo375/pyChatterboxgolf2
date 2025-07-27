@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django import forms
 
 from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup
 
@@ -327,7 +328,36 @@ class MatchupAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('week__season').prefetch_related('teams__golfers')
 
 
+class SubAdminForm(forms.ModelForm):
+    class Meta:
+        model = Sub
+        fields = '__all__'
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Add empty choice to sub_golfer field
+        self.fields['sub_golfer'].empty_label = "---------"
+        
+        # Make sub_golfer not required initially
+        self.fields['sub_golfer'].required = False
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        no_sub = cleaned_data.get('no_sub')
+        sub_golfer = cleaned_data.get('sub_golfer')
+        
+        # If no_sub is True, ensure sub_golfer is None
+        if no_sub:
+            cleaned_data['sub_golfer'] = None
+        # If no_sub is False, sub_golfer is required
+        elif not sub_golfer:
+            raise forms.ValidationError("Sub Golfer is required when 'No Sub' is not checked.")
+        
+        return cleaned_data
+
+
 class SubAdmin(admin.ModelAdmin):
+    form = SubAdminForm
     list_display = ('get_week', 'get_absent', 'get_sub', 'no_sub', 'get_season')
     list_filter = ('week__season', 'week', 'no_sub')
     search_fields = ('absent_golfer__name', 'sub_golfer__name', 'week__date')
@@ -335,9 +365,17 @@ class SubAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Substitution Information', {
-            'fields': ('week', 'absent_golfer', 'sub_golfer', 'no_sub')
+            'fields': ('week', 'absent_golfer', 'no_sub', 'sub_golfer')
         }),
     )
+    
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj and obj.no_sub:
+            form.base_fields['sub_golfer'].widget.attrs['readonly'] = True
+            form.base_fields['sub_golfer'].widget.attrs['style'] = 'background-color: #f0f0f0;'
+        return form
     
     def get_week(self, obj):
         return f"{obj.week.date.strftime('%Y-%m-%d')} (Week {obj.week.number})"
@@ -364,6 +402,12 @@ class SubAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('absent_golfer', 'sub_golfer', 'week__season')
+    
+    def save_model(self, request, obj, form, change):
+        # If no_sub is True, clear the sub_golfer field
+        if obj.no_sub:
+            obj.sub_golfer = None
+        super().save_model(request, obj, form, change)
 
 
 class PointsAdmin(admin.ModelAdmin):
