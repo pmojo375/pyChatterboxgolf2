@@ -917,7 +917,8 @@ def generate_golfer_matchups(week):
     """
     matchups = Matchup.objects.filter(week=week)
 
-    # delete all golfer matchups for the week
+    # delete all rounds and golfer matchups for the week
+    Round.objects.filter(week=week).delete()
     GolferMatchup.objects.filter(week=week).delete()
 
     for matchup in matchups:
