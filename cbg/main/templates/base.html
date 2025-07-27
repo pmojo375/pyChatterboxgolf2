@@ -35,12 +35,16 @@
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Golfers
+              Golfer Stats
             </a>
             <ul class="dropdown-menu">
               {% for golfer in golfer_list %}
               <li>
+                {% if current_year %}
+                <a class="dropdown-item" href="{% url 'golfer_stats_with_year' current_year golfer.id %}">{{ golfer.name }}</a>
+                {% else %}
                 <a class="dropdown-item" href="{% url 'golfer_stats' golfer.id %}">{{ golfer.name }}</a>
+                {% endif %}
               </li>
               {% endfor %}
             </ul>
@@ -52,13 +56,21 @@
             <ul class="dropdown-menu">
               {% for golfer in sub_golfer_list %}
               <li>
+                {% if current_year %}
+                <a class="dropdown-item" href="{% url 'sub_stats_detail_with_year' current_year golfer.id %}">{{ golfer.name }}</a>
+                {% else %}
                 <a class="dropdown-item" href="{% url 'sub_stats_detail' golfer.id %}">{{ golfer.name }}</a>
+                {% endif %}
               </li>
               {% endfor %}
             </ul>
           </li>
           <li class="nav-item">
+            {% if current_year %}
+            <a class="nav-link" href="{% url 'league_stats_with_year' current_year %}">League Stats</a>
+            {% else %}
             <a class="nav-link" href="{% url 'league_stats' %}">League Stats</a>
+            {% endif %}
           </li>
           {% if available_weeks %}
           <li class="nav-item dropdown">
@@ -68,7 +80,11 @@
             <ul class="dropdown-menu">
               {% for week in available_weeks %}
               <li>
+                {% if current_year %}
+                <a class="dropdown-item" href="{% url 'scorecards_with_year' current_year week.number %}">Week {{ week.number }} - {{ week.date|date:"M d" }}</a>
+                {% else %}
                 <a class="dropdown-item" href="{% url 'scorecards' week.number %}">Week {{ week.number }} - {{ week.date|date:"M d" }}</a>
+                {% endif %}
               </li>
               {% endfor %}
             </ul>

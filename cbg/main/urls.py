@@ -1,7 +1,18 @@
-from django.urls import path
+from django.urls import path, register_converter
 from . import views
 from .api import get_matchup_data, get_playing_golfers, get_games_for_week, get_games_by_week, get_game_entries
 
+# Custom path converter for 4-digit years
+class YearConverter:
+    regex = r'[12]\d{3}'  # Years 1000-2999
+    
+    def to_python(self, value):
+        return int(value)
+    
+    def to_url(self, value):
+        return str(value)
+
+register_converter(YearConverter, 'year')
 
 urlpatterns = [
     path('', views.main, name='main'),
@@ -9,7 +20,6 @@ urlpatterns = [
     path('add_golfer', views.add_golfer, name='add_golfer'),
     path('add_sub', views.add_sub, name='add_sub'),
     path('enter_schedule', views.enter_schedule, name='enter_schedule'),
-    path('<int:week>/', views.scorecards, name="scorecards"),
     path('blank_scorecards/', views.blank_scorecards, name="blank_scorecards"),
     path('stats/<int:golfer_id>/', views.golfer_stats, name="golfer_stats"),
     path('sub_stats/', views.sub_stats, name="sub_stats"),
@@ -28,4 +38,14 @@ urlpatterns = [
     path('api/get_games_by_week/<int:week_id>/', get_games_by_week, name='get_games_by_week'),
     path('api/get_game_entries/<int:week_id>/<int:game_id>/', get_game_entries, name='get_game_entries'),
     
+    # New URL patterns with year parameter (4-digit years only) - must come before week patterns
+    path('<year:year>/', views.main_with_year, name='main_with_year'),
+    path('<year:year>/<int:week>/', views.scorecards_with_year, name="scorecards_with_year"),
+    path('<year:year>/stats/<int:golfer_id>/', views.golfer_stats, name="golfer_stats_with_year"),
+    path('<year:year>/sub_stats/', views.sub_stats, name="sub_stats_with_year"),
+    path('<year:year>/sub_stats/<int:golfer_id>/', views.sub_stats, name="sub_stats_detail_with_year"),
+    path('<year:year>/league_stats/', views.league_stats, name="league_stats_with_year"),
+    
+    # Week patterns (must come after year patterns to avoid conflicts)
+    path('<int:week>/', views.scorecards, name="scorecards"),
 ]

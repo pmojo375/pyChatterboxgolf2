@@ -13,6 +13,26 @@
         <div class="mb-2" style="font-size: 1.1rem; color: #6c757d;">
           Lake Michigan Hills &mdash; Official League Site
         </div>
+        {% if all_seasons %}
+        <div class="mt-3">
+          <label for="season-selector" class="form-label small text-muted">Select Season:</label>
+          <select id="season-selector" class="form-select form-select-sm d-inline-block w-auto mx-2">
+            {% for season in all_seasons %}
+            <option value="{{ season.year }}" {% if season == current_season %}selected{% endif %}>
+              {{ season.year }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <script>
+          document.getElementById('season-selector').addEventListener('change', function() {
+            const selectedYear = this.value;
+            if (selectedYear) {
+              window.location.href = '/' + selectedYear + '/';
+            }
+          });
+        </script>
+        {% endif %}
       </div>
     </div>
   </div>

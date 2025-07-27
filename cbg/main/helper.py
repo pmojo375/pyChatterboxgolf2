@@ -91,52 +91,68 @@ def get_game(week):
 
     return game
 
-def get_current_season():
-    """Gets the current season object from the current year
+def get_current_season(year=None):
+    """Gets the season object for a specific year or the most recent season if no year is specified
+
+    Parameters
+    ----------
+    year : int, optional
+        The year to get the season for. If None, returns the most recent season.
 
     Returns
     -------
     Season
-        The current season object or False if no season exists
+        The season object for the specified year or the most recent season, or None if no season exists
     """
 
-    # get current date
-    now = timezone.now()
-
-    # get season if it exists
-    if Season.objects.filter(year=2025).exists():
-        season = Season.objects.get(year=2025)
+    if year is not None:
+        # Get season for specific year
+        if Season.objects.filter(year=year).exists():
+            return Season.objects.get(year=year)
+        else:
+            return None
     else:
-        season = None
+        # Get the most recent season
+        if Season.objects.exists():
+            return Season.objects.all().order_by('-year')[0]
+        else:
+            return None
 
-    return season
 
-
-def get_last_week():
+def get_last_week(season=None):
 
     print('Getting last week')
     # check if season exists
-    current_season = get_current_season()
+    if season is None:
+        season = get_current_season()
     
-    if not current_season: 
+    if not season: 
         return None
     else:
         # get the latest week that was played before the current date
-        weeks = Week.objects.filter(season=current_season, date__lt=timezone.now()).order_by('-date')
+        weeks = Week.objects.filter(season=season, date__lt=timezone.now()).order_by('-date')
         
         for week in weeks:
-            if Score.objects.filter(week=week).count() == week.num_scores:
+            score_count = Score.objects.filter(week=week).count()
+            # For historical seasons, be more flexible - if there are scores, consider it played
+            # For current season, be more strict about having all expected scores
+            if score_count > 0:
+                # If it's the current season, check for complete scores
+                current_season = get_current_season()
+                if season == current_season and score_count < week.num_scores:
+                    continue
                 return week
             
         return None
 
-def get_next_week():
+def get_next_week(season=None):
     print('Getting next week')
-    current_season = get_current_season()
-    if not current_season:
+    if season is None:
+        season = get_current_season()
+    if not season:
         return None
     # Get all weeks in order (by number) starting from week 1
-    weeks = Week.objects.filter(season=current_season).order_by('number')
+    weeks = Week.objects.filter(season=season).order_by('number')
     for week in weeks:
         if not week.rained_out:
             score_count = Score.objects.filter(week=week).count()
@@ -1153,6 +1169,98 @@ def get_earliest_week_without_full_matchups(season=None):
             return week
     
     return None  # All weeks have full matchups
+
+
+def process_season(season):
+    """
+    Process an entire season by generating handicaps, golfer matchups, and rounds for all weeks.
+    
+    This function will:
+    1. Calculate and save handicaps for all golfers in the season
+    2. Generate golfer matchups for all weeks that have scores
+    3. Generate rounds for all golfer matchups
+    
+    Args:
+        season (Season): The season to process
+        
+    Returns:
+        dict: A summary of what was processed including counts of handicaps, matchups, and rounds generated
+    """
+    print(f"Starting to process season {season.year}...")
+    
+    # Get all weeks in the season that have been played (have scores)
+    weeks = Week.objects.filter(season=season).order_by('number')
+    played_weeks = []
+    
+    for week in weeks:
+        if Score.objects.filter(week=week).exists():
+            played_weeks.append(week)
+    
+    print(f"Found {len(played_weeks)} weeks with scores out of {weeks.count()} total weeks")
+    
+    if not played_weeks:
+        print("No weeks with scores found. Nothing to process.")
+        return {
+            'season': season.year,
+            'handicaps_generated': 0,
+            'matchups_generated': 0,
+            'rounds_generated': 0,
+            'weeks_processed': 0,
+            'status': 'no_scores'
+        }
+    
+    # Step 1: Calculate and save handicaps for the entire season
+    print("Calculating handicaps...")
+    calculate_and_save_handicaps_for_season(season)
+    
+    # Count handicaps generated
+    handicaps_count = Handicap.objects.filter(week__season=season).count()
+    print(f"Generated {handicaps_count} handicaps")
+    
+    # Step 2: Generate golfer matchups and rounds for each played week
+    total_matchups = 0
+    total_rounds = 0
+    
+    for week in played_weeks:
+        print(f"Processing week {week.number}...")
+        
+        # Generate golfer matchups for this week
+        generate_golfer_matchups(week)
+        
+        # Count matchups generated for this week
+        week_matchups = GolferMatchup.objects.filter(week=week).count()
+        total_matchups += week_matchups
+        print(f"  Generated {week_matchups} golfer matchups")
+        
+        # Generate rounds for each matchup
+        golfer_matchups = GolferMatchup.objects.filter(week=week)
+        week_rounds = 0
+        
+        for golfer_matchup in golfer_matchups:
+            try:
+                generate_round(golfer_matchup)
+                week_rounds += 1
+            except Exception as e:
+                print(f"  Error generating round for {golfer_matchup.golfer.name}: {e}")
+        
+        total_rounds += week_rounds
+        print(f"  Generated {week_rounds} rounds")
+    
+    print(f"Season {season.year} processing complete!")
+    print(f"Summary:")
+    print(f"  - Handicaps generated: {handicaps_count}")
+    print(f"  - Golfer matchups generated: {total_matchups}")
+    print(f"  - Rounds generated: {total_rounds}")
+    print(f"  - Weeks processed: {len(played_weeks)}")
+    
+    return {
+        'season': season.year,
+        'handicaps_generated': handicaps_count,
+        'matchups_generated': total_matchups,
+        'rounds_generated': total_rounds,
+        'weeks_processed': len(played_weeks),
+        'status': 'success'
+    }
     
         
     

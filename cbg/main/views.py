@@ -338,6 +338,9 @@ def main(request):
                 next_tuesday_date = week_date.strftime('%Y-%m-%d')
                 break
         
+        # Get all available seasons for the season selector
+        all_seasons = Season.objects.all().order_by('-year')
+        
         context = {
             'initialized': initialized,
             'next_week': next_week,
@@ -358,6 +361,8 @@ def main(request):
             'season_golfers': season_golfers,
             'all_weeks': all_weeks,
             'next_tuesday_date': next_tuesday_date,
+            'all_seasons': all_seasons,
+            'current_season': season,
         }
         
     else:
@@ -366,6 +371,140 @@ def main(request):
             'initialized': initialized,
         }
         
+    return render(request, 'main.html', context)
+
+def main_with_year(request, year):
+    """
+    Main view with year parameter - shows the main page for a specific season year
+    """
+    # Get the season for the specified year
+    season = get_current_season(year)
+    
+    if not season:
+        # If season doesn't exist, redirect to main page
+        return redirect('main')
+    
+    # Get last and next weeks for this season
+    last_week = get_last_week(season)
+    next_week = get_next_week(season)
+    
+    print(f'Season: {season}')
+    print(f'Last Week: {last_week}')
+    print(f'Next Week: {next_week}')
+    
+    initialized = True
+    
+    if next_week:
+        next_game = get_game(next_week)
+        next_week_schedule = get_schedule(next_week)
+    else:
+        next_game = None
+        next_week_schedule = None
+        
+    if last_week:
+        last_game = get_game(last_week)
+        
+        # check if season is in the second half
+        is_second_half = last_week.number > 8
+        
+        # Get skins winners for last week
+        skin_winners = calculate_skin_winners(last_week)
+        if skin_winners:
+            # Calculate skins payout (assuming $5 per person in skins)
+            skins_entries = SkinEntry.objects.filter(week=last_week)
+            total_skins_pot = skins_entries.count() * 5
+            skin_winner_payout = total_skins_pot / len(skin_winners) if len(skin_winners) > 0 else 0
+            
+            # Group skin winners by golfer for template display
+            grouped_skin_winners = {}
+            for winner in skin_winners:
+                golfer_name = winner['golfer'].name
+                if golfer_name not in grouped_skin_winners:
+                    grouped_skin_winners[golfer_name] = {
+                        'golfer': winner['golfer'],
+                        'skins': [],
+                        'total_payout': 0
+                    }
+                grouped_skin_winners[golfer_name]['skins'].append({
+                    'hole': winner['hole'],
+                    'score': winner['score']
+                })
+                grouped_skin_winners[golfer_name]['total_payout'] += skin_winner_payout
+        else:
+            skin_winners = None
+            grouped_skin_winners = None
+            skin_winner_payout = 0
+        
+        # Get game winners for last week
+        game_winners = GameEntry.objects.filter(week=last_week, winner=True).select_related('golfer', 'game')
+        if game_winners.exists():
+            # Calculate game payout (assuming $2 per person in each game)
+            game_entries = GameEntry.objects.filter(week=last_week)
+            total_game_pot = game_entries.count() * 2
+            game_winner_payout = total_game_pot / game_winners.count() if game_winners.count() > 0 else 0
+        else:
+            game_winners = None
+            game_winner_payout = 0
+    else:
+        last_game = None
+        skin_winners = None
+        grouped_skin_winners = None
+        skin_winner_payout = 0
+        game_winners = None
+        game_winner_payout = 0
+        is_second_half = False
+
+    season_golfers = Golfer.objects.filter(team__season=season)
+    
+    # Calculate first half standings using Round models
+    first_half_standings = get_first_half_standings(season)
+    second_half_standings = []
+    full_standings = []
+    if is_second_half:
+        second_half_standings = get_second_half_standings(season)
+        full_standings = get_full_standings(season)
+    
+    # Pass all non-rained-out weeks ordered by date for weather bug logic
+    all_weeks = Week.objects.filter(season=season, rained_out=False).order_by('date')
+    
+    # Find the next or current Tuesday (weekday=1) from all_weeks
+    today = date.today()
+    next_tuesday_date = None
+    for week in all_weeks:
+        week_date = week.date.date() if hasattr(week.date, 'date') else week.date
+        if week_date >= today and week_date.weekday() == 1:  # 1 = Tuesday
+            next_tuesday_date = week_date.strftime('%Y-%m-%d')
+            break
+    
+    # Get all available seasons for the season selector
+    all_seasons = Season.objects.all().order_by('-year')
+    
+    context = {
+        'initialized': initialized,
+        'next_week': next_week,
+        'last_week': last_week,
+        'next_game': next_game,
+        'last_game': last_game,
+        'skin_winners': skin_winners,
+        'grouped_skin_winners': grouped_skin_winners,
+        'skin_winner_payout': skin_winner_payout,
+        'game_winners': game_winners,
+        'game_winner_payout': game_winner_payout,
+        'next_week_schedule': next_week_schedule,
+        'firstHalfStandings': first_half_standings,
+        'secondHalfStandings': second_half_standings,
+        'fullStandings': full_standings,
+        'is_second_half': is_second_half,
+        'unestablished': [],
+        'season_golfers': season_golfers,
+        'all_weeks': all_weeks,
+        'next_tuesday_date': next_tuesday_date,
+        'season': season,
+        'year': year,
+        'all_seasons': all_seasons,
+        'current_season': season,
+    }
+    
     return render(request, 'main.html', context)
 
 def add_scores(request):
@@ -580,15 +719,20 @@ def enter_schedule(request):
 
     return render(request, 'enter_schedule.html', {'form': form})
 
-def golfer_stats(request, golfer_id):
+def golfer_stats(request, golfer_id, year=None):
     import json
     from django.db.models import Avg, Count, Q, Min, Max
     
     # Get the golfer object
     golfer = Golfer.objects.get(id=golfer_id)
     
-    # Get current season
-    season = Season.objects.latest('year')
+    # Get season - either specified year or current season
+    if year is not None:
+        season = get_current_season(year)
+        if not season:
+            return redirect('main')
+    else:
+        season = Season.objects.latest('year')
     
     # Get all weeks for the season
     weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
@@ -1341,15 +1485,22 @@ def golfer_stats(request, golfer_id):
     
     return render(request, 'golfer_stats.html', context)
 
-def sub_stats(request, golfer_id=None):
+
+
+def sub_stats(request, golfer_id=None, year=None):
     """
     View for sub statistics - shows stats for any golfer who has subbed in the season
     """
     import json
     from django.db.models import Avg, Count, Q
     
-    # Get current season
-    season = Season.objects.latest('year')
+    # Get season - either specified year or current season
+    if year is not None:
+        season = get_current_season(year)
+        if not season:
+            return redirect('main')
+    else:
+        season = Season.objects.latest('year')
     
     # Get all golfers who have subbed in the current season
     sub_golfers = Golfer.objects.filter(
@@ -1741,7 +1892,7 @@ def sub_stats(request, golfer_id=None):
                 }
             }],
             'layout': {
-                'title': 'Average Strokes vs Par by Hole (Sub Rounds Only)',
+                'title': 'Average Strokes vs Par by Hole',
                 'xaxis': {'title': 'Hole Number'},
                 'yaxis': {'title': 'Strokes vs Par'},
                 'height': 400,
@@ -1797,6 +1948,331 @@ def sub_stats(request, golfer_id=None):
     }
     
     return render(request, 'sub_stats.html', context)
+
+def league_stats_with_year(request, year):
+    """
+    League stats view with year parameter - shows league statistics for a specific season
+    """
+    import json
+    from django.db.models import Avg, Count, Q, Min, Max
+    
+    # Get the season for the specified year
+    season = get_current_season(year)
+    
+    if not season:
+        # If season doesn't exist, redirect to main page
+        return redirect('main')
+    
+    # Get all weeks for the season
+    weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
+    
+    # Get all teams for the season
+    teams = Team.objects.filter(season=season).prefetch_related('golfers')
+    
+    # Get all rounds for the season
+    rounds = Round.objects.filter(
+        week__season=season
+    ).select_related('golfer', 'week', 'handicap').order_by('week__number')
+    
+    # Get all scores for the season
+    all_scores = Score.objects.filter(
+        week__season=season
+    ).select_related('golfer', 'hole', 'week').order_by('hole__number', 'week__number')
+    
+    # Calculate team standings
+    team_standings = {}
+    for team in teams:
+        team_golfers = team.golfers.all()
+        team_total_points = 0
+        golfer_points = {}
+        
+        # Calculate points for each golfer in the team
+        for golfer in team_golfers:
+            golfer_total = 0
+            
+            # 1. Rounds where golfer played for their own team (not as a sub)
+            own_rounds = rounds.filter(golfer=golfer, subbing_for__isnull=True)
+            own_points = own_rounds.aggregate(total=Sum('total_points'))['total'] or 0
+            golfer_total += own_points
+            
+            # 2. Rounds where someone subbed for this golfer (points go to this golfer's team)
+            sub_rounds = rounds.filter(subbing_for=golfer)
+            sub_points = sub_rounds.aggregate(total=Sum('total_points'))['total'] or 0
+            golfer_total += sub_points
+            
+            golfer_points[golfer.name] = golfer_total
+            team_total_points += golfer_total
+        
+        # Get current handicaps for the golfers
+        golfer1 = team_golfers[0]
+        golfer2 = team_golfers[1]
+        
+        golfer1_hcp = Handicap.objects.filter(
+            golfer=golfer1, 
+            week__season=season
+        ).order_by('-week__number').first()
+        
+        golfer2_hcp = Handicap.objects.filter(
+            golfer=golfer2, 
+            week__season=season
+        ).order_by('-week__number').first()
+        
+        # Create team standings entry
+        team_standings[team.id] = {
+            'team': team,
+            'golfer1': golfer1.name,
+            'golfer2': golfer2.name,
+            'total_points': team_total_points,
+            'golfer1_points': golfer_points.get(golfer1.name, 0),
+            'golfer2_points': golfer_points.get(golfer2.name, 0),
+            'golfer1_hcp': golfer1_hcp.handicap if golfer1_hcp else 0,
+            'golfer2_hcp': golfer2_hcp.handicap if golfer2_hcp else 0,
+        }
+    
+    # Sort teams by total points
+    sorted_teams = sorted(team_standings.values(), key=lambda x: x['total_points'], reverse=True)
+    
+    # Calculate league-wide statistics
+    total_rounds = rounds.count()
+    total_points = sum(round_obj.total_points or 0 for round_obj in rounds)
+    avg_gross = rounds.aggregate(avg=Avg('gross'))['avg'] or 0
+    avg_net = rounds.aggregate(avg=Avg('net'))['avg'] or 0
+    avg_points = total_points / total_rounds if total_rounds > 0 else 0
+    
+    # Calculate hole-by-hole statistics
+    hole_stats = {}
+    for hole_num in range(1, 19):
+        hole_scores = all_scores.filter(hole__number=hole_num)
+        if hole_scores.exists():
+            scores_list = list(hole_scores.values_list('score', flat=True))
+            avg_score = sum(scores_list) / len(scores_list)
+            hole_stats[hole_num] = {
+                'avg_score': round(avg_score, 2),
+                'rounds_played': len(scores_list),
+                'par': hole_scores.first().hole.par
+            }
+        else:
+            hole_stats[hole_num] = {
+                'avg_score': None,
+                'rounds_played': 0,
+                'par': None
+            }
+    
+    # Initialize data structures for charts
+    handicap_data = []
+    gross_score_data = []
+    net_score_data = []
+    total_points_data = []
+    round_points_data = []
+    hole_avg_data = []
+    
+    # Process rounds data
+    for round_obj in rounds:
+        handicap_data.append({
+            'week': round_obj.week.number,
+            'handicap': round_obj.handicap.handicap if round_obj.handicap else 0
+        })
+        
+        gross_score_data.append({
+            'week': round_obj.week.number,
+            'score': round_obj.gross
+        })
+        
+        net_score_data.append({
+            'week': round_obj.week.number,
+            'score': round_obj.net
+        })
+        
+        total_points_data.append({
+            'week': round_obj.week.number,
+            'points': round_obj.total_points or 0
+        })
+        
+        round_points_data.append({
+            'week': round_obj.week.number,
+            'points': round_obj.round_points or 0
+        })
+    
+    # Process hole averages
+    hole_stats = {}
+    for hole_num in range(1, 19):
+        hole_scores = all_scores.filter(hole__number=hole_num)
+        if hole_scores.exists():
+            scores_list = list(hole_scores.values_list('score', flat=True))
+            avg_score = sum(scores_list) / len(scores_list)
+            hole_stats[hole_num] = {
+                'avg_score': round(avg_score, 2),
+                'rounds_played': len(scores_list),
+                'par': hole_scores.first().hole.par
+            }
+            hole_avg_data.append({
+                'hole': hole_num,
+                'avg_score': round(avg_score, 2),
+                'par': hole_scores.first().hole.par
+            })
+    
+    # Calculate season totals
+    total_rounds = len(rounds)
+    total_points = sum(round_obj.total_points or 0 for round_obj in rounds)
+    avg_gross = sum(round_obj.gross for round_obj in rounds) / total_rounds if total_rounds > 0 else 0
+    avg_net = sum(round_obj.net for round_obj in rounds) / total_rounds if total_rounds > 0 else 0
+    avg_points = total_points / total_rounds if total_rounds > 0 else 0
+    
+    # Get current handicap
+    current_handicap = 0
+    if rounds.exists():
+        latest_round = rounds.last()
+        current_handicap = latest_round.handicap.handicap if latest_round.handicap else 0
+    
+    context = {
+        'golfer': golfer,
+        'season': season,
+        'year': year,
+        'weeks': weeks,
+        'rounds': rounds,
+        'golfer_matchups': golfer_matchups,
+        'all_scores': all_scores,
+        'subs_as_sub': subs_as_sub,
+        'subs_as_sub_with_points': subs_as_sub_with_points,
+        'sub_golfers': sub_golfers,
+        'handicap_data': json.dumps(handicap_data),
+        'gross_score_data': json.dumps(gross_score_data),
+        'net_score_data': json.dumps(net_score_data),
+        'total_points_data': json.dumps(total_points_data),
+        'round_points_data': json.dumps(round_points_data),
+        'hole_avg_data': json.dumps(hole_avg_data),
+        'hole_stats': hole_stats,
+        'total_rounds': total_rounds,
+        'total_points': total_points,
+        'avg_gross': round(avg_gross, 2),
+        'avg_net': round(avg_net, 2),
+        'avg_points': round(avg_points, 2),
+        'current_handicap': current_handicap,
+    }
+    
+    return render(request, 'sub_stats.html', context)
+
+def league_stats_with_year(request, year):
+    """
+    League stats view with year parameter - shows league statistics for a specific season
+    """
+    import json
+    from django.db.models import Avg, Count, Q, Min, Max
+    
+    # Get the season for the specified year
+    season = get_current_season(year)
+    
+    if not season:
+        # If season doesn't exist, redirect to main page
+        return redirect('main')
+    
+    # Get all weeks for the season
+    weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
+    
+    # Get all teams for the season
+    teams = Team.objects.filter(season=season).prefetch_related('golfers')
+    
+    # Get all rounds for the season
+    rounds = Round.objects.filter(
+        week__season=season
+    ).select_related('golfer', 'week', 'handicap').order_by('week__number')
+    
+    # Get all scores for the season
+    all_scores = Score.objects.filter(
+        week__season=season
+    ).select_related('golfer', 'hole', 'week').order_by('hole__number', 'week__number')
+    
+    # Calculate team standings
+    team_standings = {}
+    for team in teams:
+        team_golfers = team.golfers.all()
+        team_total_points = 0
+        golfer_points = {}
+        
+        # Calculate points for each golfer in the team
+        for golfer in team_golfers:
+            golfer_total = 0
+            
+            # 1. Rounds where golfer played for their own team (not as a sub)
+            own_rounds = rounds.filter(golfer=golfer, subbing_for__isnull=True)
+            own_points = own_rounds.aggregate(total=Sum('total_points'))['total'] or 0
+            golfer_total += own_points
+            
+            # 2. Rounds where someone subbed for this golfer (points go to this golfer's team)
+            sub_rounds = rounds.filter(subbing_for=golfer)
+            sub_points = sub_rounds.aggregate(total=Sum('total_points'))['total'] or 0
+            golfer_total += sub_points
+            
+            golfer_points[golfer.name] = golfer_total
+            team_total_points += golfer_total
+        
+        # Get current handicaps for the golfers
+        golfer1 = team_golfers[0]
+        golfer2 = team_golfers[1]
+        
+        golfer1_hcp = Handicap.objects.filter(
+            golfer=golfer1, 
+            week__season=season
+        ).order_by('-week__number').first()
+        
+        golfer2_hcp = Handicap.objects.filter(
+            golfer=golfer2, 
+            week__season=season
+        ).order_by('-week__number').first()
+        
+        # Create team standings entry
+        team_standings[team.id] = {
+            'team': team,
+            'golfer1': golfer1.name,
+            'golfer2': golfer2.name,
+            'total_points': team_total_points,
+            'golfer1_points': golfer_points.get(golfer1.name, 0),
+            'golfer2_points': golfer_points.get(golfer2.name, 0),
+            'golfer1_hcp': golfer1_hcp.handicap if golfer1_hcp else 0,
+            'golfer2_hcp': golfer2_hcp.handicap if golfer2_hcp else 0,
+        }
+    
+    # Sort teams by total points
+    sorted_teams = sorted(team_standings.values(), key=lambda x: x['total_points'], reverse=True)
+    
+    # Calculate league-wide statistics
+    total_rounds = rounds.count()
+    total_points = sum(round_obj.total_points or 0 for round_obj in rounds)
+    avg_gross = rounds.aggregate(avg=Avg('gross'))['avg'] or 0
+    avg_net = rounds.aggregate(avg=Avg('net'))['avg'] or 0
+    avg_points = total_points / total_rounds if total_rounds > 0 else 0
+    
+    # Calculate hole-by-hole statistics
+    hole_stats = {}
+    for hole_num in range(1, 19):
+        hole_scores = all_scores.filter(hole__number=hole_num)
+        if hole_scores.exists():
+            scores_list = list(hole_scores.values_list('score', flat=True))
+            avg_score = sum(scores_list) / len(scores_list)
+            hole_stats[hole_num] = {
+                'avg_score': round(avg_score, 2),
+                'rounds_played': len(scores_list),
+                'par': hole_scores.first().hole.par,
+                'avg_vs_par': round(avg_score - hole_scores.first().hole.par, 2)
+            }
+    
+    context = {
+        'season': season,
+        'year': year,
+        'weeks': weeks,
+        'teams': teams,
+        'rounds': rounds,
+        'all_scores': all_scores,
+        'team_standings': sorted_teams,
+        'hole_stats': hole_stats,
+        'total_rounds': total_rounds,
+        'total_points': total_points,
+        'avg_gross': round(avg_gross, 2),
+        'avg_net': round(avg_net, 2),
+        'avg_points': round(avg_points, 2),
+    }
+    
+    return render(request, 'league_stats.html', context)
 
 def scorecards(request, week):
     week_number = week
@@ -1905,99 +2381,134 @@ def scorecards(request, week):
         "total": total_yards,
         "week": week,
         "hole_pars": [hole.par for hole in holes],
+        "season": week.season,
     })
 
-def _build_golfer_data(golfer_matchup, rounds, holes, week):
-    """Helper function to build golfer data for scorecard"""
+def scorecards_with_year(request, year, week):
+    """
+    Scorecards view with year parameter - shows scorecards for a specific week in a specific season
+    """
+    week_number = week
     
-    # Determine the actual golfer (could be the golfer or the sub)
-    actual_golfer = golfer_matchup.golfer
-    is_sub = golfer_matchup.subbing_for_golfer is not None
-    sub_for = golfer_matchup.subbing_for_golfer.name if golfer_matchup.subbing_for_golfer else None
+    # Get the season for the specified year
+    season = get_current_season(year)
     
-    # Find the round for this golfer matchup
-    round_obj = rounds.filter(golfer_matchup=golfer_matchup).first()
+    if not season:
+        # If season doesn't exist, redirect to main page
+        return redirect('main')
     
-    if not round_obj:
-        return None
+    try:
+        week = Week.objects.get(number=week_number, season=season, rained_out=False)
+    except Week.DoesNotExist:
+        return render(request, 'blank_scorecards.html', {
+            'error': f'Week {week_number} not found for season {year}.'
+        })
     
-    # Get handicap
-    hcp = round_obj.handicap.handicap if round_obj.handicap else 0
+    holes = list(Hole.objects.filter(
+        number__in=(range(1, 10) if week.is_front else range(10, 19)),
+        season=week.season
+    ).order_by('number'))
     
-    # Get opponent handicap for stroke calculations
-    opponent_hcp = Handicap.objects.filter(golfer=golfer_matchup.opponent, week=week).first()
-    opponent_hcp_value = opponent_hcp.handicap if opponent_hcp else 0
+    hole_string = "Front 9" if week.is_front else "Back 9"
     
-    # Calculate handicap difference for strokes
-    hcp_diff = conventional_round(hcp - opponent_hcp_value)  # Use conventional rounding for handicap difference
-    if hcp_diff > 9:
-        hcp_diff = hcp_diff - 9
-        rollover = 1
-    else:
-        rollover = 0
-    
-    # Get scores for each hole
-    scores = []
-    hole_points = []
-    stroke_info = []
-    score_classes = []
-    
-    for hole in holes:
-        # Find score for this hole
-        score_obj = round_obj.scores.filter(hole=hole).first()
-        score = score_obj.score if score_obj else 0
-        scores.append(score)
-        
-        # Find points for this hole - get directly from database since Round only has current golfer's points
-        points_obj = Points.objects.filter(golfer=actual_golfer, week=week, hole=hole).first()
-        points = points_obj.points if points_obj else 0
-        hole_points.append(points)
-        
+    total_yards = sum(h.yards for h in holes)
 
-        
-        # Calculate stroke info for this hole
-        strokes = 0
-        if hcp_diff > 0:  # Golfer is getting strokes
-            if hole.handicap9 <= hcp_diff:
-                strokes = 1 + rollover
-            elif rollover == 1:
-                strokes = 1
-        stroke_info.append(strokes)
-        
-        # Calculate score class for color coding
-        if score == 0:
-            score_classes.append("")
-        else:
-            relative_to_par = score - hole.par
-            if relative_to_par <= -2:
-                score_classes.append("score-eagle")
-            elif relative_to_par == -1:
-                score_classes.append("score-birdie")
-            elif relative_to_par == 0:
-                score_classes.append("score-par")
-            elif relative_to_par == 1:
-                score_classes.append("score-bogey")
-            elif relative_to_par == 2:
-                score_classes.append("score-double")
-            elif relative_to_par == 3:
-                score_classes.append("score-triple")
-            else:
-                score_classes.append("score-worse")
+    # Get all matchups for the week (each matchup = one scorecard)
+    matchups = Matchup.objects.filter(week=week).prefetch_related('teams__golfers')
     
-    return {
-        'golfer': actual_golfer,
-        'is_sub': is_sub,
-        'sub_for': sub_for,
-        'hcp': hcp,
-        'scores': scores,
-        'hole_points': hole_points,
-        'stroke_info': stroke_info,
-        'score_classes': score_classes,
-        'gross': round_obj.gross,
-        'net': round_obj.net,
-        'round_points': round_obj.round_points,
-        'total_points': round_obj.total_points or 0,
-    }
+    if not matchups.exists():
+        return render(request, 'blank_scorecards.html', {
+            'error': f'No matchups found for Week {week.number}. Please enter the schedule first.'
+        })
+    
+    # Get all golfer matchups for the week
+    golfer_matchups = GolferMatchup.objects.filter(week=week).select_related(
+        'golfer', 'opponent', 'subbing_for_golfer'
+    )
+    
+    # Get all rounds for the week
+    rounds = Round.objects.filter(week=week).select_related(
+        'golfer', 'golfer_matchup', 'handicap'
+    ).prefetch_related('scores', 'points')
+    
+    cards = []
+    
+    for matchup in matchups:
+        teams = list(matchup.teams.all())
+            
+        team1, team2 = teams[0], teams[1]
+        
+        # Get all golfers from both teams
+        team1_golfers = list(team1.golfers.all())
+        team2_golfers = list(team2.golfers.all())
+        
+        # Find golfer matchups for each team's golfers
+        # Check both golfer field and subbing_for_golfer field to handle subs
+        team1_golfer_matchups = []
+        team2_golfer_matchups = []
+        
+        # For team1 golfers
+        for golfer in team1_golfers:
+            # Find golfer matchup (could be golfer or subbing_for_golfer)
+            golfer_matchup = golfer_matchups.filter(
+                Q(golfer=golfer) | Q(subbing_for_golfer=golfer)
+            ).first()
+            
+            if golfer_matchup:
+                team1_golfer_matchups.append(golfer_matchup)
+        
+        # For team2 golfers  
+        for golfer in team2_golfers:
+            golfer_matchup = golfer_matchups.filter(
+                Q(golfer=golfer) | Q(subbing_for_golfer=golfer)
+            ).first()
+            
+            if golfer_matchup:
+                team2_golfer_matchups.append(golfer_matchup)
+        
+        # Sort golfer matchups by is_A (A golfers first)
+        team1_golfer_matchups.sort(key=lambda x: not x.is_A)  # True (A) comes before False (B)
+        team2_golfer_matchups.sort(key=lambda x: not x.is_A)  # True (A) comes before False (B)
+        
+        # Create card data structure
+        card = {
+            'team1_golferA': None,
+            'team1_golferB': None,
+            'team2_golferA': None,
+            'team2_golferB': None,
+        }
+        
+        # Process team1 golfers (A and B positions)
+        for i, golfer_matchup in enumerate(team1_golfer_matchups[:2]):
+            golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
+            if i == 0:
+                card['team1_golferA'] = golfer_data
+            else:
+                card['team1_golferB'] = golfer_data
+        
+        # Process team2 golfers (A and B positions)
+        for i, golfer_matchup in enumerate(team2_golfer_matchups[:2]):
+            golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
+            if i == 0:
+                card['team2_golferA'] = golfer_data
+            else:
+                card['team2_golferB'] = golfer_data
+        
+        # Only add card if we have at least one golfer from each team
+        if card['team1_golferA'] or card['team1_golferB'] or card['team2_golferA'] or card['team2_golferB']:
+            cards.append(card)
+    
+    return render(request, 'scorecards.html', {
+        "week_number": week_number,
+        "holes": holes,
+        "hole_string": hole_string,
+        "cards": cards,
+        "total": total_yards,
+        "week": week,
+        "hole_pars": [hole.par for hole in holes],
+        "season": season,
+        "year": year,
+    })
 
 def set_rainout(request):
     if 'select_week' in request.POST:
@@ -2180,15 +2691,20 @@ def generate_rounds_page(request):
     
     return render(request, 'generate_rounds.html', context)
 
-def league_stats(request):
+def league_stats(request, year=None):
     """
     View for league-wide statistics and leaderboards
     """
     import json
     from django.db.models import Avg, Count, Min, Max, Q
     
-    # Get current season
-    season = Season.objects.latest('year')
+    # Get season - either specified year or current season
+    if year is not None:
+        season = get_current_season(year)
+        if not season:
+            return redirect('main')
+    else:
+        season = Season.objects.latest('year')
     
     # Get all weeks for the season
     weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
@@ -3035,4 +3551,96 @@ def _build_blank_golfer_data(golfer_matchup, holes, week):
         'net': '',
         'round_points': '',
         'total_points': '',
+    }
+
+def _build_golfer_data(golfer_matchup, rounds, holes, week):
+    """Helper function to build golfer data for scorecard"""
+    
+    # Determine the actual golfer (could be the golfer or the sub)
+    actual_golfer = golfer_matchup.golfer
+    is_sub = golfer_matchup.subbing_for_golfer is not None
+    sub_for = golfer_matchup.subbing_for_golfer.name if golfer_matchup.subbing_for_golfer else None
+    
+    # Find the round for this golfer matchup
+    round_obj = rounds.filter(golfer_matchup=golfer_matchup).first()
+    
+    if not round_obj:
+        return None
+    
+    # Get handicap
+    hcp = round_obj.handicap.handicap if round_obj.handicap else 0
+    
+    # Get opponent handicap for stroke calculations
+    opponent_hcp = Handicap.objects.filter(golfer=golfer_matchup.opponent, week=week).first()
+    opponent_hcp_value = opponent_hcp.handicap if opponent_hcp else 0
+    
+    # Calculate handicap difference for strokes
+    hcp_diff = conventional_round(hcp - opponent_hcp_value)  # Use conventional rounding for handicap difference
+    if hcp_diff > 9:
+        hcp_diff = hcp_diff - 9
+        rollover = 1
+    else:
+        rollover = 0
+    
+    # Get scores for each hole
+    scores = []
+    hole_points = []
+    stroke_info = []
+    score_classes = []
+    
+    for hole in holes:
+        # Find score for this hole
+        score_obj = round_obj.scores.filter(hole=hole).first()
+        score = score_obj.score if score_obj else 0
+        scores.append(score)
+        
+        # Find points for this hole - get directly from database since Round only has current golfer's points
+        points_obj = Points.objects.filter(golfer=actual_golfer, week=week, hole=hole).first()
+        points = points_obj.points if points_obj else 0
+        hole_points.append(points)
+        
+ 
+        
+        # Calculate stroke info for this hole
+        strokes = 0
+        if hcp_diff > 0:  # Golfer is getting strokes
+            if hole.handicap9 <= hcp_diff:
+                strokes = 1 + rollover
+            elif rollover == 1:
+                strokes = 1
+        stroke_info.append(strokes)
+        
+        # Calculate score class for color coding
+        if score == 0:
+            score_classes.append("")
+        else:
+            relative_to_par = score - hole.par
+            if relative_to_par <= -2:
+                score_classes.append("score-eagle")
+            elif relative_to_par == -1:
+                score_classes.append("score-birdie")
+            elif relative_to_par == 0:
+                score_classes.append("score-par")
+            elif relative_to_par == 1:
+                score_classes.append("score-bogey")
+            elif relative_to_par == 2:
+                score_classes.append("score-double")
+            elif relative_to_par == 3:
+                score_classes.append("score-triple")
+            else:
+                score_classes.append("score-worse")
+    
+    return {
+        'golfer': actual_golfer,
+        'is_sub': is_sub,
+        'sub_for': sub_for,
+        'hcp': hcp,
+        'scores': scores,
+        'hole_points': hole_points,
+        'stroke_info': stroke_info,
+        'score_classes': score_classes,
+        'gross': round_obj.gross,
+        'net': round_obj.net,
+        'round_points': round_obj.round_points,
+        'total_points': round_obj.total_points or 0,
     }
