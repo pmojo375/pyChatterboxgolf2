@@ -33,7 +33,23 @@
                         
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary">
-                                Generate Handicaps & Rounds
+                                Generate Handicaps, Golfer Matchups & Rounds
+                            </button>
+                        </div>
+                        <!-- Individual step buttons -->
+                        <div class="d-grid mt-2">
+                            <button type="submit" name="generate_handicaps_only" value="1" class="btn btn-info">
+                                Generate Handicaps Only
+                            </button>
+                        </div>
+                        <div class="d-grid mt-2">
+                            <button type="submit" name="generate_matchups_only" value="1" class="btn btn-warning">
+                                Generate Golfer Matchups Only
+                            </button>
+                        </div>
+                        <div class="d-grid mt-2">
+                            <button type="submit" name="generate_rounds_only" value="1" class="btn btn-success">
+                                Generate Rounds Only
                             </button>
                         </div>
                         <!-- New button for recalculating all played weeks -->
@@ -45,17 +61,51 @@
                     </form>
                     
                     <div class="mt-4">
-                        <h5>What this does:</h5>
+                        <h5>What each button does:</h5>
                         <ul>
-                            <li><strong>First:</strong> Calculates and saves handicaps for all golfers in the season</li>
-                            <li><strong>Then:</strong> Generates Round objects for all golfer matchups in the selected week</li>
-                            <li>Calculates and stores Points for each hole</li>
-                            <li>Updates Round totals and statistics</li>
-                            <li>This ensures handicaps exist before generating rounds, preventing errors</li>
+                            <li><strong>Generate Handicaps & Rounds:</strong> 
+                                <ul>
+                                    <li>Calculates and saves handicaps for all golfers in the season</li>
+                                    <li>Generates golfer matchups for the selected week</li>
+                                    <li>Generates Round objects for all golfer matchups</li>
+                                    <li>Calculates and stores Points for each hole</li>
+                                    <li>Updates Round totals and statistics</li>
+                                </ul>
+                            </li>
+                            <li><strong>Generate Handicaps Only:</strong> 
+                                <ul>
+                                    <li>Calculates and saves handicaps for all golfers in the current season</li>
+                                    <li>Does NOT generate matchups or rounds</li>
+                                    <li>Useful when you want to update handicaps after new scores are entered</li>
+                                </ul>
+                            </li>
+                            <li><strong>Generate Golfer Matchups Only:</strong> 
+                                <ul>
+                                    <li>Creates golfer matchups for the selected week only</li>
+                                    <li>Handles substitutions and A/B golfer assignments</li>
+                                    <li>Does NOT generate rounds or calculate handicaps</li>
+                                    <li>Useful when you want to set up matchups before entering scores</li>
+                                </ul>
+                            </li>
+                            <li><strong>Generate Rounds Only:</strong> 
+                                <ul>
+                                    <li>Generates Round objects for existing golfer matchups in the selected week</li>
+                                    <li>Calculates and stores Points for each hole</li>
+                                    <li>Updates Round totals and statistics</li>
+                                    <li>Requires handicaps and matchups to already exist</li>
+                                    <li>Useful when you want to generate rounds after entering scores</li>
+                                </ul>
+                            </li>
+                            <li><strong>Recalculate All Played Weeks:</strong> 
+                                <ul>
+                                    <li>Recalculates all fully played weeks in the current season</li>
+                                    <li>Useful for updating data after rule changes or corrections</li>
+                                </ul>
+                            </li>
                         </ul>
                         
                         <div class="alert alert-info">
-                            <strong>Note:</strong> Make sure the schedule has been entered and golfer matchups exist for the selected week before generating rounds.
+                            <strong>Note:</strong> Make sure the schedule has been entered for the selected week before generating matchups or rounds.
                         </div>
                     </div>
                 </div>

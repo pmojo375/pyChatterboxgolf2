@@ -2411,7 +2411,7 @@ def set_holes(request):
 
 def generate_rounds_page(request):
     """View for generating rounds for a specific week"""
-    from main.helper import generate_rounds, process_week, calculate_and_save_handicaps_for_season
+    from main.helper import generate_rounds, process_week, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_round
     
     message = None
     message_type = None
@@ -2419,6 +2419,9 @@ def generate_rounds_page(request):
     if request.method == 'POST':
         week_id = request.POST.get('week_id')
         recalc_all = request.POST.get('recalc_all')
+        generate_matchups_only = request.POST.get('generate_matchups_only')
+        generate_handicaps_only = request.POST.get('generate_handicaps_only')
+        generate_rounds_only = request.POST.get('generate_rounds_only')
         
         if recalc_all:
             # Recalculate all fully played (not rained-out, all scores entered) weeks in the current season
@@ -2443,6 +2446,71 @@ def generate_rounds_page(request):
                 message_type = "success"
             except Exception as e:
                 message = f"Error recalculating all played weeks: {str(e)}"
+                message_type = "error"
+        elif generate_matchups_only and week_id:
+            try:
+                week = Week.objects.get(id=week_id)
+                
+                # Generate only golfer matchups for the week
+                generate_golfer_matchups(week)
+                
+                # Count the generated matchups
+                matchup_count = GolferMatchup.objects.filter(week=week).count()
+                
+                if matchup_count > 0:
+                    message = f"Successfully generated {matchup_count} golfer matchups for Week {week.number} ({week.date.date()})"
+                    message_type = "success"
+                else:
+                    message = f"No golfer matchups were generated for Week {week.number}. Please ensure the schedule has been entered."
+                    message_type = "warning"
+                    
+            except Week.DoesNotExist:
+                message = "Selected week not found."
+                message_type = "error"
+            except Exception as e:
+                message = f"Error generating golfer matchups: {str(e)}"
+                message_type = "error"
+        elif generate_handicaps_only:
+            try:
+                current_season = Season.objects.latest('year')
+                
+                # Calculate and save handicaps for the entire season
+                calculate_and_save_handicaps_for_season(current_season)
+                
+                # Count the generated handicaps
+                handicap_count = Handicap.objects.filter(golfer__team__season=current_season).count()
+                
+                message = f"Successfully generated {handicap_count} handicaps for {current_season.year} season"
+                message_type = "success"
+                    
+            except Exception as e:
+                message = f"Error generating handicaps: {str(e)}"
+                message_type = "error"
+        elif generate_rounds_only and week_id:
+            try:
+                week = Week.objects.get(id=week_id)
+                
+                # Generate rounds for existing golfer matchups
+                golfer_matchups = GolferMatchup.objects.filter(week=week)
+                
+                if golfer_matchups.exists():
+                    round_count = 0
+                    # Process each golfer matchup to generate rounds
+                    for golfer_matchup in golfer_matchups:
+                        generate_round(golfer_matchup)
+                        round_count += 1
+                    
+                    message = f"Successfully generated {round_count} rounds for Week {week.number} ({week.date.date()})"
+                    message_type = "success"
+                else:
+                    message = f"No golfer matchups found for Week {week.number}. Please generate matchups first."
+                    message_type = "warning"
+                    
+            except Week.DoesNotExist:
+                message = "Selected week not found."
+                message_type = "error"
+            except Exception as e:
+                message = f"Error generating rounds: {str(e)}"
                 message_type = "error"
         elif week_id:
             try:
