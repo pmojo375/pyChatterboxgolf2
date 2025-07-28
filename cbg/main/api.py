@@ -138,8 +138,8 @@ def get_matchup_data(request, matchup_id):
                 'opponent': golfer_matchup.opponent
             })
     
-    # Sort golfers by handicap (lower handicaps first = better golfers on top) and then by not is_A (A players first)
-    playing_golfers.sort(key=lambda x: (x['handicap'], not x['is_A']))
+    # Sort golfers by is_A status first (A golfers on top) and then by handicap (lower handicaps first)
+    playing_golfers.sort(key=lambda x: (not x['is_A'], x['handicap']))
     
     # Group golfers into pairings (2 golfers per pairing)
     pairings = []
