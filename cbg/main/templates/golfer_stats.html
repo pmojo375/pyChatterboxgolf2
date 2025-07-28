@@ -583,6 +583,90 @@
         </div>
     </div>
 
+    <!-- Theoretical Best/Worst Rounds -->
+    {% if theoretical_rounds %}
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Theoretical Best Round</h5>
+                    <small class="opacity-75">Best score on each hole across all rounds</small>
+                </div>
+                <div class="card-body">
+                    {% if theoretical_rounds.best %}
+                    <div class="mb-3">
+                        <h6 class="text-success fw-bold mb-1">Theoretical Best Gross</h6>
+                        <p class="mb-0 fw-bold text-success">{{ theoretical_rounds.best.total }}</p>
+                        {% if theoretical_rounds.best.vs_actual_best %}
+                        <small class="text-muted">
+                            {% if theoretical_rounds.best.vs_actual_best < 0 %}
+                                {{ theoretical_rounds.best.vs_actual_best|floatformat:1 }} better than actual best
+                            {% else %}
+                                {{ theoretical_rounds.best.vs_actual_best|floatformat:1 }} worse than actual best
+                            {% endif %}
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-2">Hole-by-Hole Breakdown:</h6>
+                        <div class="row">
+                            {% for score_data in theoretical_rounds.best.scores %}
+                            {% if score_data.score is not None %}
+                            <div class="col-4 mb-2">
+                                <small class="text-muted">Hole {{ score_data.hole }}:</small>
+                                <div class="fw-bold text-success">{{ score_data.score }}</div>
+                                <small class="text-muted">(Week {{ score_data.week }})</small>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Theoretical Worst Round</h5>
+                    <small class="opacity-75">Worst score on each hole across all rounds</small>
+                </div>
+                <div class="card-body">
+                    {% if theoretical_rounds.worst %}
+                    <div class="mb-3">
+                        <h6 class="text-danger fw-bold mb-1">Theoretical Worst Gross</h6>
+                        <p class="mb-0 fw-bold text-danger">{{ theoretical_rounds.worst.total }}</p>
+                        {% if theoretical_rounds.worst.vs_actual_worst %}
+                        <small class="text-muted">
+                            {% if theoretical_rounds.worst.vs_actual_worst > 0 %}
+                                {{ theoretical_rounds.worst.vs_actual_worst|floatformat:1 }} worse than actual worst
+                            {% else %}
+                                {{ theoretical_rounds.worst.vs_actual_worst|floatformat:1 }} better than actual worst
+                            {% endif %}
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-2">Hole-by-Hole Breakdown:</h6>
+                        <div class="row">
+                            {% for score_data in theoretical_rounds.worst.scores %}
+                            {% if score_data.score is not None %}
+                            <div class="col-4 mb-2">
+                                <small class="text-muted">Hole {{ score_data.hole }}:</small>
+                                <div class="fw-bold text-danger">{{ score_data.score }}</div>
+                                <small class="text-muted">(Week {{ score_data.week }})</small>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Weekly Performance Table -->
     {% if weekly_stats %}
     <div class="row mb-5">

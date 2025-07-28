@@ -1401,6 +1401,68 @@ def golfer_stats(request, golfer_id, year=None):
         'games_entries': game_entries.count(),
     }
 
+    # Calculate theoretical best and worst rounds
+    theoretical_rounds = {}
+    if all_scores.exists():
+        # Group scores by hole number
+        hole_scores = {}
+        for score in all_scores:
+            hole_num = score.hole.number
+            if hole_num not in hole_scores:
+                hole_scores[hole_num] = []
+            hole_scores[hole_num].append(score.score)
+        
+        # Calculate theoretical best round (best score on each hole)
+        theoretical_best_scores = []
+        theoretical_best_total = 0
+        for hole_num in range(1, 19):
+            if hole_num in hole_scores and hole_scores[hole_num]:
+                best_score = min(hole_scores[hole_num])
+                theoretical_best_scores.append({
+                    'hole': hole_num,
+                    'score': best_score,
+                    'week': all_scores.filter(hole__number=hole_num, score=best_score).first().week.number
+                })
+                theoretical_best_total += best_score
+            else:
+                theoretical_best_scores.append({
+                    'hole': hole_num,
+                    'score': None,
+                    'week': None
+                })
+        
+        # Calculate theoretical worst round (worst score on each hole)
+        theoretical_worst_scores = []
+        theoretical_worst_total = 0
+        for hole_num in range(1, 19):
+            if hole_num in hole_scores and hole_scores[hole_num]:
+                worst_score = max(hole_scores[hole_num])
+                theoretical_worst_scores.append({
+                    'hole': hole_num,
+                    'score': worst_score,
+                    'week': all_scores.filter(hole__number=hole_num, score=worst_score).first().week.number
+                })
+                theoretical_worst_total += worst_score
+            else:
+                theoretical_worst_scores.append({
+                    'hole': hole_num,
+                    'score': None,
+                    'week': None
+                })
+        
+        theoretical_rounds = {
+            'best': {
+                'total': theoretical_best_total,
+                'scores': theoretical_best_scores,
+                'vs_actual_best': theoretical_best_total - best_gross_week['gross'] if best_gross_week else None
+            },
+            'worst': {
+                'total': theoretical_worst_total,
+                'scores': theoretical_worst_scores,
+                'vs_actual_worst': theoretical_worst_total - worst_gross_week['gross'] if worst_gross_week else None
+            }
+        }
+
     context = {
         'golfer': golfer,
         'season': season,
@@ -1481,6 +1543,9 @@ def golfer_stats(request, golfer_id, year=None):
         
         # Wager statistics
         'wager_stats': wager_stats,
+        
+        # Theoretical rounds
+        'theoretical_rounds': theoretical_rounds,
     }
     
     return render(request, 'golfer_stats.html', context)
