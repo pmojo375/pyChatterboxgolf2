@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django import forms
 
-from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup
+from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup, RandomDrawnTeam
 
 
 class GolferAdmin(admin.ModelAdmin):
@@ -567,6 +567,40 @@ class GolferMatchupAdmin(admin.ModelAdmin):
         )
 
 
+class RandomDrawnTeamAdmin(admin.ModelAdmin):
+    list_display = ('get_week', 'get_absent_team', 'get_drawn_team', 'get_season')
+    list_filter = ('week__season', 'week')
+    search_fields = ('absent_team__golfers__name', 'drawn_team__golfers__name', 'week__date')
+    list_per_page = 50
+    
+    fieldsets = (
+        ('Random Drawn Team Information', {
+            'fields': ('week', 'absent_team', 'drawn_team')
+        }),
+    )
+    
+    def get_week(self, obj):
+        return f"Week {obj.week.number} - {obj.week.date.strftime('%Y-%m-%d')}"
+    get_week.short_description = 'Week'
+    get_week.admin_order_field = 'week__date'
+    
+    def get_absent_team(self, obj):
+        return str(obj.absent_team)
+    get_absent_team.short_description = 'Absent Team'
+    
+    def get_drawn_team(self, obj):
+        return str(obj.drawn_team)
+    get_drawn_team.short_description = 'Drawn Team'
+    
+    def get_season(self, obj):
+        return obj.week.season.year
+    get_season.short_description = 'Season'
+    get_season.admin_order_field = 'week__season__year'
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('week__season', 'absent_team', 'drawn_team').prefetch_related('absent_team__golfers', 'drawn_team__golfers')
+
+
 # Register all models with their admin classes
 admin.site.register(Golfer, GolferAdmin)
 admin.site.register(Season, SeasonAdmin)
@@ -583,3 +617,4 @@ admin.site.register(Sub, SubAdmin)
 admin.site.register(Points, PointsAdmin)
 admin.site.register(Round, RoundAdmin)
 admin.site.register(GolferMatchup, GolferMatchupAdmin)
+admin.site.register(RandomDrawnTeam, RandomDrawnTeamAdmin)

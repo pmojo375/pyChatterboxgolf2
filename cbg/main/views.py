@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from main.models import *
 from main.signals import *
 from main.helper import *
@@ -6,10 +6,17 @@ from main.forms import *
 from django.db.models import Sum, Q
 from main.season import *
 from django.forms import formset_factory
-from django.http import HttpResponseBadRequest, HttpResponseRedirect
+from django.http import HttpResponseBadRequest, HttpResponseRedirect, HttpResponse, JsonResponse
 from main.models import Team, Score, Sub, Week
 from django.urls import reverse
 from datetime import date
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.utils import timezone
+from datetime import datetime, timedelta
+from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup, RandomDrawnTeam
+from .forms import GolferForm, SubForm
+from .helper import get_week, get_game, get_current_season, get_last_week, get_next_week, get_golfers, get_sub, get_absent_team_from_sub, generate_rounds, golfer_played, get_hcp, get_schedule, calculate_team_points, get_front_holes, get_back_holes, get_golfer_points, calculate_handicap, calculate_and_save_handicaps_for_season, get_standings, get_score_string, adjust_weeks, generate_golfer_matchups, get_playing_golfers_for_week, get_earliest_week_without_full_matchups, process_season, conventional_round
 
 def get_first_half_standings(season):
     """
@@ -3355,6 +3362,9 @@ def blank_scorecards(request):
             'error': f'No golfer matchups found for Week {week.number}. Please generate rounds first.'
         })
     
+    # Get all rounds for the week (empty list for blank scorecards)
+    rounds = []
+    
     cards = []
     
     for matchup in matchups:
@@ -3367,6 +3377,7 @@ def blank_scorecards(request):
         team2_golfers = list(team2.golfers.all())
         
         # Find golfer matchups for each team's golfers
+        # Check both golfer field and subbing_for_golfer field to handle subs
         team1_golfer_matchups = []
         team2_golfer_matchups = []
         
@@ -3442,6 +3453,27 @@ def _build_blank_golfer_data(golfer_matchup, holes, week):
     is_sub = golfer_matchup.subbing_for_golfer is not None
     sub_for = golfer_matchup.subbing_for_golfer.name if golfer_matchup.subbing_for_golfer else None
     
+    # Check if this golfer is part of a random drawn team
+    is_random_drawn = False
+    random_drawn_for = None
+    
+    # Find if this golfer's team is a drawn team for any absent team
+    golfer_team = None
+    for team in actual_golfer.team_set.all():
+        if team.season == week.season:
+            golfer_team = team
+            break
+    
+    if golfer_team:
+        random_drawn_record = RandomDrawnTeam.objects.filter(
+            week=week, 
+            drawn_team=golfer_team
+        ).first()
+        
+        if random_drawn_record:
+            is_random_drawn = True
+            random_drawn_for = random_drawn_record.absent_team
+    
     # Get handicap
     hcp_obj = Handicap.objects.filter(golfer=actual_golfer, week=week).first()
     hcp = hcp_obj.handicap if hcp_obj else 0
@@ -3474,6 +3506,8 @@ def _build_blank_golfer_data(golfer_matchup, holes, week):
         'golfer': actual_golfer,
         'is_sub': is_sub,
         'sub_for': sub_for,
+        'is_random_drawn': is_random_drawn,
+        'random_drawn_for': random_drawn_for,
         'hcp': hcp,
         'stroke_info': stroke_info,
         'scores': ['' for _ in holes],  # Empty scores
@@ -3491,6 +3525,27 @@ def _build_golfer_data(golfer_matchup, rounds, holes, week):
     actual_golfer = golfer_matchup.golfer
     is_sub = golfer_matchup.subbing_for_golfer is not None
     sub_for = golfer_matchup.subbing_for_golfer.name if golfer_matchup.subbing_for_golfer else None
+    
+    # Check if this golfer is part of a random drawn team
+    is_random_drawn = False
+    random_drawn_for = None
+    
+    # Find if this golfer's team is a drawn team for any absent team
+    golfer_team = None
+    for team in actual_golfer.team_set.all():
+        if team.season == week.season:
+            golfer_team = team
+            break
+    
+    if golfer_team:
+        random_drawn_record = RandomDrawnTeam.objects.filter(
+            week=week, 
+            drawn_team=golfer_team
+        ).first()
+        
+        if random_drawn_record:
+            is_random_drawn = True
+            random_drawn_for = random_drawn_record.absent_team
     
     # Find the round for this golfer matchup
     round_obj = rounds.filter(golfer_matchup=golfer_matchup).first()
@@ -3565,6 +3620,8 @@ def _build_golfer_data(golfer_matchup, rounds, holes, week):
         'golfer': actual_golfer,
         'is_sub': is_sub,
         'sub_for': sub_for,
+        'is_random_drawn': is_random_drawn,
+        'random_drawn_for': random_drawn_for,
         'hcp': hcp,
         'scores': scores,
         'hole_points': hole_points,
@@ -3574,4 +3631,77 @@ def _build_golfer_data(golfer_matchup, rounds, holes, week):
         'net': round_obj.net,
         'round_points': round_obj.round_points,
         'total_points': round_obj.total_points or 0,
+    }
+
+def _build_blank_golfer_data(golfer_matchup, holes, week):
+    """Helper function to build blank golfer data for scorecard"""
+    
+    # Determine the actual golfer (could be the golfer or the sub)
+    actual_golfer = golfer_matchup.golfer
+    is_sub = golfer_matchup.subbing_for_golfer is not None
+    sub_for = golfer_matchup.subbing_for_golfer.name if golfer_matchup.subbing_for_golfer else None
+    
+    # Check if this golfer is part of a random drawn team
+    is_random_drawn = False
+    random_drawn_for = None
+    
+    # Find if this golfer's team is a drawn team for any absent team
+    golfer_team = None
+    for team in actual_golfer.team_set.all():
+        if team.season == week.season:
+            golfer_team = team
+            break
+    
+    if golfer_team:
+        random_drawn_record = RandomDrawnTeam.objects.filter(
+            week=week, 
+            drawn_team=golfer_team
+        ).first()
+        
+        if random_drawn_record:
+            is_random_drawn = True
+            random_drawn_for = random_drawn_record.absent_team
+    
+    # Get handicap
+    hcp_obj = Handicap.objects.filter(golfer=actual_golfer, week=week).first()
+    hcp = hcp_obj.handicap if hcp_obj else 0
+    
+    # Get opponent handicap for stroke calculations
+    opponent_hcp = golfer_matchup.opponent.handicap_set.filter(week=week).first()
+    opponent_hcp_value = opponent_hcp.handicap if opponent_hcp else 0
+    
+    # Calculate handicap difference for strokes
+    hcp_diff = conventional_round(hcp) - conventional_round(opponent_hcp_value)
+    if hcp_diff > 9:
+        hcp_diff = hcp_diff - 9
+        rollover = 1
+    else:
+        rollover = 0
+    
+    # Calculate stroke info for each hole (for visual indication)
+    stroke_info = []
+    
+    for hole in holes:
+        strokes = 0
+        if hcp_diff > 0:  # Golfer is getting strokes
+            if hole.handicap9 <= hcp_diff:
+                strokes = 1 + rollover
+            elif rollover == 1:
+                strokes = 1
+        stroke_info.append(strokes)
+    
+    return {
+        'golfer': actual_golfer,
+        'is_sub': is_sub,
+        'sub_for': sub_for,
+        'is_random_drawn': is_random_drawn,
+        'random_drawn_for': random_drawn_for,
+        'hcp': hcp,
+        'stroke_info': stroke_info,
+        'scores': ['' for _ in holes],  # Empty scores
+        'hole_points': ['' for _ in holes],  # Empty points
+        'gross': '',
+        'net': '',
+        'round_points': '',
+        'total_points': '',
     }
