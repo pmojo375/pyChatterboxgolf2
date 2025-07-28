@@ -2888,12 +2888,12 @@ def league_stats(request, year=None):
             'total_earned': round(total_earned, 2)
         }
     
-    # Create top 5 leaderboard
+    # Create top 10 leaderboard
     earnings_leaderboard = sorted(
         golfer_total_earnings.items(), 
         key=lambda x: x[1]['total_earned'], 
         reverse=True
-    )[:5]
+    )[:10]
     
     # Find golfer with most skins money
     most_skins_golfer = max(golfer_skins_won.items(), key=lambda x: x[1]) if golfer_skins_won else None
