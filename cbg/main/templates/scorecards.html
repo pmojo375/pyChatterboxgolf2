@@ -97,6 +97,19 @@
     border: 4px solid red;
 }
 
+.sub-info {
+    color: #007bff;
+    font-size: 0.8em;
+    font-style: italic;
+}
+
+.random-drawn-info {
+    color: #dc3545;
+    font-size: 0.8em;
+    font-style: italic;
+    font-weight: bold;
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
     .score-legend {
@@ -197,6 +210,7 @@
       <td class="descriptor">
         {{ card.team1_golferA.golfer.name }}
         {% if card.team1_golferA.is_sub %}<span class="sub-info">(Sub for {{ card.team1_golferA.sub_for }})</span>{% endif %}
+        {% if card.team1_golferA.is_random_drawn %}<span class="random-drawn-info">(Random drawn for {{ card.team1_golferA.random_drawn_for }})</span>{% endif %}
       </td>
       <td class="hcp">{{ card.team1_golferA.hcp|floatformat:0 }}</td>
       {% for score in card.team1_golferA.scores %}
@@ -229,6 +243,7 @@
       <td class="descriptor">
         {{ card.team2_golferA.golfer.name }}
         {% if card.team2_golferA.is_sub %}<span class="sub-info">(Sub for {{ card.team2_golferA.sub_for }})</span>{% endif %}
+        {% if card.team2_golferA.is_random_drawn %}<span class="random-drawn-info">(Random drawn for {{ card.team2_golferA.random_drawn_for }})</span>{% endif %}
       </td>
       <td class="hcp">{{ card.team2_golferA.hcp|floatformat:0 }}</td>
       {% for score in card.team2_golferA.scores %}
@@ -292,6 +307,7 @@
       <td class="descriptor">
         {{ card.team1_golferB.golfer.name }}
         {% if card.team1_golferB.is_sub %}<span class="sub-info">(Sub for {{ card.team1_golferB.sub_for }})</span>{% endif %}
+        {% if card.team1_golferB.is_random_drawn %}<span class="random-drawn-info">(Random drawn for {{ card.team1_golferB.random_drawn_for }})</span>{% endif %}
       </td>
       <td class="hcp">{{ card.team1_golferB.hcp|floatformat:0 }}</td>
       {% for score in card.team1_golferB.scores %}
@@ -324,6 +340,7 @@
       <td class="descriptor">
         {{ card.team2_golferB.golfer.name }}
         {% if card.team2_golferB.is_sub %}<span class="sub-info">(Sub for {{ card.team2_golferB.sub_for }})</span>{% endif %}
+        {% if card.team2_golferB.is_random_drawn %}<span class="random-drawn-info">(Random drawn for {{ card.team2_golferB.random_drawn_for }})</span>{% endif %}
       </td>
       <td class="hcp">{{ card.team2_golferB.hcp|floatformat:0 }}</td>
       {% for score in card.team2_golferB.scores %}

@@ -4,6 +4,8 @@ from django.db.models import Sum
 from django.utils import timezone
 import random
 import math
+from django.db.models import Q
+from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup, RandomDrawnTeam
 
 def conventional_round(value):
     """
@@ -902,6 +904,59 @@ def adjust_weeks(rained_out_week):
     new_week_date = Week.objects.latest('date').date + timedelta(days=7)
     Week.objects.create(week_number=last_week_number+1, date=new_week_date)
     
+def detect_and_create_random_drawn_teams(week):
+    """
+    Detects teams where both golfers have no subs and creates RandomDrawnTeam records.
+    Returns a dictionary mapping absent teams to their drawn teams.
+    """
+    random_drawn_teams = {}
+    
+    # Get all teams for the season
+    all_teams = list(Team.objects.filter(season=week.season))
+    
+    for team in all_teams:
+        team_golfers = list(team.golfers.all())
+        
+        # Check if both golfers have no_sub
+        both_no_sub = True
+        for golfer in team_golfers:
+            sub_record = Sub.objects.filter(week=week, absent_golfer=golfer).first()
+            if not sub_record or not sub_record.no_sub:
+                both_no_sub = False
+                break
+        
+        if both_no_sub:
+            # Find a random team to draw (excluding the absent team and already drawn teams)
+            available_teams = [t for t in all_teams if t != team and t not in random_drawn_teams.values()]
+            
+            if available_teams:
+                drawn_team = random.choice(available_teams)
+                
+                # Create or update RandomDrawnTeam record
+                random_drawn_team, created = RandomDrawnTeam.objects.get_or_create(
+                    week=week,
+                    absent_team=team,
+                    defaults={'drawn_team': drawn_team}
+                )
+                
+                if not created:
+                    random_drawn_team.drawn_team = drawn_team
+                    random_drawn_team.save()
+                
+                random_drawn_teams[team] = drawn_team
+                print(f"Random drawn team created: {drawn_team} plays for {team} in week {week.number}")
+    
+    return random_drawn_teams
+
+def clear_random_drawn_teams(week):
+    """
+    Clears all RandomDrawnTeam records for a given week.
+    Useful for testing or when regenerating matchups.
+    """
+    deleted_count = RandomDrawnTeam.objects.filter(week=week).delete()[0]
+    print(f"Cleared {deleted_count} random drawn team records for week {week.number}")
+    return deleted_count
+
 def generate_golfer_matchups(week):
     """
     Generates golfer matchups for a given week by pairing golfers from opposing teams
@@ -911,10 +966,11 @@ def generate_golfer_matchups(week):
     2. Deletes any existing golfer matchups for the week.
     3. Iterates through each matchup and retrieves the teams and their golfers.
     4. Checks for absent golfers and replaces them with substitutes or teammates.
-    5. Calculates handicaps for each golfer.
-    6. Assigns A and B golfers for each team based on their handicaps.
-    7. Creates golfer matchups, ensuring the correct "subbing_for" field is set.
-    8. Prints information about which golfers are subbing for absent players.
+    5. Handles random drawn teams when both golfers on a team have no subs.
+    6. Calculates handicaps for each golfer.
+    7. Assigns A and B golfers for each team based on their handicaps.
+    8. Creates golfer matchups, ensuring the correct "subbing_for" field is set.
+    9. Prints information about which golfers are subbing for absent players.
     Args:
         week (int): The week number for which golfer matchups are to be generated.
     Raises:
@@ -923,14 +979,20 @@ def generate_golfer_matchups(week):
         - Matchup: Represents a matchup between two teams for a given week.
         - GolferMatchup: Represents a matchup between individual golfers.
         - Sub: Represents a substitution for an absent golfer.
+        - RandomDrawnTeam: Represents a random drawn team that plays for an absent team.
     Helper Functions:
         - get_hcp(golfer, week): Retrieves the handicap for a golfer for the specified week.
+        - detect_and_create_random_drawn_teams(week): Detects and creates random drawn teams.
     Notes:
         - The function assumes that each team has exactly two golfers.
         - If a golfer is absent and no substitute is available, their teammate may replace them.
+        - If both golfers on a team have no subs, a random drawn team will be used.
         - A/B status is determined based on current playing golfers' handicaps (including subs) when there are subs.
         - A/B status is preserved based on original team golfers' handicaps when there is a no_sub situation.
     """
+    # First, detect and create random drawn teams
+    random_drawn_teams = detect_and_create_random_drawn_teams(week)
+    
     matchups = Matchup.objects.filter(week=week)
 
     # delete all rounds and golfer matchups for the week
@@ -947,6 +1009,15 @@ def generate_golfer_matchups(week):
             
         team1 = teams[0]
         team2 = teams[1]
+
+        # Check if either team should use a random drawn team
+        if team1 in random_drawn_teams:
+            team1 = random_drawn_teams[team1]
+            print(f"Using random drawn team {team1} instead of absent team in matchup {matchup.id}")
+        
+        if team2 in random_drawn_teams:
+            team2 = random_drawn_teams[team2]
+            print(f"Using random drawn team {team2} instead of absent team in matchup {matchup.id}")
 
         team1_golfers = list(team1.golfers.all())
         team2_golfers = list(team2.golfers.all())
