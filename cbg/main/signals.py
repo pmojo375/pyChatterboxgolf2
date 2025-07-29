@@ -4,6 +4,7 @@ from django.db import transaction
 from main.models import Score, GolferMatchup, Sub, Team, Matchup, Week
 from main.helper import generate_golfer_matchups, calculate_and_save_handicaps_for_season, get_week, process_week
 from main.helper import get_hcp
+from main.tasks import process_week_async, generate_matchups_async
 
 @receiver(post_save, sender=Score)
 def score_updated(sender, instance, created, **kwargs):
@@ -21,8 +22,8 @@ def score_updated(sender, instance, created, **kwargs):
         
         if number_of_scores == scores_needed:
             # Use on_commit to ensure the Score save is committed before processing
-            transaction.on_commit(lambda: process_week(week))
-            # all scores entered... Process week.
+            transaction.on_commit(lambda: process_week_async.delay(week.id))
+            # all scores entered... Process week asynchronously.
         
 @receiver(post_delete, sender=Score)
 def score_deleted(sender, instance, **kwargs):
@@ -42,7 +43,8 @@ def sub_updated(sender, instance, created, **kwargs):
         instance.week.num_scores = scores_needed
         instance.week.save()
 
-        generate_golfer_matchups(instance.week)
+        # Generate matchups asynchronously
+        generate_matchups_async.delay(instance.week.id)
     
     transaction.on_commit(update_week_and_matchups)
 
@@ -57,7 +59,8 @@ def sub_deleted(sender, instance, **kwargs):
         instance.week.num_scores = scores_needed
         instance.week.save()
 
-        generate_golfer_matchups(instance.week)
+        # Generate matchups asynchronously
+        generate_matchups_async.delay(instance.week.id)
     
     transaction.on_commit(update_week_and_matchups)
 
@@ -78,6 +81,6 @@ def matchup_created(sender, instance, created, **kwargs):
             # and no golfer matchups exist yet
             if total_matchups == total_teams // 2 and not GolferMatchup.objects.filter(week=week).exists():
                 print(f'All matchups entered for Week {week.number}. Generating initial golfer matchups.')
-                generate_golfer_matchups(week)
+                generate_matchups_async.delay(week.id)
         
         transaction.on_commit(check_and_generate_matchups)

@@ -2477,6 +2477,7 @@ def set_holes(request):
 def generate_rounds_page(request):
     """View for generating rounds for a specific week"""
     from main.helper import generate_rounds, process_week, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_round
+    from main.tasks import calculate_handicaps_async, generate_rounds_async, generate_matchups_async, process_week_async
     
     message = None
     message_type = None
@@ -2492,8 +2493,10 @@ def generate_rounds_page(request):
             # Recalculate all fully played (not rained-out, all scores entered) weeks in the current season
             try:
                 current_season = Season.objects.latest('year')
-                from main.helper import calculate_and_save_handicaps_for_season, generate_rounds
-                calculate_and_save_handicaps_for_season(current_season)
+                
+                # Start async tasks for long-running processes
+                calculate_handicaps_async.delay(current_season.year)
+                
                 # Only recalculate weeks that are fully played
                 played_weeks = []
                 teams = Team.objects.filter(season=current_season)
@@ -2503,108 +2506,78 @@ def generate_rounds_page(request):
                     actual_scores = Score.objects.filter(week=week).count()
                     if actual_scores == expected_scores:
                         played_weeks.append(week)
-                # Only recalc played weeks
+                
+                # Start async tasks for each played week
                 for week in played_weeks:
-                    from main.helper import process_week
-                    process_week(week)
-                message = f"Successfully recalculated all played weeks for {current_season.year}."
+                    process_week_async.delay(week.id)
+                
+                message = f"Started async recalculation of all played weeks for {current_season.year}. Tasks are running in the background."
                 message_type = "success"
             except Exception as e:
-                message = f"Error recalculating all played weeks: {str(e)}"
+                message = f"Error starting recalculation tasks: {str(e)}"
                 message_type = "error"
         elif generate_matchups_only and week_id:
             try:
                 week = Week.objects.get(id=week_id)
                 
-                # Generate only golfer matchups for the week
-                generate_golfer_matchups(week)
+                # Start async task for generating golfer matchups
+                generate_matchups_async.delay(week.id)
                 
-                # Count the generated matchups
-                matchup_count = GolferMatchup.objects.filter(week=week).count()
-                
-                if matchup_count > 0:
-                    message = f"Successfully generated {matchup_count} golfer matchups for Week {week.number} ({week.date.date()})"
-                    message_type = "success"
-                else:
-                    message = f"No golfer matchups were generated for Week {week.number}. Please ensure the schedule has been entered."
-                    message_type = "warning"
+                message = f"Started async generation of golfer matchups for Week {week.number} ({week.date.date()}). Task is running in the background."
+                message_type = "success"
                     
             except Week.DoesNotExist:
                 message = "Selected week not found."
                 message_type = "error"
             except Exception as e:
-                message = f"Error generating golfer matchups: {str(e)}"
+                message = f"Error starting matchup generation task: {str(e)}"
                 message_type = "error"
         elif generate_handicaps_only:
             try:
                 current_season = Season.objects.latest('year')
                 
-                # Calculate and save handicaps for the entire season
-                calculate_and_save_handicaps_for_season(current_season)
+                # Start async task for calculating handicaps
+                calculate_handicaps_async.delay(current_season.year)
                 
-                # Count the generated handicaps
-                handicap_count = Handicap.objects.filter(golfer__team__season=current_season).count()
-                
-                message = f"Successfully generated {handicap_count} handicaps for {current_season.year} season"
+                message = f"Started async calculation of handicaps for {current_season.year} season. Task is running in the background."
                 message_type = "success"
                     
             except Exception as e:
-                message = f"Error generating handicaps: {str(e)}"
+                message = f"Error starting handicap calculation task: {str(e)}"
                 message_type = "error"
         elif generate_rounds_only and week_id:
             try:
                 week = Week.objects.get(id=week_id)
                 
-                # Generate rounds for existing golfer matchups
-                golfer_matchups = GolferMatchup.objects.filter(week=week)
+                # Start async task for generating rounds
+                generate_rounds_async.delay(week.season.year)
                 
-                if golfer_matchups.exists():
-                    round_count = 0
-                    # Process each golfer matchup to generate rounds
-                    for golfer_matchup in golfer_matchups:
-                        generate_round(golfer_matchup)
-                        round_count += 1
-                    
-                    message = f"Successfully generated {round_count} rounds for Week {week.number} ({week.date.date()})"
-                    message_type = "success"
-                else:
-                    message = f"No golfer matchups found for Week {week.number}. Please generate matchups first."
-                    message_type = "warning"
+                message = f"Started async generation of rounds for Week {week.number} ({week.date.date()}). Task is running in the background."
+                message_type = "success"
                     
             except Week.DoesNotExist:
                 message = "Selected week not found."
                 message_type = "error"
             except Exception as e:
-                message = f"Error generating rounds: {str(e)}"
+                message = f"Error starting round generation task: {str(e)}"
                 message_type = "error"
         elif week_id:
             try:
                 week = Week.objects.get(id=week_id)
                 
-                # First, ensure handicaps are calculated for the season
-                calculate_and_save_handicaps_for_season(week.season)
-
-                generate_golfer_matchups(week)
+                # Start async tasks for all operations
+                calculate_handicaps_async.delay(week.season.year)
+                generate_matchups_async.delay(week.id)
+                generate_rounds_async.delay(week.season.year)
                 
-                # Generate rounds for the week
-                golfer_matchups = GolferMatchup.objects.filter(week=week)
-                
-                if golfer_matchups.exists():
-                    # Process each golfer matchup to generate rounds
-                    for golfer_matchup in golfer_matchups:
-                        generate_round(golfer_matchup)
-                    
-                    message = f"Successfully generated handicaps and rounds for Week {week.number} ({week.date.date()})"
-                    message_type = "success"
-                else:
-                    message = f"No golfer matchups found for Week {week.number}. Please ensure the schedule has been entered."
-                    message_type = "warning"
+                message = f"Started async generation of handicaps, matchups, and rounds for Week {week.number} ({week.date.date()}). Tasks are running in the background."
+                message_type = "success"
                     
             except Week.DoesNotExist:
                 message = "Selected week not found."
                 message_type = "error"
             except Exception as e:
-                message = f"Error generating rounds: {str(e)}"
+                message = f"Error starting generation tasks: {str(e)}"
                 message_type = "error"
         else:
             message = "Please select a week."

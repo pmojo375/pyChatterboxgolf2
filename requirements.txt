@@ -15,8 +15,12 @@ packaging==25.0
 prompt-toolkit==3.0.51
 python-dateutil==2.9.0.post0
 pytz==2025.2
+redis==5.0.1
 six==1.17.0
 sqlparse==0.5.3
 tzdata==2025.2
 vine==5.1.0
 wcwidth==0.2.13
+# Windows-specific dependencies (optional - install if needed)
+# pywin32==306; sys_platform == "win32"
+# eventlet==0.33.3; sys_platform == "win32"
