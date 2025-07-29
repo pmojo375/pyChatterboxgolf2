@@ -2477,7 +2477,7 @@ def set_holes(request):
 def generate_rounds_page(request):
     """View for generating rounds for a specific week"""
     from main.helper import generate_rounds, process_week, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_round
-    from main.tasks import calculate_handicaps_async, generate_rounds_async, generate_matchups_async, process_week_async
+    from main.tasks import calculate_handicaps_async, generate_rounds_async, generate_matchups_async, recalculate_all_async, process_week_async
     
     message = None
     message_type = None
@@ -2490,37 +2490,23 @@ def generate_rounds_page(request):
         generate_rounds_only = request.POST.get('generate_rounds_only')
         
         if recalc_all:
-            # Recalculate all fully played (not rained-out, all scores entered) weeks in the current season
+            # Recalculate all data for the current season
             try:
                 current_season = Season.objects.latest('year')
                 
-                # Start async tasks for long-running processes
-                calculate_handicaps_async.delay(current_season.year)
+                # Start async task for complete recalculation
+                recalculate_all_async.delay(current_season.year)
                 
-                # Only recalculate weeks that are fully played
-                played_weeks = []
-                teams = Team.objects.filter(season=current_season)
-                for week in Week.objects.filter(season=current_season, rained_out=False).order_by('number'):
-                    no_sub_golfer_count = Sub.objects.filter(week=week, no_sub=True).count()
-                    expected_scores = ((teams.count() * 2) - no_sub_golfer_count) * 9
-                    actual_scores = Score.objects.filter(week=week).count()
-                    if actual_scores == expected_scores:
-                        played_weeks.append(week)
-                
-                # Start async tasks for each played week
-                for week in played_weeks:
-                    process_week_async.delay(week.id)
-                
-                message = f"Started async recalculation of all played weeks for {current_season.year}. Tasks are running in the background."
+                message = f"Started async recalculation of all data for {current_season.year} season. Task is running in the background."
                 message_type = "success"
             except Exception as e:
-                message = f"Error starting recalculation tasks: {str(e)}"
+                message = f"Error starting recalculation task: {str(e)}"
                 message_type = "error"
         elif generate_matchups_only and week_id:
             try:
                 week = Week.objects.get(id=week_id)
                 
-                # Start async task for generating golfer matchups
+                # Start async task for generating golfer matchups for specific week
                 generate_matchups_async.delay(week.id)
                 
                 message = f"Started async generation of golfer matchups for Week {week.number} ({week.date.date()}). Task is running in the background."
@@ -2532,6 +2518,9 @@ def generate_rounds_page(request):
             except Exception as e:
                 message = f"Error starting matchup generation task: {str(e)}"
                 message_type = "error"
+        elif generate_matchups_only:
+            message = "Please select a week for generating matchups."
+            message_type = "error"
         elif generate_handicaps_only:
             try:
                 current_season = Season.objects.latest('year')
@@ -2544,22 +2533,6 @@ def generate_rounds_page(request):
                     
             except Exception as e:
                 message = f"Error starting handicap calculation task: {str(e)}"
-                message_type = "error"
-        elif generate_rounds_only and week_id:
-            try:
-                week = Week.objects.get(id=week_id)
-                
-                # Start async task for generating rounds
-                generate_rounds_async.delay(week.season.year)
-                
-                message = f"Started async generation of rounds for Week {week.number} ({week.date.date()}). Task is running in the background."
-                message_type = "success"
-                    
-            except Week.DoesNotExist:
-                message = "Selected week not found."
-                message_type = "error"
-            except Exception as e:
-                message = f"Error starting round generation task: {str(e)}"
                 message_type = "error"
         elif week_id:
             try:

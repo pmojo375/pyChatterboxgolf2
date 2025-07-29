@@ -19,9 +19,9 @@
                     <form method="post">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label for="week_id" class="form-label">Select Week:</label>
-                            <select class="form-select" id="week_id" name="week_id" required>
-                                <option value="">Choose a week...</option>
+                            <label for="week_id" class="form-label">Select Week (optional for season-level operations):</label>
+                            <select class="form-select" id="week_id" name="week_id">
+                                <option value="">Choose a week (optional)...</option>
                                 {% for week in weeks %}
                                     <option value="{{ week.id }}">
                                         Week {{ week.number }} - {{ week.date|date:"Y-m-d" }} 
@@ -32,8 +32,8 @@
                         </div>
                         
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
-                                Generate Handicaps, Golfer Matchups & Rounds
+                            <button type="submit" name="recalc_all" value="1" class="btn btn-danger">
+                                Recalculate All Data
                             </button>
                         </div>
                         <!-- Individual step buttons -->
@@ -44,18 +44,7 @@
                         </div>
                         <div class="d-grid mt-2">
                             <button type="submit" name="generate_matchups_only" value="1" class="btn btn-warning">
-                                Generate Golfer Matchups Only
-                            </button>
-                        </div>
-                        <div class="d-grid mt-2">
-                            <button type="submit" name="generate_rounds_only" value="1" class="btn btn-success">
-                                Generate Rounds Only
-                            </button>
-                        </div>
-                        <!-- New button for recalculating all played weeks -->
-                        <div class="d-grid mt-2">
-                            <button type="submit" name="recalc_all" value="1" class="btn btn-danger">
-                                Recalculate All Played Weeks
+                                Generate Golfer Matchups Only (Week)
                             </button>
                         </div>
                     </form>
@@ -63,13 +52,13 @@
                     <div class="mt-4">
                         <h5>What each button does:</h5>
                         <ul>
-                            <li><strong>Generate Handicaps & Rounds:</strong> 
+                            <li><strong>Recalculate All Data:</strong> 
                                 <ul>
-                                    <li>Calculates and saves handicaps for all golfers in the season</li>
-                                    <li>Generates golfer matchups for the selected week</li>
-                                    <li>Generates Round objects for all golfer matchups</li>
-                                    <li>Calculates and stores Points for each hole</li>
-                                    <li>Updates Round totals and statistics</li>
+                                    <li>Calculates handicaps for all weeks in the season</li>
+                                    <li>Generates golfer matchups for weeks that have team matchups entered (teams/2)</li>
+                                    <li>Processes rounds for all fully played weeks</li>
+                                    <li>Complete recalculation of all data for the season</li>
+                                    <li><em>No week selection required - works on entire season</em></li>
                                 </ul>
                             </li>
                             <li><strong>Generate Handicaps Only:</strong> 
@@ -77,29 +66,16 @@
                                     <li>Calculates and saves handicaps for all golfers in the current season</li>
                                     <li>Does NOT generate matchups or rounds</li>
                                     <li>Useful when you want to update handicaps after new scores are entered</li>
+                                    <li><em>No week selection required - works on entire season</em></li>
                                 </ul>
                             </li>
-                            <li><strong>Generate Golfer Matchups Only:</strong> 
+                            <li><strong>Generate Golfer Matchups Only (Week):</strong> 
                                 <ul>
                                     <li>Creates golfer matchups for the selected week only</li>
                                     <li>Handles substitutions and A/B golfer assignments</li>
                                     <li>Does NOT generate rounds or calculate handicaps</li>
-                                    <li>Useful when you want to set up matchups before entering scores</li>
-                                </ul>
-                            </li>
-                            <li><strong>Generate Rounds Only:</strong> 
-                                <ul>
-                                    <li>Generates Round objects for existing golfer matchups in the selected week</li>
-                                    <li>Calculates and stores Points for each hole</li>
-                                    <li>Updates Round totals and statistics</li>
-                                    <li>Requires handicaps and matchups to already exist</li>
-                                    <li>Useful when you want to generate rounds after entering scores</li>
-                                </ul>
-                            </li>
-                            <li><strong>Recalculate All Played Weeks:</strong> 
-                                <ul>
-                                    <li>Recalculates all fully played weeks in the current season</li>
-                                    <li>Useful for updating data after rule changes or corrections</li>
+                                    <li>Useful when you want to set up matchups for a specific week</li>
+                                    <li><em>Week selection required</em></li>
                                 </ul>
                             </li>
                         </ul>
