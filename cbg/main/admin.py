@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django import forms
 
-from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup
+from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup, RandomDrawnTeam
 
 
 class GolferAdmin(admin.ModelAdmin):
@@ -411,15 +411,15 @@ class SubAdmin(admin.ModelAdmin):
 
 
 class PointsAdmin(admin.ModelAdmin):
-    list_display = ('get_golfer', 'get_week', 'get_hole', 'points', 'get_season')
-    list_filter = ('week__season', 'week', 'hole', 'golfer')
-    search_fields = ('golfer__name', 'week__date', 'hole__number')
+    list_display = ('get_golfer', 'get_week', 'get_hole', 'get_opponent', 'points', 'get_season')
+    list_filter = ('week__season', 'week', 'hole', 'golfer', 'opponent')
+    search_fields = ('golfer__name', 'opponent__name', 'week__date', 'hole__number')
     list_per_page = 100
     date_hierarchy = 'week__date'
     
     fieldsets = (
         ('Points Information', {
-            'fields': ('golfer', 'week', 'hole', 'score', 'points')
+            'fields': ('golfer', 'week', 'hole', 'opponent', 'score', 'points')
         }),
     )
     
@@ -438,13 +438,20 @@ class PointsAdmin(admin.ModelAdmin):
     get_hole.short_description = 'Hole'
     get_hole.admin_order_field = 'hole__number'
     
+    def get_opponent(self, obj):
+        if obj.opponent:
+            return obj.opponent.name
+        return "No Opponent"
+    get_opponent.short_description = 'Opponent'
+    get_opponent.admin_order_field = 'opponent__name'
+    
     def get_season(self, obj):
         return obj.week.season.year
     get_season.short_description = 'Season'
     get_season.admin_order_field = 'week__season__year'
     
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('golfer', 'week__season', 'hole', 'score')
+        return super().get_queryset(request).select_related('golfer', 'opponent', 'week__season', 'hole', 'score')
     
     # Fix the verbose name
     def get_model_perms(self, request):
@@ -522,8 +529,8 @@ class RoundAdmin(admin.ModelAdmin):
 
 
 class GolferMatchupAdmin(admin.ModelAdmin):
-    list_display = ('get_golfer', 'get_week', 'get_opponent', 'is_A', 'is_teammate_subbing', 'get_subbing_for')
-    list_filter = ('week__season', 'week', 'is_A', 'is_teammate_subbing', 'golfer')
+    list_display = ('get_golfer', 'get_week', 'get_opponent', 'is_A', 'is_teammate_subbing', 'opponent_team_no_subs', 'get_subbing_for')
+    list_filter = ('week__season', 'week', 'is_A', 'is_teammate_subbing', 'opponent_team_no_subs', 'golfer')
     search_fields = ('golfer__name', 'opponent__name', 'week__date', 'subbing_for_golfer__name')
     list_per_page = 50
     date_hierarchy = 'week__date'
@@ -534,6 +541,10 @@ class GolferMatchupAdmin(admin.ModelAdmin):
         }),
         ('Substitution Information', {
             'fields': ('is_teammate_subbing', 'subbing_for_golfer'),
+            'classes': ('collapse',)
+        }),
+        ('Virtual Matchup', {
+            'fields': ('opponent_team_no_subs',),
             'classes': ('collapse',)
         }),
     )
@@ -567,6 +578,122 @@ class GolferMatchupAdmin(admin.ModelAdmin):
         )
 
 
+class RandomDrawnTeamAdmin(admin.ModelAdmin):
+    list_display = ('get_week', 'get_absent_team', 'get_drawn_team', 'get_season')
+    list_filter = ('week__season', 'week')
+    search_fields = ('week__date', 'absent_team__golfers__name', 'drawn_team__golfers__name')
+    list_per_page = 50
+    date_hierarchy = 'week__date'
+    
+    fieldsets = (
+        ('Virtual Matchup Information', {
+            'fields': ('week', 'absent_team', 'drawn_team')
+        }),
+    )
+    
+    class Media:
+        js = ('admin/js/random_drawn_team_filter.js',)
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Filter team choices to only show teams from the same season as the selected week"""
+        if db_field.name in ('absent_team', 'drawn_team'):
+            # Get the week from the request if we're editing an existing object
+            if request.resolver_match.kwargs.get('object_id'):
+                try:
+                    obj = self.get_object(request, request.resolver_match.kwargs['object_id'])
+                    if obj and obj.week:
+                        kwargs["queryset"] = Team.objects.filter(season=obj.week.season)
+                except:
+                    pass
+            else:
+                # For new objects, show all teams initially but add help text
+                kwargs["help_text"] = "Select a week first to filter teams by season."
+        
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
+    def get_urls(self):
+        """Add custom URL for AJAX team filtering"""
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'filter-teams-by-week/',
+                self.admin_site.admin_view(self.filter_teams_by_week),
+                name='main_randomdrawnteam_filter_teams',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def filter_teams_by_week(self, request):
+        """AJAX endpoint to filter teams by week"""
+        from django.http import JsonResponse
+        
+        week_id = request.GET.get('week_id')
+        if week_id:
+            try:
+                week = Week.objects.get(id=week_id)
+                teams = Team.objects.filter(season=week.season).values('id', 'golfers__name')
+                
+                # Group golfers by team
+                team_data = {}
+                for team in teams:
+                    team_id = team['id']
+                    if team_id not in team_data:
+                        team_data[team_id] = {'id': team_id, 'golfers': []}
+                    if team['golfers__name']:
+                        team_data[team_id]['golfers'].append(team['golfers__name'])
+                
+                # Format team names
+                formatted_teams = []
+                for team_id, data in team_data.items():
+                    golfers = data['golfers']
+                    if len(golfers) >= 2:
+                        name = f"{golfers[0]} & {golfers[1]}"
+                    elif len(golfers) == 1:
+                        name = f"{golfers[0]} & ?"
+                    else:
+                        name = f"Team {team_id}"
+                    
+                    formatted_teams.append({'id': team_id, 'name': name})
+                
+                return JsonResponse({'teams': formatted_teams})
+            except Week.DoesNotExist:
+                pass
+        
+        return JsonResponse({'teams': []})
+    
+    def get_week(self, obj):
+        return f"{obj.week.date.strftime('%Y-%m-%d')} (Week {obj.week.number})"
+    get_week.short_description = 'Week'
+    get_week.admin_order_field = 'week__date'
+    
+    def get_absent_team(self, obj):
+        golfers = obj.absent_team.golfers.all()
+        if golfers.count() >= 2:
+            return f"{golfers[0].name} & {golfers[1].name}"
+        return f"Team {obj.absent_team.id}"
+    get_absent_team.short_description = 'Absent Team'
+    
+    def get_drawn_team(self, obj):
+        golfers = obj.drawn_team.golfers.all()
+        if golfers.count() >= 2:
+            return f"{golfers[0].name} & {golfers[1].name}"
+        return f"Team {obj.drawn_team.id}"
+    get_drawn_team.short_description = 'Virtual Opponent Team'
+    
+    def get_season(self, obj):
+        return obj.week.season.year
+    get_season.short_description = 'Season'
+    get_season.admin_order_field = 'week__season__year'
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'week__season', 'absent_team', 'drawn_team'
+        ).prefetch_related(
+            'absent_team__golfers', 'drawn_team__golfers'
+        )
+
+
 # Register all models with their admin classes
 admin.site.register(Golfer, GolferAdmin)
 admin.site.register(Season, SeasonAdmin)
@@ -583,3 +710,4 @@ admin.site.register(Sub, SubAdmin)
 admin.site.register(Points, PointsAdmin)
 admin.site.register(Round, RoundAdmin)
 admin.site.register(GolferMatchup, GolferMatchupAdmin)
+admin.site.register(RandomDrawnTeam, RandomDrawnTeamAdmin)
