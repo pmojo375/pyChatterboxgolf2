@@ -40,7 +40,7 @@ urlpatterns = [
     
     # New URL patterns with year parameter (4-digit years only) - must come before week patterns
     path('<year:year>/', views.main_with_year, name='main_with_year'),
-    path('<year:year>/<int:week>/', views.scorecards_with_year, name="scorecards_with_year"),
+    path('<year:year>/<int:week>/', views.scorecards, name="scorecards_with_year"),
     path('<year:year>/stats/<int:golfer_id>/', views.golfer_stats, name="golfer_stats_with_year"),
     path('<year:year>/sub_stats/', views.sub_stats, name="sub_stats_with_year"),
     path('<year:year>/sub_stats/<int:golfer_id>/', views.sub_stats, name="sub_stats_detail_with_year"),

@@ -2137,10 +2137,37 @@ def league_stats_with_year(request, year):
     
     return render(request, 'league_stats.html', context)
 
-def scorecards(request, week):
+def scorecards(request, week, year=None):
+    """
+    Unified scorecards view that handles both current season and past seasons.
+    
+    Parameters:
+    - week: week number
+    - year: optional year parameter (if None, uses current season)
+    """
     week_number = week
     
-    week = Week.objects.get(number=week_number, season=Season.objects.latest('year'), rained_out=False)
+    # Get the season - either specified year or current season
+    if year is not None:
+        season = get_current_season(year)
+        if not season:
+            return render(request, 'blank_scorecards.html', {
+                'error': f'Season {year} not found.'
+            })
+    else:
+        # Use current season
+        season = get_current_season()
+        if not season:
+            return render(request, 'blank_scorecards.html', {
+                'error': 'No season found.'
+            })
+    
+    try:
+        week = Week.objects.get(number=week_number, season=season, rained_out=False)
+    except Week.DoesNotExist:
+        return render(request, 'blank_scorecards.html', {
+            'error': f'Week {week_number} not found for season {season.year}.'
+        })
     
     holes = list(Hole.objects.filter(
         number__in=(range(1, 10) if week.is_front else range(10, 19)),
@@ -2310,7 +2337,7 @@ def scorecards(request, week):
         if card['team1_golferA'] or card['team1_golferB'] or card['team2_golferA'] or card['team2_golferB']:
             cards.append(card)
     
-    return render(request, 'scorecards.html', {
+    context = {
         "week_number": week_number,
         "holes": holes,
         "hole_string": hole_string,
@@ -2319,133 +2346,15 @@ def scorecards(request, week):
         "week": week,
         "hole_pars": [hole.par for hole in holes],
         "season": week.season,
-    })
+    }
+    
+    # Add year to context if it's a past season
+    if year is not None:
+        context["year"] = year
+    
+    return render(request, 'scorecards.html', context)
 
-def scorecards_with_year(request, year, week):
-    """
-    Scorecards view with year parameter - shows scorecards for a specific week in a specific season
-    """
-    week_number = week
-    
-    # Get the season for the specified year
-    season = get_current_season(year)
-    
-    if not season:
-        # If season doesn't exist, redirect to main page
-        return redirect('main')
-    
-    try:
-        week = Week.objects.get(number=week_number, season=season, rained_out=False)
-    except Week.DoesNotExist:
-        return render(request, 'blank_scorecards.html', {
-            'error': f'Week {week_number} not found for season {year}.'
-        })
-    
-    holes = list(Hole.objects.filter(
-        number__in=(range(1, 10) if week.is_front else range(10, 19)),
-        season=week.season
-    ).order_by('number'))
-    
-    hole_string = "Front 9" if week.is_front else "Back 9"
-    
-    total_yards = sum(h.yards for h in holes)
 
-    # Get all matchups for the week (each matchup = one scorecard)
-    matchups = Matchup.objects.filter(week=week).prefetch_related('teams__golfers')
-    
-    if not matchups.exists():
-        return render(request, 'blank_scorecards.html', {
-            'error': f'No matchups found for Week {week.number}. Please enter the schedule first.'
-        })
-    
-    # Get all golfer matchups for the week
-    golfer_matchups = GolferMatchup.objects.filter(week=week).select_related(
-        'golfer', 'opponent', 'subbing_for_golfer'
-    )
-    
-    # Get all rounds for the week
-    rounds = Round.objects.filter(week=week).select_related(
-        'golfer', 'golfer_matchup', 'handicap'
-    ).prefetch_related('scores', 'points')
-    
-    cards = []
-    
-    for matchup in matchups:
-        teams = list(matchup.teams.all())
-            
-        team1, team2 = teams[0], teams[1]
-        
-        # Get all golfers from both teams
-        team1_golfers = list(team1.golfers.all())
-        team2_golfers = list(team2.golfers.all())
-        
-        # Find golfer matchups for each team's golfers
-        # Check both golfer field and subbing_for_golfer field to handle subs
-        team1_golfer_matchups = []
-        team2_golfer_matchups = []
-        
-        # For team1 golfers
-        for golfer in team1_golfers:
-            # Find golfer matchup (could be golfer or subbing_for_golfer)
-            golfer_matchup = golfer_matchups.filter(
-                Q(golfer=golfer) | Q(subbing_for_golfer=golfer)
-            ).first()
-            
-            if golfer_matchup:
-                team1_golfer_matchups.append(golfer_matchup)
-        
-        # For team2 golfers  
-        for golfer in team2_golfers:
-            golfer_matchup = golfer_matchups.filter(
-                Q(golfer=golfer) | Q(subbing_for_golfer=golfer)
-            ).first()
-            
-            if golfer_matchup:
-                team2_golfer_matchups.append(golfer_matchup)
-        
-        # Sort golfer matchups by is_A (A golfers first)
-        team1_golfer_matchups.sort(key=lambda x: not x.is_A)  # True (A) comes before False (B)
-        team2_golfer_matchups.sort(key=lambda x: not x.is_A)  # True (A) comes before False (B)
-        
-        # Create card data structure
-        card = {
-            'team1_golferA': None,
-            'team1_golferB': None,
-            'team2_golferA': None,
-            'team2_golferB': None,
-        }
-        
-        # Process team1 golfers (A and B positions)
-        for i, golfer_matchup in enumerate(team1_golfer_matchups[:2]):
-            golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
-            if i == 0:
-                card['team1_golferA'] = golfer_data
-            else:
-                card['team1_golferB'] = golfer_data
-        
-        # Process team2 golfers (A and B positions)
-        for i, golfer_matchup in enumerate(team2_golfer_matchups[:2]):
-            golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
-            if i == 0:
-                card['team2_golferA'] = golfer_data
-            else:
-                card['team2_golferB'] = golfer_data
-        
-        # Only add card if we have at least one golfer from each team
-        if card['team1_golferA'] or card['team1_golferB'] or card['team2_golferA'] or card['team2_golferB']:
-            cards.append(card)
-    
-    return render(request, 'scorecards.html', {
-        "week_number": week_number,
-        "holes": holes,
-        "hole_string": hole_string,
-        "cards": cards,
-        "total": total_yards,
-        "week": week,
-        "hole_pars": [hole.par for hole in holes],
-        "season": season,
-        "year": year,
-    })
 
 def set_rainout(request):
     if 'select_week' in request.POST:
