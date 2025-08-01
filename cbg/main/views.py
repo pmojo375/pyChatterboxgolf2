@@ -2211,28 +2211,20 @@ def scorecards(request, week, year=None):
         team2_golfers = list(team2.golfers.all())
         
         # Find golfer matchups for each team's golfers
-        # Check both golfer field and subbing_for_golfer field to handle subs
+        # We need to get ALL golfer matchups for each team, not just one per golfer
+        # This handles no_sub scenarios where the same golfer appears in both A and B positions
         team1_golfer_matchups = []
         team2_golfer_matchups = []
         
-        # For team1 golfers
-        for golfer in team1_golfers:
-            # Find golfer matchup (could be golfer or subbing_for_golfer)
-            golfer_matchup = golfer_matchups.filter(
-                Q(golfer=golfer) | Q(subbing_for_golfer=golfer)
-            ).first()
-            
-            if golfer_matchup:
-                team1_golfer_matchups.append(golfer_matchup)
+        # Get all golfer matchups for team1 (both A and B positions)
+        team1_golfer_matchups = list(golfer_matchups.filter(
+            Q(golfer__in=team1_golfers) | Q(subbing_for_golfer__in=team1_golfers)
+        ))
         
-        # For team2 golfers  
-        for golfer in team2_golfers:
-            golfer_matchup = golfer_matchups.filter(
-                Q(golfer=golfer) | Q(subbing_for_golfer=golfer)
-            ).first()
-            
-            if golfer_matchup:
-                team2_golfer_matchups.append(golfer_matchup)
+        # Get all golfer matchups for team2 (both A and B positions)
+        team2_golfer_matchups = list(golfer_matchups.filter(
+            Q(golfer__in=team2_golfers) | Q(subbing_for_golfer__in=team2_golfers)
+        ))
         
         # Sort golfer matchups by is_A (A golfers first)
         team1_golfer_matchups.sort(key=lambda x: not x.is_A)  # True (A) comes before False (B)
