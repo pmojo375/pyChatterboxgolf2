@@ -424,6 +424,8 @@
         <tr class="scores">
           <td class="descriptor">
             {{ card.team1_golferA.golfer.name }}
+            {% if card.team1_golferA.is_sub %}<span class="sub-info">(Sub for {{ card.team1_golferA.sub_for }})</span>{% endif %}
+            {% if card.team1_golferA.is_virtual %}<span class="virtual-info">({{ card.team1_golferA.virtual_note }})</span>{% endif %}
           </td>
           <td class="hcp">{{ card.team1_golferA.hcp|floatformat:0 }}</td>
           {% for score in card.team1_golferA.scores %}
@@ -453,6 +455,8 @@
         <tr class="scores">
           <td class="descriptor">
             {{ card.team2_golferA.golfer.name }}
+            {% if card.team2_golferA.is_sub %}<span class="sub-info">(Sub for {{ card.team2_golferA.sub_for }})</span>{% endif %}
+            {% if card.team2_golferA.is_virtual %}<span class="virtual-info">({{ card.team2_golferA.virtual_note }})</span>{% endif %}
           </td>
           <td class="hcp">{{ card.team2_golferA.hcp|floatformat:0 }}</td>
           {% for score in card.team2_golferA.scores %}
@@ -517,6 +521,8 @@
         <tr class="scores">
           <td class="descriptor">
             {{ card.team1_golferB.golfer.name }}
+            {% if card.team1_golferB.is_sub %}<span class="sub-info">(Sub for {{ card.team1_golferB.sub_for }})</span>{% endif %}
+            {% if card.team1_golferB.is_virtual %}<span class="virtual-info">({{ card.team1_golferB.virtual_note }})</span>{% endif %}
           </td>
           <td class="hcp">{{ card.team1_golferB.hcp|floatformat:0 }}</td>
           {% for score in card.team1_golferB.scores %}
@@ -546,6 +552,8 @@
         <tr class="scores">
           <td class="descriptor">
             {{ card.team2_golferB.golfer.name }}
+            {% if card.team2_golferB.is_sub %}<span class="sub-info">(Sub for {{ card.team2_golferB.sub_for }})</span>{% endif %}
+            {% if card.team2_golferB.is_virtual %}<span class="virtual-info">({{ card.team2_golferB.virtual_note }})</span>{% endif %}
           </td>
           <td class="hcp">{{ card.team2_golferB.hcp|floatformat:0 }}</td>
           {% for score in card.team2_golferB.scores %}

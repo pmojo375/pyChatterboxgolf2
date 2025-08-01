@@ -784,3 +784,19 @@ input[type="number"] {
     color: #FFFFFF;
     background-color: #272727;
 }
+
+/* Styling for sub and virtual team indicators */
+.sub-info {
+    font-size: 0.8em;
+    color: #007bff;
+    font-style: italic;
+    margin-left: 5px;
+}
+
+.virtual-info {
+    font-size: 0.8em;
+    color: #ff6b35;
+    font-style: italic;
+    font-weight: bold;
+    margin-left: 5px;
+}

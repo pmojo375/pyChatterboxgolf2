@@ -2176,6 +2176,9 @@ def scorecards(request, week):
             
         team1, team2 = teams[0], teams[1]
         
+        # Check if this is a virtual matchup (one team absent, replaced by random drawn team)
+        random_drawn_team = RandomDrawnTeam.objects.filter(week=week, absent_team__in=[team1, team2]).first()
+        
         # Get all golfers from both teams
         team1_golfers = list(team1.golfers.all())
         team2_golfers = list(team2.golfers.all())
@@ -2214,25 +2217,96 @@ def scorecards(request, week):
             'team1_golferB': None,
             'team2_golferA': None,
             'team2_golferB': None,
+            'is_virtual_matchup': False,
+            'virtual_team_info': None,
         }
         
-        # Process team1 golfers (A and B positions)
-        for i, golfer_matchup in enumerate(team1_golfer_matchups[:2]):
-            golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
-            if i == 0:
-                card['team1_golferA'] = golfer_data
+        # Handle virtual matchups
+        if random_drawn_team:
+            card['is_virtual_matchup'] = True
+            
+            # Determine which team is present and which is absent
+            absent_team = random_drawn_team.absent_team
+            drawn_team = random_drawn_team.drawn_team
+            
+            if absent_team == team1:
+                # Team1 is absent, team2 is present
+                present_team_matchups = team2_golfer_matchups
+                present_team_prefix = 'team2'
+                absent_team_prefix = 'team1'
             else:
-                card['team1_golferB'] = golfer_data
+                # Team2 is absent, team1 is present  
+                present_team_matchups = team1_golfer_matchups
+                present_team_prefix = 'team1'
+                absent_team_prefix = 'team2'
+            
+            # Process present team normally
+            for i, golfer_matchup in enumerate(present_team_matchups[:2]):
+                golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
+                if i == 0:
+                    card[f'{present_team_prefix}_golferA'] = golfer_data
+                else:
+                    card[f'{present_team_prefix}_golferB'] = golfer_data
+            
+            # Create virtual data for absent team showing drawn team info
+            drawn_team_golfers = list(drawn_team.golfers.all())
+            card['virtual_team_info'] = {
+                'absent_team': absent_team,
+                'drawn_team': drawn_team,
+                'drawn_golfers': drawn_team_golfers
+            }
+            
+            # Create placeholder data for absent team positions
+            if len(drawn_team_golfers) >= 2:
+                # Sort drawn team golfers by handicap to determine A/B
+                drawn_golfer_hcps = []
+                for golfer in drawn_team_golfers:
+                    hcp_obj = Handicap.objects.filter(golfer=golfer, week=week).first()
+                    hcp = hcp_obj.handicap if hcp_obj else 0
+                    drawn_golfer_hcps.append((golfer, hcp))
+                
+                # Sort by handicap (lower handicap = A golfer)
+                drawn_golfer_hcps.sort(key=lambda x: x[1])
+                
+                for i, (golfer, hcp) in enumerate(drawn_golfer_hcps[:2]):
+                    virtual_golfer_data = {
+                        'golfer': golfer,
+                        'is_sub': False,
+                        'sub_for': None,
+                        'hcp': hcp,
+                        'scores': ['--' for _ in holes],
+                        'hole_points': ['--' for _ in holes],
+                        'stroke_info': [0 for _ in holes],
+                        'score_classes': ['' for _ in holes],
+                        'gross': '--',
+                        'net': '--',
+                        'round_points': '--',
+                        'total_points': '--',
+                        'is_virtual': True,
+                        'virtual_note': f'Drawn team playing for {absent_team}'
+                    }
+                    
+                    if i == 0:
+                        card[f'{absent_team_prefix}_golferA'] = virtual_golfer_data
+                    else:
+                        card[f'{absent_team_prefix}_golferB'] = virtual_golfer_data
+        else:
+            # Normal matchup - process both teams normally
+            for i, golfer_matchup in enumerate(team1_golfer_matchups[:2]):
+                golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
+                if i == 0:
+                    card['team1_golferA'] = golfer_data
+                else:
+                    card['team1_golferB'] = golfer_data
+            
+            for i, golfer_matchup in enumerate(team2_golfer_matchups[:2]):
+                golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
+                if i == 0:
+                    card['team2_golferA'] = golfer_data
+                else:
+                    card['team2_golferB'] = golfer_data
         
-        # Process team2 golfers (A and B positions)
-        for i, golfer_matchup in enumerate(team2_golfer_matchups[:2]):
-            golfer_data = _build_golfer_data(golfer_matchup, rounds, holes, week)
-            if i == 0:
-                card['team2_golferA'] = golfer_data
-            else:
-                card['team2_golferB'] = golfer_data
-        
-        # Only add card if we have at least one golfer from each team
+        # Add card if we have at least one golfer from each team (including virtual)
         if card['team1_golferA'] or card['team1_golferB'] or card['team2_golferA'] or card['team2_golferB']:
             cards.append(card)
     
