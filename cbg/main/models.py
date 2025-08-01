@@ -133,6 +133,7 @@ class Points(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     hole = models.ForeignKey(Hole, on_delete=models.CASCADE)
     score = models.ForeignKey(Score, on_delete=models.CASCADE)
+    opponent = models.ForeignKey(Golfer, on_delete=models.CASCADE, related_name='points_against', null=True)
     points = models.FloatField()
     
 class Round(models.Model):
@@ -164,6 +165,7 @@ class GolferMatchup(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     opponent = models.ForeignKey(Golfer, related_name='opponent', on_delete=models.CASCADE)
     is_teammate_subbing = models.BooleanField(default=False)
+    opponent_team_no_subs = models.BooleanField(default=False)
 
     # If the golfer is subbing for another golfer, this field will be set otherwise it will be null
     subbing_for_golfer = models.ForeignKey(Golfer, related_name='subbing_for_golfer', on_delete=models.CASCADE, null=True)

@@ -3472,7 +3472,7 @@ def _build_golfer_data(golfer_matchup, rounds, holes, week):
         scores.append(score)
         
         # Find points for this hole - get directly from database since Round only has current golfer's points
-        points_obj = Points.objects.filter(golfer=actual_golfer, week=week, hole=hole).first()
+        points_obj = Points.objects.filter(golfer=actual_golfer, week=week, hole=hole, opponent=golfer_matchup.opponent).first()
         points = points_obj.points if points_obj else 0
         hole_points.append(points)
         

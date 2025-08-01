@@ -288,8 +288,9 @@ def generate_round(golfer_matchup, **kwargs):
         points_detail = get_golfer_points(golfer_matchup, detail=True)
         round_points = points_detail['round_points']
         total_points = points_detail['golfer_points']
-        # Get points objects AFTER calculating points
-        points_objs = Points.objects.filter(golfer=golfer, week=week).order_by('hole__number')
+        # Get points objects AFTER calculating points - filter by opponent to get correct Points for this matchup
+        opponent = golfer_matchup.opponent
+        points_objs = Points.objects.filter(golfer=golfer, week=week, opponent=opponent).order_by('hole__number')
         if Round.objects.filter(golfer=golfer, week=week, golfer_matchup=golfer_matchup).exists():
             round = Round.objects.get(golfer=golfer, week=week, golfer_matchup=golfer_matchup)
             round.handicap = handicap
@@ -564,9 +565,8 @@ def get_golfer_points(golfer_matchup, **kwargs):
     else:
         holes = get_back_holes(week_model.season)
     
-    # Clear existing points for this golfer and week before calculating new ones
-    Points.objects.filter(golfer=golfer_model, week=week_model).delete()
-    Points.objects.filter(golfer=opponent, week=week_model).delete()
+    # Check if this is a virtual matchup (opponent team has no subs)
+    golfer_opponent_team_no_subs = golfer_matchup.opponent_team_no_subs
     
     # Iterate over the holes and calculate the points for each golfer
     for hole in holes:
@@ -596,17 +596,40 @@ def get_golfer_points(golfer_matchup, **kwargs):
         # Calculate the points for the hole based on the net scores
         if golfer_score < opponent_score:
             points += 1
-            Points.objects.update_or_create(golfer=golfer_model, week=week_model, hole=hole, score=golfer_score_model, points=1)
-            Points.objects.update_or_create(golfer=opponent, week=week_model, hole=hole, score=opponent_score_model, points=0)
+            Points.objects.update_or_create(
+                golfer=golfer_model, 
+                week=week_model, 
+                hole=hole, 
+                opponent=opponent,
+                defaults={'score': golfer_score_model, 'points': 1}
+            )
         elif golfer_score == opponent_score:
             points += 0.5
-            opp_points += 0.5
-            Points.objects.update_or_create(golfer=golfer_model, week=week_model, hole=hole, score=golfer_score_model, points=0.5)
-            Points.objects.update_or_create(golfer=opponent, week=week_model, hole=hole, score=opponent_score_model, points=0.5)
+            # In virtual matchups, ties still give golfer 0.5 but opponent gets 0
+            if golfer_opponent_team_no_subs:
+                opp_points += 0  # Virtual opponent gets no points
+            else:
+                opp_points += 0.5
+            Points.objects.update_or_create(
+                golfer=golfer_model, 
+                week=week_model, 
+                hole=hole, 
+                opponent=opponent,
+                defaults={'score': golfer_score_model, 'points': 0.5}
+            )
         else:
-            opp_points += 1
-            Points.objects.update_or_create(golfer=golfer_model, week=week_model, hole=hole, score=golfer_score_model, points=0)
-            Points.objects.update_or_create(golfer=opponent, week=week_model, hole=hole, score=opponent_score_model, points=1)
+            # Golfer loses the hole
+            if golfer_opponent_team_no_subs:
+                opp_points += 0  # Virtual opponent cannot take points
+            else:
+                opp_points += 1
+            Points.objects.update_or_create(
+                golfer=golfer_model, 
+                week=week_model, 
+                hole=hole, 
+                opponent=opponent,
+                defaults={'score': golfer_score_model, 'points': 0}
+            )
         
 
     
@@ -622,11 +645,18 @@ def get_golfer_points(golfer_matchup, **kwargs):
         opponent_matchup = GolferMatchup.objects.get(week=week_model, golfer=opponent, opponent=golfer_model)
         opponent_is_teammate_subbing = opponent_matchup.is_teammate_subbing
     except GolferMatchup.DoesNotExist:
+        # In virtual matchups, the opponent won't have a matchup record
         pass
 
     # Calculate the points for the 9th hole based on the net scores
-    # If either golfer is subbing for a teammate due to no_sub, they automatically lose the 3 points
-    if golfer_is_teammate_subbing and opponent_is_teammate_subbing:
+    # Handle different scenarios for round points
+    if golfer_opponent_team_no_subs:
+        # Virtual matchup - golfer automatically gets 3 points for low net score
+        # Opponent cannot take any points since they already have their own matchup
+        points += 3
+        round_points = 3
+        opp_round_points = 0  # Virtual opponent gets no round points
+    elif golfer_is_teammate_subbing and opponent_is_teammate_subbing:
         # Both golfers are subbing for teammates - no one gets the 3 points
         round_points = 0
         opp_round_points = 0
@@ -908,7 +938,7 @@ def generate_golfer_matchups(week):
     and handling substitutions for absent golfers.
     This function performs the following steps:
     1. Retrieves all matchups for the specified week.
-    2. Deletes any existing golfer matchups for the week.
+    2. Deletes any existing golfer matchups, rounds, and points for the week.
     3. Iterates through each matchup and retrieves the teams and their golfers.
     4. Checks for absent golfers and replaces them with substitutes or teammates.
     5. Calculates handicaps for each golfer.
@@ -933,9 +963,10 @@ def generate_golfer_matchups(week):
     """
     matchups = Matchup.objects.filter(week=week)
 
-    # delete all rounds and golfer matchups for the week
+    # delete all rounds, golfer matchups, and points for the week to start fresh
     Round.objects.filter(week=week).delete()
     GolferMatchup.objects.filter(week=week).delete()
+    Points.objects.filter(week=week).delete()
 
     for matchup in matchups:
         teams = list(matchup.teams.all())
@@ -1097,17 +1128,127 @@ def generate_golfer_matchups(week):
                 team2_A_has_no_sub = team2_golfer2_has_no_sub
                 team2_B_has_no_sub = team2_golfer1_has_no_sub
 
-        # Create golfer matchups, setting the subbing_for field correctly
-        GolferMatchup.objects.create(week=week, golfer=team1_A_golfer, is_A=True, opponent=team2_A_golfer, subbing_for_golfer=team1_A_subbing_for, is_teammate_subbing=team1_A_has_no_sub)
-        GolferMatchup.objects.create(week=week, golfer=team2_A_golfer, is_A=True, opponent=team1_A_golfer, subbing_for_golfer=team2_A_subbing_for, is_teammate_subbing=team2_A_has_no_sub)
-        GolferMatchup.objects.create(week=week, golfer=team1_B_golfer, is_A=False, opponent=team2_B_golfer, subbing_for_golfer=team1_B_subbing_for, is_teammate_subbing=team1_B_has_no_sub)
-        GolferMatchup.objects.create(week=week, golfer=team2_B_golfer, is_A=False, opponent=team1_B_golfer, subbing_for_golfer=team2_B_subbing_for, is_teammate_subbing=team2_B_has_no_sub)
+        # Check for teams where both golfers are absent with no_sub
+        team1_both_absent_no_sub = (team1_golfer1_sub and team1_golfer1_sub.no_sub) and (team1_golfer2_sub and team1_golfer2_sub.no_sub)
+        team2_both_absent_no_sub = (team2_golfer1_sub and team2_golfer1_sub.no_sub) and (team2_golfer2_sub and team2_golfer2_sub.no_sub)
         
-        # print subbing for golfers
-        print(f'{team1_A_golfer.name} is subbing for {team1_A_subbing_for.name}') if team1_A_subbing_for else print(f'{team1_A_golfer.name} is not subbing')
-        print(f'{team2_A_golfer.name} is subbing for {team2_A_subbing_for.name}') if team2_A_subbing_for else print(f'{team2_A_golfer.name} is not subbing')
-        print(f'{team1_B_golfer.name} is subbing for {team1_B_subbing_for.name}') if team1_B_subbing_for else print(f'{team1_B_golfer.name} is not subbing')
-        print(f'{team2_B_golfer.name} is subbing for {team2_B_subbing_for.name}') if team2_B_subbing_for else print(f'{team2_B_golfer.name} is not subbing')
+        # Handle virtual matchups for teams that have no opponents
+        if team1_both_absent_no_sub and not team2_both_absent_no_sub:
+            # Team1 is completely absent, create virtual matchups for team2
+            print(f'Team1 ({team1_original_golfer1.name} and {team1_original_golfer2.name}) both absent with no_sub, creating virtual matchups for team2')
+            create_virtual_matchups_for_team(week, team2, team2_A_golfer, team2_B_golfer, team2_A_subbing_for, team2_B_subbing_for)
+        elif team2_both_absent_no_sub and not team1_both_absent_no_sub:
+            # Team2 is completely absent, create virtual matchups for team1
+            print(f'Team2 ({team2_original_golfer1.name} and {team2_original_golfer2.name}) both absent with no_sub, creating virtual matchups for team1')
+            create_virtual_matchups_for_team(week, team1, team1_A_golfer, team1_B_golfer, team1_A_subbing_for, team1_B_subbing_for)
+        elif team1_both_absent_no_sub and team2_both_absent_no_sub:
+            # Both teams completely absent - this shouldn't happen in normal circumstances
+            print(f'Both teams completely absent with no_sub - no matchups created for this matchup')
+        else:
+            # Normal case - create regular golfer matchups
+            GolferMatchup.objects.create(week=week, golfer=team1_A_golfer, is_A=True, opponent=team2_A_golfer, subbing_for_golfer=team1_A_subbing_for, is_teammate_subbing=team1_A_has_no_sub)
+            GolferMatchup.objects.create(week=week, golfer=team2_A_golfer, is_A=True, opponent=team1_A_golfer, subbing_for_golfer=team2_A_subbing_for, is_teammate_subbing=team2_A_has_no_sub)
+            GolferMatchup.objects.create(week=week, golfer=team1_B_golfer, is_A=False, opponent=team2_B_golfer, subbing_for_golfer=team1_B_subbing_for, is_teammate_subbing=team1_B_has_no_sub)
+            GolferMatchup.objects.create(week=week, golfer=team2_B_golfer, is_A=False, opponent=team1_B_golfer, subbing_for_golfer=team2_B_subbing_for, is_teammate_subbing=team2_B_has_no_sub)
+        
+        # print subbing for golfers (only for normal matchups)
+        if not (team1_both_absent_no_sub or team2_both_absent_no_sub):
+            print(f'{team1_A_golfer.name} is subbing for {team1_A_subbing_for.name}') if team1_A_subbing_for else print(f'{team1_A_golfer.name} is not subbing')
+            print(f'{team2_A_golfer.name} is subbing for {team2_A_subbing_for.name}') if team2_A_subbing_for else print(f'{team2_A_golfer.name} is not subbing')
+            print(f'{team1_B_golfer.name} is subbing for {team1_B_subbing_for.name}') if team1_B_subbing_for else print(f'{team1_B_golfer.name} is not subbing')
+            print(f'{team2_B_golfer.name} is subbing for {team2_B_subbing_for.name}') if team2_B_subbing_for else print(f'{team2_B_golfer.name} is not subbing')
+
+def create_virtual_matchups_for_team(week, present_team, team_A_golfer, team_B_golfer, team_A_subbing_for, team_B_subbing_for):
+    """
+    Create virtual matchups for a team that has no opponents due to the opposing team having both golfers absent with no_sub.
+    
+    Args:
+        week: The week object
+        present_team: The team that is present and needs virtual opponents
+        team_A_golfer: The A golfer from the present team
+        team_B_golfer: The B golfer from the present team  
+        team_A_subbing_for: Who the A golfer is subbing for (if anyone)
+        team_B_subbing_for: Who the B golfer is subbing for (if anyone)
+    """
+    # Find the absent team (the team this present team was supposed to play against)
+    matchup = Matchup.objects.get(week=week, teams=present_team)
+    absent_team = matchup.teams.exclude(id=present_team.id).first()
+    
+    # Check if RandomDrawnTeam already exists for this absent team and week
+    random_drawn_team_obj = RandomDrawnTeam.objects.filter(week=week, absent_team=absent_team).first()
+    
+    if random_drawn_team_obj:
+        virtual_team = random_drawn_team_obj.drawn_team
+        print(f'Using existing virtual team: {virtual_team} for absent team: {absent_team}')
+    else:
+        # Get all teams that actually played this week (have golfer matchups)
+        playing_teams = Team.objects.filter(
+            season=week.season,
+            golfers__golfermatchup__week=week
+        ).exclude(id=present_team.id).exclude(id=absent_team.id).distinct()
+        
+        if not playing_teams.exists():
+            print(f'No teams available for virtual matchup for team {present_team}')
+            return
+            
+        # Randomly select a team
+        virtual_team = random.choice(list(playing_teams))
+        
+        # Create RandomDrawnTeam record
+        random_drawn_team_obj = RandomDrawnTeam.objects.create(
+            week=week,
+            absent_team=absent_team,
+            drawn_team=virtual_team
+        )
+        print(f'Created new virtual team assignment: {virtual_team} for absent team: {absent_team}')
+    
+    # Get the virtual opponents from the drawn team
+    # We need to match A golfers with A golfers and B golfers with B golfers
+    # Determine A/B status directly from handicaps since GolferMatchup objects might not exist yet
+    virtual_team_golfers = list(virtual_team.golfers.all())
+    
+    if len(virtual_team_golfers) != 2:
+        print(f'Virtual team {virtual_team} does not have exactly 2 golfers')
+        return
+    
+    virtual_golfer1 = virtual_team_golfers[0]
+    virtual_golfer2 = virtual_team_golfers[1]
+    
+    # Get handicaps to determine A/B status
+    virtual_golfer1_hcp = get_hcp(virtual_golfer1, week)
+    virtual_golfer2_hcp = get_hcp(virtual_golfer2, week)
+    
+    # Lower handicap golfer is A, higher handicap golfer is B
+    if virtual_golfer1_hcp <= virtual_golfer2_hcp:
+        virtual_A_golfer = virtual_golfer1
+        virtual_B_golfer = virtual_golfer2
+    else:
+        virtual_A_golfer = virtual_golfer2
+        virtual_B_golfer = virtual_golfer1
+    
+    # Create virtual golfer matchups for the present team
+    # Note: We only create matchups for the present team, not the virtual opponents
+    GolferMatchup.objects.create(
+        week=week, 
+        golfer=team_A_golfer, 
+        is_A=True, 
+        opponent=virtual_A_golfer, 
+        subbing_for_golfer=team_A_subbing_for, 
+        is_teammate_subbing=False,  # They're not subbing for teammates in this case
+        opponent_team_no_subs=True
+    )
+    
+    GolferMatchup.objects.create(
+        week=week, 
+        golfer=team_B_golfer, 
+        is_A=False, 
+        opponent=virtual_B_golfer, 
+        subbing_for_golfer=team_B_subbing_for, 
+        is_teammate_subbing=False,  # They're not subbing for teammates in this case
+        opponent_team_no_subs=True
+    )
+    
+    print(f'Created virtual matchups: {team_A_golfer.name} vs {virtual_A_golfer.name} (A), {team_B_golfer.name} vs {virtual_B_golfer.name} (B)')
 
 def process_week(week):
     
