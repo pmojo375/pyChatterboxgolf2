@@ -322,6 +322,9 @@ def main(request, year=None):
     # Get all available seasons for the season selector
     all_seasons = Season.objects.all().order_by('-year')
     
+    # Get the actual current season (most recent) for comparison
+    actual_current_season = get_current_season()
+    
     context = {
         'initialized': initialized,
         'next_week': next_week,
@@ -344,7 +347,7 @@ def main(request, year=None):
         'season': season,
         'year': year,
         'all_seasons': all_seasons,
-        'current_season': season,
+        'current_season': actual_current_season,
     }
     
     return render(request, 'main.html', context)
