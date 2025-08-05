@@ -16,6 +16,13 @@ def create_weeks(season, weeks, start_date):
 
     """
     
+    # Make start_date timezone-aware if it's not already
+    if timezone.is_naive(start_date):
+        # Convert naive date to timezone-aware datetime at midnight in local timezone
+        from datetime import datetime
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        start_date = timezone.make_aware(start_datetime)
+    
     for i in range(1, weeks + 1):
         if i % 2 == 0:
             week = Week(season=season, number=i, date=start_date + timezone.timedelta(weeks=i-1), is_front=False, rained_out=False)

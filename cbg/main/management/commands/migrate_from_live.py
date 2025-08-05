@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import connections
 from django.db.models import Q
 from main.models import *
-from datetime import datetime
+from django.utils import timezone
 import sqlite3
 import os
 

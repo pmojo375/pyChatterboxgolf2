@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 {% load static %}
+{% load scorecard_filters %}
+
+{% block extra_head %}
+<script src="{% static 'js/weather.js' %}"></script>
+{% endblock %}
 
 {% block page_content %}
 
@@ -61,44 +66,31 @@
             <div class="text-center text-muted">Loading forecast...</div>
           </div>
           <script>
-            const latitude = 42.12;
-            const longitude = -86.45;
-            const nextTuesday = "{{ next_tuesday_date }}";
-            const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&temperature_unit=fahrenheit&timezone=America/Detroit`;
-
-            fetch(apiUrl)
-              .then(response => response.json())
-              .then(data => {
-                const days = data.daily;
-                const idx = days.time.findIndex(date => date === nextTuesday);
-                if (idx === -1) {
-                  document.getElementById('weather-content').innerHTML = '<div class="text-warning small mb-2">No forecast available for the next league day.</div>';
-                  return;
-                }
-                const weatherCodes = {
-                  0: 'Clear', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
-                  45: 'Fog', 48: 'Depositing rime fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
-                  56: 'Freezing drizzle', 57: 'Dense freezing drizzle', 61: 'Slight rain', 63: 'Rain', 65: 'Heavy rain',
-                  66: 'Freezing rain', 67: 'Heavy freezing rain', 71: 'Slight snow', 73: 'Snow', 75: 'Heavy snow',
-                  77: 'Snow grains', 80: 'Slight rain showers', 81: 'Rain showers', 82: 'Violent rain showers',
-                  85: 'Slight snow showers', 86: 'Heavy snow showers', 95: 'Thunderstorm', 96: 'Thunderstorm w/ hail', 99: 'Thunderstorm w/ heavy hail'
-                };
-                const code = days.weathercode[idx];
-                const weatherDesc = weatherCodes[code] || 'Unknown';
-                const html = `
-                  <div class="text-center">
-                    <div class="mb-2" style="font-size:1.5rem;">
-                      ${days.temperature_2m_max[idx]}&deg; / ${days.temperature_2m_min[idx]}&deg;F
-                    </div>
-                    <div class="mb-2 text-info">${weatherDesc}</div>
-                    <div class="small text-muted">Precipitation: ${days.precipitation_sum[idx]} in</div>
-                  </div>
-                `;
-                document.getElementById('weather-content').innerHTML = html;
-              })
-              .catch(error => {
-                document.getElementById('weather-content').innerHTML = '<div class="text-danger">Could not load weather data.</div>';
-              });
+            loadWeatherForecast("{{ next_tuesday_date }}");
+          </script>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% elif initialized %}
+  <!-- Weather Section (when no next game is scheduled) -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body text-center">
+          <div class="mb-1" style="font-size: 1.2rem; color: #888;">Next Tuesday Weather</div>
+          <h2 class="fw-bold mb-1" style="color: #228B22;">
+            League Day Forecast
+          </h2>
+          <div class="small text-secondary mb-3">
+            Forecast for {{ next_tuesday_date|format_date_string }}
+            <!-- DEBUG: Raw next_tuesday_date = {{ next_tuesday_date }} -->
+          </div>
+          <div id="weather-content" class="mt-3">
+            <div class="text-center text-muted">Loading forecast...</div>
+          </div>
+          <script>
+            loadWeatherForecast("{{ next_tuesday_date }}");
           </script>
         </div>
       </div>

@@ -326,17 +326,15 @@ def main(request):
             second_half_standings = get_second_half_standings(season)
             full_standings = get_full_standings(season)
         
-        # Pass all non-rained-out weeks ordered by date for weather bug logic
-        all_weeks = Week.objects.filter(season=season, rained_out=False).order_by('date')
-        
-        # Find the next or current Tuesday (weekday=1) from all_weeks
-        today = date.today()
-        next_tuesday_date = None
-        for week in all_weeks:
-            week_date = week.date.date() if hasattr(week.date, 'date') else week.date
-            if week_date >= today and week_date.weekday() == 1:  # 1 = Tuesday
-                next_tuesday_date = week_date.strftime('%Y-%m-%d')
-                break
+        # Calculate the next Tuesday for weather forecast (always from today, regardless of database)
+        from datetime import timedelta
+        from django.utils import timezone
+        today = timezone.now().date()  # Use timezone-aware date
+        days_ahead = 1 - today.weekday()  # Tuesday is weekday 1
+        if days_ahead <= 0:  # Target day already happened this week
+            days_ahead += 7
+        next_tuesday = today + timedelta(days=days_ahead)
+        next_tuesday_date = next_tuesday.strftime('%Y-%m-%d')
         
         # Get all available seasons for the season selector
         all_seasons = Season.objects.all().order_by('-year')
@@ -359,7 +357,6 @@ def main(request):
             'is_second_half': is_second_half,
             'unestablished': [],
             'season_golfers': season_golfers,
-            'all_weeks': all_weeks,
             'next_tuesday_date': next_tuesday_date,
             'all_seasons': all_seasons,
             'current_season': season,
@@ -464,17 +461,15 @@ def main_with_year(request, year):
         second_half_standings = get_second_half_standings(season)
         full_standings = get_full_standings(season)
     
-    # Pass all non-rained-out weeks ordered by date for weather bug logic
-    all_weeks = Week.objects.filter(season=season, rained_out=False).order_by('date')
-    
-    # Find the next or current Tuesday (weekday=1) from all_weeks
-    today = date.today()
-    next_tuesday_date = None
-    for week in all_weeks:
-        week_date = week.date.date() if hasattr(week.date, 'date') else week.date
-        if week_date >= today and week_date.weekday() == 1:  # 1 = Tuesday
-            next_tuesday_date = week_date.strftime('%Y-%m-%d')
-            break
+    # Calculate the next Tuesday for weather forecast (always from today, regardless of database)
+    from datetime import timedelta
+    from django.utils import timezone
+    today = timezone.now().date()  # Use timezone-aware date
+    days_ahead = 1 - today.weekday()  # Tuesday is weekday 1
+    if days_ahead <= 0:  # Target day already happened this week
+        days_ahead += 7
+    next_tuesday = today + timedelta(days=days_ahead)
+    next_tuesday_date = next_tuesday.strftime('%Y-%m-%d')
     
     # Get all available seasons for the season selector
     all_seasons = Season.objects.all().order_by('-year')
@@ -497,7 +492,6 @@ def main_with_year(request, year):
         'is_second_half': is_second_half,
         'unestablished': [],
         'season_golfers': season_golfers,
-        'all_weeks': all_weeks,
         'next_tuesday_date': next_tuesday_date,
         'season': season,
         'year': year,
@@ -2635,7 +2629,7 @@ def league_stats(request, year=None):
             
             weekly_leaders.append({
                 'week': week.number,
-                'date': week.date.strftime('%m/%d'),
+                'date': timezone.localtime(week.date).strftime('%m/%d'),
                 'is_front': week.is_front,
                 'best_gross': {
                     'score': best_gross_week.gross,

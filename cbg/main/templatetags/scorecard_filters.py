@@ -72,4 +72,18 @@ def divide(value, arg):
     try:
         return float(value) / float(arg)
     except (ValueError, TypeError, ZeroDivisionError):
-        return 0 
+        return 0
+
+@register.filter
+def format_date_string(date_string):
+    """Format a date string (YYYY-MM-DD) to a readable format"""
+    try:
+        from datetime import datetime
+        from django.utils import timezone
+        # Parse as naive datetime first
+        naive_date = datetime.strptime(date_string, '%Y-%m-%d')
+        # Make it timezone-aware in the current timezone
+        date_obj = timezone.make_aware(naive_date)
+        return date_obj.strftime('%A, %B %d')
+    except (ValueError, TypeError):
+        return date_string 

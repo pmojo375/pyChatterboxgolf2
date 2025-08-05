@@ -6,7 +6,7 @@ from main.models import (
     SkinEntry, Round, Matchup, Sub, Team, GolferMatchup
 )
 import sqlite3
-from datetime import datetime
+from django.utils import timezone
 import os
 
 
