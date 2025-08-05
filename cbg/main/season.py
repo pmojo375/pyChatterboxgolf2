@@ -1,5 +1,6 @@
 from main.models import Season, Week, Team
 from django.utils import timezone
+from datetime import timedelta
 
 
 def create_weeks(season, weeks, start_date):
@@ -16,7 +17,7 @@ def create_weeks(season, weeks, start_date):
     """
     # Assume start_date is timezone-aware
     for i in range(1, weeks + 1):
-        week_date = start_date + timezone.timedelta(weeks=i-1)
+        week_date = start_date + timedelta(weeks=i-1)
         is_front = (i % 2 != 0)
         week = Week(season=season, number=i, date=week_date, is_front=is_front, rained_out=False)
         week.save()
@@ -46,7 +47,7 @@ def rain_out_update(week):
             
         # get the last week in the season
         last_week = Week.objects.filter(season=week.season).order_by('-date').first()
-        new_week = Week(season=week.season, number=last_week.number + 1, date=last_week.date + timezone.timedelta(weeks=1), is_front=not last_week.is_front, rained_out=False)
+        new_week = Week(season=week.season, number=last_week.number + 1, date=last_week.date + timedelta(weeks=1), is_front=not last_week.is_front, rained_out=False)
         new_week.save()
     else:
         week.rained_out = False

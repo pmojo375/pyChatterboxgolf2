@@ -122,9 +122,10 @@ class SeasonWeekTests(TestCase):
 
     def setUp(self):
         # Setting up data for the tests
+        from datetime import timedelta
         self.current_year = timezone.now().year
-        self.past_date = timezone.now() - timezone.timedelta(weeks=1)
-        self.future_date = timezone.now() + timezone.timedelta(weeks=1)
+        self.past_date = timezone.now() - timedelta(weeks=1)
+        self.future_date = timezone.now() + timedelta(weeks=1)
         
         # Create a current season
         self.current_season = Season.objects.create(year=self.current_year)
@@ -169,9 +170,10 @@ class SeasonWeekTests(TestCase):
 
     def test_get_next_week_exists(self):
         # Test when the current season exists and there is a future week
+        from datetime import timedelta
         week = get_next_week()
         self.assertIsNotNone(week)
-        future_date = timezone.now() + timezone.timedelta(weeks=1)
+        future_date = timezone.now() + timedelta(weeks=1)
         self.assertEqual(week.date.day, future_date.day)
         self.assertEqual(week.date.month, future_date.month)
         self.assertEqual(week.date.year, future_date.year)
@@ -188,9 +190,10 @@ class SeasonWeekTests(TestCase):
 
 class RoundTestCase(TestCase):
     def setUp(self):
+        from datetime import timedelta
         self.current_date = timezone.now().date()
         self.season = Season.objects.create(year=self.current_date.year)
-        self.week1 = Week.objects.create(date=self.current_date - timezone.timedelta(days=7), season=self.season, number=1, rained_out=False, is_front=True)
+        self.week1 = Week.objects.create(date=self.current_date - timedelta(days=7), season=self.season, number=1, rained_out=False, is_front=True)
         
         self.team1_golfer1 = Golfer.objects.create(name='Team 1 Test Golfer 1') # Hcp 12 playing golfer 2 hcp 9 - 3 strokes gotten
         self.team1_golfer2 = Golfer.objects.create(name='Team 1 Test Golfer 2') # Hcp 14 playing golfer 1 hcp 11 - 3 strokes gotten
@@ -262,6 +265,7 @@ class RoundTestCase(TestCase):
         
 class HandicapTestCase(TestCase):
     def setUp(self):
+        from datetime import timedelta
         
         # Set the current date
         self.current_date = timezone.now().date()
@@ -271,13 +275,13 @@ class HandicapTestCase(TestCase):
         
         # Create test weeks
         self.week8 = Week.objects.create(date=self.current_date, season=self.season, number=8, rained_out=False, is_front=False)
-        self.week7 = Week.objects.create(date=self.current_date - timezone.timedelta(days=7), season=self.season, number=7, rained_out=False, is_front=True)
-        self.week6 = Week.objects.create(date=self.current_date - timezone.timedelta(days=14), season=self.season, number=6, rained_out=False, is_front=False)
-        self.week5 = Week.objects.create(date=self.current_date - timezone.timedelta(days=21), season=self.season, number=5, rained_out=False, is_front=True)
-        self.week4 = Week.objects.create(date=self.current_date - timezone.timedelta(days=28), season=self.season, number=4, rained_out=False, is_front=False)
-        self.week3 = Week.objects.create(date=self.current_date - timezone.timedelta(days=35), season=self.season, number=3, rained_out=False, is_front=True)
-        self.week2 = Week.objects.create(date=self.current_date - timezone.timedelta(days=42), season=self.season, number=2, rained_out=False, is_front=False)
-        self.week1 = Week.objects.create(date=self.current_date - timezone.timedelta(days=49), season=self.season, number=1, rained_out=False, is_front=True)
+        self.week7 = Week.objects.create(date=self.current_date - timedelta(days=7), season=self.season, number=7, rained_out=False, is_front=True)
+        self.week6 = Week.objects.create(date=self.current_date - timedelta(days=14), season=self.season, number=6, rained_out=False, is_front=False)
+        self.week5 = Week.objects.create(date=self.current_date - timedelta(days=21), season=self.season, number=5, rained_out=False, is_front=True)
+        self.week4 = Week.objects.create(date=self.current_date - timedelta(days=28), season=self.season, number=4, rained_out=False, is_front=False)
+        self.week3 = Week.objects.create(date=self.current_date - timedelta(days=35), season=self.season, number=3, rained_out=False, is_front=True)
+        self.week2 = Week.objects.create(date=self.current_date - timedelta(days=42), season=self.season, number=2, rained_out=False, is_front=False)
+        self.week1 = Week.objects.create(date=self.current_date - timedelta(days=49), season=self.season, number=1, rained_out=False, is_front=True)
         
         # Create test golfers
         self.golfer1 = Golfer.objects.create(name='Test Golfer 1') # Played all 7 weeks - 13.28 - Weeks 1, 2, 3 and 4 should be the same

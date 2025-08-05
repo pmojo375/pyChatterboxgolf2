@@ -923,14 +923,15 @@ def adjust_weeks(rained_out_week):
         and `create` methods.
     """
     from django.utils import timezone
+    from datetime import timedelta
     subsequent_weeks = Week.objects.filter(week_number__gt=rained_out_week.week_number)
     for week in subsequent_weeks:
         week.week_number += 1
-        week.date += timezone.timedelta(days=7)
+        week.date += timedelta(days=7)
         week.save()
     # Add a new week at the end
     last_week_number = Week.objects.latest('week_number').week_number
-    new_week_date = Week.objects.latest('date').date + timezone.timedelta(days=7)
+    new_week_date = Week.objects.latest('date').date + timedelta(days=7)
     Week.objects.create(week_number=last_week_number+1, date=new_week_date)
     
 def generate_golfer_matchups(week):
