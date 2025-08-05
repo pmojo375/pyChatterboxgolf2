@@ -1,14 +1,25 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+
 class Golfer(models.Model):
     name = models.CharField(max_length=40)
+    
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Golfer'
+        verbose_name_plural = 'Golfers'
     
     def __str__(self):
         return self.name
 
 class Season(models.Model):
     year = models.IntegerField(primary_key=True)
+    
+    class Meta:
+        ordering = ['-year']
+        verbose_name = 'Season'
+        verbose_name_plural = 'Seasons'
     
     def __str__(self):
         return f'{self.year}'
@@ -17,6 +28,10 @@ class Team(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
     golfers = models.ManyToManyField(Golfer)
 
+    class Meta:
+        verbose_name = 'Team'
+        verbose_name_plural = 'Teams'
+    
     def __str__(self):
         golfers = self.golfers.all()
         if len(golfers) == 2:
@@ -27,10 +42,29 @@ class Team(models.Model):
 class Week(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
     date = models.DateTimeField(default=timezone.now)
-    rained_out = models.BooleanField()
+    rained_out = models.BooleanField(default=False)
     number = models.IntegerField()
     is_front = models.BooleanField()
-    num_scores = models.IntegerField()
+    num_scores = models.IntegerField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-date']
+        verbose_name = 'Week'
+        verbose_name_plural = 'Weeks'
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        # Check for duplicate non-rained-out weeks
+        if not self.rained_out:
+            existing_non_rained = Week.objects.filter(
+                season=self.season, 
+                number=self.number, 
+                rained_out=False
+            ).exclude(id=self.id)
+            if existing_non_rained.exists():
+                raise ValidationError(
+                    f'Cannot have multiple non-rained-out weeks for season {self.season.year}, week {self.number}'
+                )
     
     def save(self, *args, **kwargs):
         # Calculate default number of scores based on season's team count
@@ -49,7 +83,12 @@ class Week(models.Model):
 class Game(models.Model):
     name = models.CharField(max_length=80)
     desc = models.TextField(max_length=480)
-    week = models.ForeignKey(Week, on_delete=models.CASCADE, null=True)
+    week = models.ForeignKey(Week, on_delete=models.CASCADE, null=True, blank=True)
+    
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Game'
+        verbose_name_plural = 'Games'
     
     def __str__(self):
         return self.name
@@ -60,6 +99,11 @@ class GameEntry(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     winner = models.BooleanField(default=False)
+    
+    class Meta:
+        unique_together = ['game', 'golfer', 'week']
+        verbose_name = 'Game Entry'
+        verbose_name_plural = 'Game Entries'
     
     def __str__(self):
         return f'{self.game.name} - {self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
@@ -72,18 +116,26 @@ class SkinEntry(models.Model):
     
     class Meta:
         unique_together = ('golfer', 'week')
+        verbose_name = 'Skin Entry'
+        verbose_name_plural = 'Skin Entries'
     
     def __str__(self):
         return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
 
 
 class Hole(models.Model):
-    number = models.IntegerField()
-    par = models.IntegerField()
-    handicap = models.IntegerField()
-    handicap9 = models.IntegerField()
-    yards = models.IntegerField()
+    number = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(18)])
+    par = models.IntegerField(validators=[MinValueValidator(3), MaxValueValidator(5)])
+    handicap = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(18)])
+    handicap9 = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(9)])
+    yards = models.IntegerField(validators=[MinValueValidator(1)])
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    
+    class Meta:
+        ordering = ['season', 'number']
+        unique_together = ['season', 'number']
+        verbose_name = 'Hole'
+        verbose_name_plural = 'Holes'
     
     def __str__(self):
         return f'Hole {self.number} season {self.season.year}'
@@ -92,17 +144,26 @@ class Score(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     hole = models.ForeignKey(Hole, on_delete=models.CASCADE)
-    score = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)])
+    score = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(10)])  # Increased max to 20 for realistic golf scores
+    
+    class Meta:
+        unique_together = ('golfer', 'week', 'hole')
+        verbose_name = 'Score'
+        verbose_name_plural = 'Scores'
     
     def __str__(self):
         return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")} - {self.hole.number}'
-    class Meta:
-        unique_together = ('golfer', 'week', 'hole')
 
 class Handicap(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     handicap = models.FloatField()
+    
+    class Meta:
+        unique_together = ['golfer', 'week']
+        ordering = ['-week__date']
+        verbose_name = 'Handicap'
+        verbose_name_plural = 'Handicaps'
     
     def __str__(self):
         return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")} - {self.handicap}'
@@ -111,48 +172,78 @@ class Matchup(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     teams = models.ManyToManyField(Team)
     
+    class Meta:
+        ordering = ['-week__date']
+        verbose_name = 'Matchup'
+        verbose_name_plural = 'Matchups'
+    
     def __str__(self):
-        return f'{self.week.date.strftime("%Y-%m-%d")} - {self.teams.all()[0]} vs {self.teams.all()[1]}'
+        teams = self.teams.all()
+        if len(teams) >= 2:
+            return f'{self.week.date.strftime("%Y-%m-%d")} - {teams[0]} vs {teams[1]}'
+        return f'{self.week.date.strftime("%Y-%m-%d")} - Matchup'
 
 class Sub(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     absent_golfer = models.ForeignKey(Golfer, related_name='absent', on_delete=models.CASCADE)
-    sub_golfer = models.ForeignKey(Golfer, related_name='sub', on_delete=models.CASCADE, null=True)
+    sub_golfer = models.ForeignKey(Golfer, related_name='sub', on_delete=models.CASCADE, null=True, blank=True)
     no_sub = models.BooleanField(default=False)
     
-
+    class Meta:
+        unique_together = ['week', 'absent_golfer']
+        ordering = ['-week__date']
+        verbose_name = 'Substitution'
+        verbose_name_plural = 'Substitutions'
     
     def save(self, *args, **kwargs):
         # Ensure consistency: if no_sub is True, clear sub_golfer
         if self.no_sub:
             self.sub_golfer = None
         super().save(*args, **kwargs)
+    
+    def __str__(self):
+        if self.no_sub:
+            return f'{self.week.date.strftime("%Y-%m-%d")} - {self.absent_golfer.name} (No Sub)'
+        elif self.sub_golfer:
+            return f'{self.week.date.strftime("%Y-%m-%d")} - {self.sub_golfer.name} for {self.absent_golfer.name}'
+        return f'{self.week.date.strftime("%Y-%m-%d")} - {self.absent_golfer.name}'
 
 class Points(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     hole = models.ForeignKey(Hole, on_delete=models.CASCADE)
     score = models.ForeignKey(Score, on_delete=models.CASCADE)
-    opponent = models.ForeignKey(Golfer, on_delete=models.CASCADE, related_name='points_against', null=True)
-    points = models.FloatField()
+    opponent = models.ForeignKey(Golfer, on_delete=models.CASCADE, related_name='points_against', null=True, blank=True)
+    points = models.FloatField(validators=[MinValueValidator(0)])
     
+    class Meta:
+        unique_together = ['golfer', 'week', 'hole', 'opponent']
+        verbose_name = 'Point'
+        verbose_name_plural = 'Points'
+    
+    def __str__(self):
+        return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")} - Hole {self.hole.number} - {self.points} pts'
+        
 class Round(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
     is_sub = models.BooleanField(default=False)
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     matchup = models.ForeignKey(Matchup, on_delete=models.CASCADE)
-    golfer_matchup = models.ForeignKey('GolferMatchup', on_delete=models.CASCADE, null=True)
+    golfer_matchup = models.ForeignKey('GolferMatchup', on_delete=models.CASCADE)
     handicap = models.ForeignKey(Handicap, on_delete=models.CASCADE)
     points = models.ManyToManyField(Points)
     scores = models.ManyToManyField(Score)
-    gross = models.IntegerField()
-    net = models.IntegerField()
-    round_points = models.FloatField()
-    total_points = models.FloatField(null=True)
+    gross = models.IntegerField(validators=[MinValueValidator(1)])
+    net = models.IntegerField(validators=[MinValueValidator(1)])
+    round_points = models.FloatField(validators=[MinValueValidator(0)])
+    total_points = models.FloatField(validators=[MinValueValidator(0)])
     subbing_for = models.ForeignKey(Golfer, null=True, blank=True, on_delete=models.SET_NULL, related_name='rounds_subbed_for')
 
     class Meta:
         unique_together = ('golfer_matchup', 'week')
+        ordering = ['-week__date']
+        verbose_name = 'Round'
+        verbose_name_plural = 'Rounds'
     
     def __str__(self):
         sub_text = " (SUB)" if self.is_sub else ""
@@ -168,7 +259,13 @@ class GolferMatchup(models.Model):
     opponent_team_no_subs = models.BooleanField(default=False)
 
     # If the golfer is subbing for another golfer, this field will be set otherwise it will be null
-    subbing_for_golfer = models.ForeignKey(Golfer, related_name='subbing_for_golfer', on_delete=models.CASCADE, null=True)
+    subbing_for_golfer = models.ForeignKey(Golfer, related_name='subbing_for_golfer', on_delete=models.CASCADE, null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['week', 'golfer', 'opponent']
+        ordering = ['-week__date']
+        verbose_name = 'Golfer Matchup'
+        verbose_name_plural = 'Golfer Matchups'
     
     def __str__(self):
         return f'{self.week.date.strftime("%Y-%m-%d")} - {self.golfer.name} vs {self.opponent.name}'
@@ -178,6 +275,12 @@ class RandomDrawnTeam(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
     absent_team = models.ForeignKey(Team, related_name='absent_team', on_delete=models.CASCADE)
     drawn_team = models.ForeignKey(Team, related_name='drawn_team', on_delete=models.CASCADE)
+    
+    class Meta:
+        unique_together = ['week', 'absent_team']
+        ordering = ['-week__date']
+        verbose_name = 'Random Drawn Team'
+        verbose_name_plural = 'Random Drawn Teams'
     
     def __str__(self):
         return f'{self.week.date.strftime("%Y-%m-%d")} - {self.drawn_team} plays for {self.absent_team}'
