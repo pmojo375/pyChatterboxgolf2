@@ -858,12 +858,13 @@ def golfer_stats(request, golfer_id, year=None):
         handicap_chart = {
             'data': [{
                 'x': [d['week'] for d in handicap_data],
-                'y': [d['handicap'] for d in handicap_data],
+                'y': [round(d['handicap'], 2) for d in handicap_data],
                 'type': 'scatter',
                 'mode': 'lines+markers',
                 'name': 'Handicap',
                 'line': {'color': '#1f77b4', 'width': 3},
-                'marker': {'size': 8}
+                'marker': {'size': 8},
+                'hovertemplate': 'Week: %{x}<br>Handicap: %{y:.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'Handicap Progression',
@@ -880,10 +881,11 @@ def golfer_stats(request, golfer_id, year=None):
         points_chart = {
             'data': [{
                 'x': [d['week'] for d in points_data],
-                'y': [d['points'] for d in points_data],
+                'y': [round(d['points'], 2) for d in points_data],
                 'type': 'bar',
                 'name': 'Points',
-                'marker': {'color': '#2ca02c'}
+                'marker': {'color': '#2ca02c'},
+                'hovertemplate': 'Week: %{x}<br>Points: %{y:.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'Points per Week',
@@ -901,21 +903,23 @@ def golfer_stats(request, golfer_id, year=None):
             'data': [
                 {
                     'x': [d['week'] for d in gross_scores],
-                    'y': [d['score'] for d in gross_scores],
+                    'y': [round(d['score'], 2) for d in gross_scores],
                     'type': 'scatter',
                     'mode': 'lines+markers',
                     'name': 'Gross Score',
                     'line': {'color': '#ff7f0e', 'width': 3},
-                    'marker': {'size': 8}
+                    'marker': {'size': 8},
+                    'hovertemplate': 'Week: %{x}<br>Gross Score: %{y:.2f}<extra></extra>'
                 },
                 {
                     'x': [d['week'] for d in net_scores],
-                    'y': [d['score'] for d in net_scores],
+                    'y': [round(d['score'], 2) for d in net_scores],
                     'type': 'scatter',
                     'mode': 'lines+markers',
                     'name': 'Net Score',
                     'line': {'color': '#d62728', 'width': 3},
-                    'marker': {'size': 8}
+                    'marker': {'size': 8},
+                    'hovertemplate': 'Week: %{x}<br>Net Score: %{y:.2f}<extra></extra>'
                 }
             ],
             'layout': {
@@ -933,12 +937,13 @@ def golfer_stats(request, golfer_id, year=None):
         perf_chart = {
             'data': [{
                 'x': [d['week'] for d in performance_vs_opponent],
-                'y': [d['net_diff'] for d in performance_vs_opponent],
+                'y': [round(d['net_diff'], 2) for d in performance_vs_opponent],
                 'type': 'bar',
                 'name': 'Net Score Difference',
                 'marker': {
                     'color': ['green' if d['net_diff'] < 0 else 'red' if d['net_diff'] > 0 else 'gray' for d in performance_vs_opponent]
-                }
+                },
+                'hovertemplate': 'Week: %{x}<br>Net Score Difference: %{y:+.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'Performance vs Opponent (Negative = Win)',
@@ -1036,7 +1041,7 @@ def golfer_stats(request, golfer_id, year=None):
     for hole_num in range(1, 19):
         if hole_stats[hole_num]['avg_vs_par'] is not None:
             played_hole_numbers.append(hole_num)
-            played_hole_scores.append(hole_stats[hole_num]['avg_vs_par'])
+            played_hole_scores.append(round(hole_stats[hole_num]['avg_vs_par'], 2))
             # Color coding: red for over par, green for under par, gray for par
             if hole_stats[hole_num]['avg_vs_par'] > 0:
                 played_hole_colors.append('red')
@@ -1054,7 +1059,8 @@ def golfer_stats(request, golfer_id, year=None):
                 'name': 'Strokes vs Par',
                 'marker': {
                     'color': played_hole_colors
-                }
+                },
+                'hovertemplate': 'Hole: %{x}<br>Avg vs Par: %{y:+.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'Average Strokes vs Par by Hole',
@@ -1082,7 +1088,7 @@ def golfer_stats(request, golfer_id, year=None):
                 if yearly_hole_stats[year][hole]['avg_score'] is not None and yearly_hole_stats[year][hole]['par'] is not None:
                     avg_score = yearly_hole_stats[year][hole]['avg_score']
                     par = yearly_hole_stats[year][hole]['par']
-                    vs_par = avg_score - par  # Positive = over par, negative = under par
+                    vs_par = round(avg_score - par, 2)  # Positive = over par, negative = under par
                     year_data.append(vs_par)
                     all_vs_par.append(vs_par)
                 else:
@@ -1145,7 +1151,9 @@ def golfer_stats(request, golfer_id, year=None):
                     'dtick': 1
                 },
                 'height': 500,
-                'margin': {'l': 80, 'r': 80, 't': 80, 'b': 80}
+                'margin': {'l': 80, 'r': 80, 't': 80, 'b': 80},
+                'autosize': True,
+                'responsive': True
             }
         }
         charts['yearly_hole_heatmap'] = json.dumps(hole_heatmap)
@@ -1604,12 +1612,13 @@ def sub_stats(request, golfer_id=None, year=None):
         handicap_chart = {
             'data': [{
                 'x': [d['week'] for d in handicap_data],
-                'y': [d['handicap'] for d in handicap_data],
+                'y': [round(d['handicap'], 2) for d in handicap_data],
                 'type': 'scatter',
                 'mode': 'lines+markers',
                 'name': 'Handicap',
                 'line': {'color': '#1f77b4', 'width': 3},
-                'marker': {'size': 8}
+                'marker': {'size': 8},
+                'hovertemplate': 'Week: %{x}<br>Handicap: %{y:.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'Handicap Progression',
@@ -1626,10 +1635,11 @@ def sub_stats(request, golfer_id=None, year=None):
         points_chart = {
             'data': [{
                 'x': [d['week'] for d in points_data],
-                'y': [d['points'] for d in points_data],
+                'y': [round(d['points'], 2) for d in points_data],
                 'type': 'bar',
                 'name': 'Points',
-                'marker': {'color': '#2ca02c'}
+                'marker': {'color': '#2ca02c'},
+                'hovertemplate': 'Week: %{x}<br>Points: %{y:.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'Points per Week',
@@ -1647,21 +1657,23 @@ def sub_stats(request, golfer_id=None, year=None):
             'data': [
                 {
                     'x': [d['week'] for d in gross_scores],
-                    'y': [d['score'] for d in gross_scores],
+                    'y': [round(d['score'], 2) for d in gross_scores],
                     'type': 'scatter',
                     'mode': 'lines+markers',
                     'name': 'Gross Score',
                     'line': {'color': '#ff7f0e', 'width': 3},
-                    'marker': {'size': 8}
+                    'marker': {'size': 8},
+                    'hovertemplate': 'Week: %{x}<br>Gross Score: %{y:.2f}<extra></extra>'
                 },
                 {
                     'x': [d['week'] for d in net_scores],
-                    'y': [d['score'] for d in net_scores],
+                    'y': [round(d['score'], 2) for d in net_scores],
                     'type': 'scatter',
                     'mode': 'lines+markers',
                     'name': 'Net Score',
                     'line': {'color': '#d62728', 'width': 3},
-                    'marker': {'size': 8}
+                    'marker': {'size': 8},
+                    'hovertemplate': 'Week: %{x}<br>Net Score: %{y:.2f}<extra></extra>'
                 }
             ],
             'layout': {
@@ -1679,12 +1691,13 @@ def sub_stats(request, golfer_id=None, year=None):
         perf_chart = {
             'data': [{
                 'x': [d['week'] for d in performance_vs_opponent],
-                'y': [d['net_diff'] for d in performance_vs_opponent],
+                'y': [round(d['net_diff'], 2) for d in performance_vs_opponent],
                 'type': 'bar',
                 'name': 'Net Score Difference',
                 'marker': {
                     'color': ['green' if d['net_diff'] < 0 else 'red' if d['net_diff'] > 0 else 'gray' for d in performance_vs_opponent]
-                }
+                },
+                'hovertemplate': 'Week: %{x}<br>Net Score Difference: %{y:+.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'Performance vs Opponent (Negative = Win)',
@@ -1782,7 +1795,7 @@ def sub_stats(request, golfer_id=None, year=None):
     for hole_num in range(1, 19):
         if hole_stats[hole_num]['avg_vs_par'] is not None:
             played_hole_numbers.append(hole_num)
-            played_hole_scores.append(hole_stats[hole_num]['avg_vs_par'])
+            played_hole_scores.append(round(hole_stats[hole_num]['avg_vs_par'], 2))
             # Color coding: red for over par, green for under par, gray for par
             if hole_stats[hole_num]['avg_vs_par'] > 0:
                 played_hole_colors.append('red')
@@ -1800,7 +1813,8 @@ def sub_stats(request, golfer_id=None, year=None):
                 'name': 'Strokes vs Par',
                 'marker': {
                     'color': played_hole_colors
-                }
+                },
+                'hovertemplate': 'Hole: %{x}<br>Avg vs Par: %{y:+.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'Average Strokes vs Par by Hole',
@@ -2640,12 +2654,13 @@ def league_stats(request, year=None):
         hole_chart = {
             'data': [{
                 'x': hole_numbers,
-                'y': avg_vs_par,
+                'y': [round(score, 2) for score in avg_vs_par],
                 'type': 'bar',
                 'name': 'League Avg vs Par',
                 'marker': {
                     'color': ['red' if score > 0 else 'green' if score < 0 else 'gray' for score in avg_vs_par]
-                }
+                },
+                'hovertemplate': 'Hole: %{x}<br>League Avg vs Par: %{y:+.2f}<extra></extra>'
             }],
             'layout': {
                 'title': 'League Average vs Par by Hole',
@@ -2668,7 +2683,8 @@ def league_stats(request, year=None):
                 'labels': score_types,
                 'values': counts,
                 'type': 'pie',
-                'marker': {'colors': colors[:len(score_types)]}
+                'marker': {'colors': colors[:len(score_types)]},
+                'hovertemplate': '%{label}<br>Count: %{value}<br>Percentage: %{percent:.1%}<extra></extra>'
             }],
             'layout': {
                 'title': 'League Scoring Breakdown',

@@ -632,6 +632,29 @@
 .js-plotly-plot .plotly .modebar-group {
     display: none !important;
 }
+
+/* Mobile-specific improvements for charts */
+@media (max-width: 768px) {
+    #hole-by-hole-chart,
+    #scoring-breakdown-chart {
+        min-height: 400px;
+        overflow-x: auto;
+    }
+    
+    .js-plotly-plot .plotly .heatmap {
+        min-width: 600px;
+    }
+    
+    /* Improve chart readability on mobile */
+    .js-plotly-plot .plotly .colorbar {
+        font-size: 12px;
+    }
+    
+    .js-plotly-plot .plotly .xtick,
+    .js-plotly-plot .plotly .ytick {
+        font-size: 10px;
+    }
+}
 </style>
 
 <!-- Plotly Charts Script -->

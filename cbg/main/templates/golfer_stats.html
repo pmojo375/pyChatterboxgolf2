@@ -890,6 +890,28 @@
 .js-plotly-plot .plotly .modebar-group {
     display: none !important;
 }
+
+/* Mobile-specific improvements for heatmap */
+@media (max-width: 768px) {
+    #yearly-hole-heatmap {
+        min-height: 400px;
+        overflow-x: auto;
+    }
+    
+    .js-plotly-plot .plotly .heatmap {
+        min-width: 600px;
+    }
+    
+    /* Improve heatmap readability on mobile */
+    .js-plotly-plot .plotly .heatmap .colorbar {
+        font-size: 12px;
+    }
+    
+    .js-plotly-plot .plotly .heatmap .xtick,
+    .js-plotly-plot .plotly .heatmap .ytick {
+        font-size: 10px;
+    }
+}
 </style>
 
 <!-- Plotly Charts Script -->
