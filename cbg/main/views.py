@@ -1019,19 +1019,41 @@ def golfer_stats(request, golfer_id, year=None):
     # Calculate consistency stats
     consistency_stats = {}
     if played_holes:
-        # Standard deviation of average scores
-        avg_scores = [stats['avg_score'] for stats in played_holes.values()]
-        mean_avg = sum(avg_scores) / len(avg_scores)
-        variance = sum((score - mean_avg) ** 2 for score in avg_scores) / len(avg_scores)
-        consistency_stats['std_dev'] = round(variance ** 0.5, 2)
+        # Get all rounds for this golfer in this season
+        golfer_rounds = Round.objects.filter(
+            golfer=golfer,
+            week__season=season,
+            subbing_for__isnull=True
+        ).order_by('week__number')
         
-        # Range of average scores
-        consistency_stats['score_range'] = round(max(avg_scores) - min(avg_scores), 2)
-        
-        # Holes within 0.5 strokes of average
-        within_half_stroke = sum(1 for score in avg_scores if abs(score - mean_avg) <= 0.5)
-        consistency_stats['holes_within_half_stroke'] = within_half_stroke
-        consistency_stats['consistency_percentage'] = round((within_half_stroke / len(avg_scores)) * 100, 1)
+        if golfer_rounds.count() > 1:
+            # Calculate standard deviation of net scores (week-to-week consistency)
+            net_scores = list(golfer_rounds.values_list('net', flat=True))
+            mean_net = sum(net_scores) / len(net_scores)
+            variance = sum((score - mean_net) ** 2 for score in net_scores) / len(net_scores)
+            consistency_stats['std_dev'] = round(variance ** 0.5, 2)
+            
+            # Range of net scores
+            consistency_stats['score_range'] = round(max(net_scores) - min(net_scores), 2)
+            
+            # Rounds within 2 strokes of average
+            within_two_strokes = sum(1 for score in net_scores if abs(score - mean_net) <= 2)
+            consistency_stats['holes_within_half_stroke'] = within_two_strokes
+            consistency_stats['consistency_percentage'] = round((within_two_strokes / len(net_scores)) * 100, 1)
+        else:
+            # Fallback to hole-to-hole consistency if only one round
+            avg_scores = [stats['avg_score'] for stats in played_holes.values()]
+            mean_avg = sum(avg_scores) / len(avg_scores)
+            variance = sum((score - mean_avg) ** 2 for score in avg_scores) / len(avg_scores)
+            consistency_stats['std_dev'] = round(variance ** 0.5, 2)
+            
+            # Range of average scores
+            consistency_stats['score_range'] = round(max(avg_scores) - min(avg_scores), 2)
+            
+            # Holes within 0.5 strokes of average
+            within_half_stroke = sum(1 for score in avg_scores if abs(score - mean_avg) <= 0.5)
+            consistency_stats['holes_within_half_stroke'] = within_half_stroke
+            consistency_stats['consistency_percentage'] = round((within_half_stroke / len(avg_scores)) * 100, 1)
     
     # Create hole-by-hole chart showing strokes over/under par (only for holes actually played)
     played_hole_numbers = []
@@ -1773,19 +1795,41 @@ def sub_stats(request, golfer_id=None, year=None):
     # Calculate consistency stats
     consistency_stats = {}
     if played_holes:
-        # Standard deviation of average scores
-        avg_scores = [stats['avg_score'] for stats in played_holes.values()]
-        mean_avg = sum(avg_scores) / len(avg_scores)
-        variance = sum((score - mean_avg) ** 2 for score in avg_scores) / len(avg_scores)
-        consistency_stats['std_dev'] = round(variance ** 0.5, 2)
+        # Get all rounds for this golfer in this season
+        golfer_rounds = Round.objects.filter(
+            golfer=golfer,
+            week__season=season,
+            subbing_for__isnull=True
+        ).order_by('week__number')
         
-        # Range of average scores
-        consistency_stats['score_range'] = round(max(avg_scores) - min(avg_scores), 2)
-        
-        # Holes within 0.5 strokes of average
-        within_half_stroke = sum(1 for score in avg_scores if abs(score - mean_avg) <= 0.5)
-        consistency_stats['holes_within_half_stroke'] = within_half_stroke
-        consistency_stats['consistency_percentage'] = round((within_half_stroke / len(avg_scores)) * 100, 1)
+        if golfer_rounds.count() > 1:
+            # Calculate standard deviation of net scores (week-to-week consistency)
+            net_scores = list(golfer_rounds.values_list('net', flat=True))
+            mean_net = sum(net_scores) / len(net_scores)
+            variance = sum((score - mean_net) ** 2 for score in net_scores) / len(net_scores)
+            consistency_stats['std_dev'] = round(variance ** 0.5, 2)
+            
+            # Range of net scores
+            consistency_stats['score_range'] = round(max(net_scores) - min(net_scores), 2)
+            
+            # Rounds within 2 strokes of average
+            within_two_strokes = sum(1 for score in net_scores if abs(score - mean_net) <= 2)
+            consistency_stats['holes_within_half_stroke'] = within_two_strokes
+            consistency_stats['consistency_percentage'] = round((within_two_strokes / len(net_scores)) * 100, 1)
+        else:
+            # Fallback to hole-to-hole consistency if only one round
+            avg_scores = [stats['avg_score'] for stats in played_holes.values()]
+            mean_avg = sum(avg_scores) / len(avg_scores)
+            variance = sum((score - mean_avg) ** 2 for score in avg_scores) / len(avg_scores)
+            consistency_stats['std_dev'] = round(variance ** 0.5, 2)
+            
+            # Range of average scores
+            consistency_stats['score_range'] = round(max(avg_scores) - min(avg_scores), 2)
+            
+            # Holes within 0.5 strokes of average
+            within_half_stroke = sum(1 for score in avg_scores if abs(score - mean_avg) <= 0.5)
+            consistency_stats['holes_within_half_stroke'] = within_half_stroke
+            consistency_stats['consistency_percentage'] = round((within_half_stroke / len(avg_scores)) * 100, 1)
     
     # Create hole-by-hole chart showing strokes over/under par (only for holes actually played)
     played_hole_numbers = []
@@ -2539,7 +2583,7 @@ def league_stats(request, year=None):
             golfer_rounds = rounds.filter(golfer__name=golfer_name)
             net_scores = list(golfer_rounds.values_list('net', flat=True))
             
-            # Calculate standard deviation
+            # Calculate standard deviation of net scores (round-to-round consistency)
             mean_net = sum(net_scores) / len(net_scores)
             variance = sum((score - mean_net) ** 2 for score in net_scores) / len(net_scores)
             std_dev = variance ** 0.5

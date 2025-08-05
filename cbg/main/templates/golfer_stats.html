@@ -500,22 +500,25 @@
         <div class="col-lg-4 mb-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Consistency Stats</h5>
+                    <h5 class="mb-0">Week-to-Week Consistency</h5>
+                    <small class="opacity-75">How much your scores vary from round to round</small>
                 </div>
                 <div class="card-body">
                     {% if consistency_stats.std_dev %}
                     <div class="mb-3">
-                        <h6 class="fw-bold mb-1">Standard Deviation</h6>
+                        <h6 class="fw-bold mb-1">Net Score Std Dev</h6>
                         <p class="mb-0 text-info fw-bold">{{ consistency_stats.std_dev }}</p>
+                        <small class="text-muted">Lower = more consistent week-to-week</small>
                     </div>
                     <div class="mb-3">
-                        <h6 class="fw-bold mb-1">Score Range</h6>
+                        <h6 class="fw-bold mb-1">Net Score Range</h6>
                         <p class="mb-0">{{ consistency_stats.score_range }}</p>
+                        <small class="text-muted">Difference between best and worst rounds</small>
                     </div>
                     <div class="mb-3">
                         <h6 class="fw-bold mb-1">Consistency</h6>
                         <p class="mb-0 text-success fw-bold">{{ consistency_stats.consistency_percentage }}%</p>
-                        <small class="text-muted">({{ consistency_stats.holes_within_half_stroke }} holes within 0.5 strokes of average)</small>
+                        <small class="text-muted">({{ consistency_stats.holes_within_half_stroke }} rounds within 2 strokes of average)</small>
                     </div>
                     {% else %}
                     <p class="text-muted">Not enough data</p>
