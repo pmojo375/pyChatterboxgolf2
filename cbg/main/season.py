@@ -9,27 +9,17 @@ def create_weeks(season, weeks, start_date):
     Args:
         season (Season): The season object for which the weeks are being created.
         weeks (int): The number of weeks to create.
-        start_date (datetime): The starting date for the weeks.
+        start_date (datetime): The starting date for the weeks (should be timezone-aware).
 
     Returns:
         int: The total number of weeks created.
-
     """
-    
-    # Make start_date timezone-aware if it's not already
-    if timezone.is_naive(start_date):
-        # Convert naive date to timezone-aware datetime at midnight in local timezone
-        from datetime import datetime
-        start_datetime = datetime.combine(start_date, datetime.min.time())
-        start_date = timezone.make_aware(start_datetime)
-    
+    # Assume start_date is timezone-aware
     for i in range(1, weeks + 1):
-        if i % 2 == 0:
-            week = Week(season=season, number=i, date=start_date + timezone.timedelta(weeks=i-1), is_front=False, rained_out=False)
-        else:
-            week = Week(season=season, number=i, date=start_date + timezone.timedelta(weeks=i-1), is_front=True, rained_out=False)
+        week_date = start_date + timezone.timedelta(weeks=i-1)
+        is_front = (i % 2 != 0)
+        week = Week(season=season, number=i, date=week_date, is_front=is_front, rained_out=False)
         week.save()
-        
     return weeks
 
 def rain_out_update(week):
