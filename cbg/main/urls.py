@@ -16,6 +16,7 @@ register_converter(YearConverter, 'year')
 
 urlpatterns = [
     path('', views.main, name='main'),
+    path('<year:year>/', views.main, name='main_with_year'),
     path('add_round', views.add_scores, name='add_round'),
     path('add_golfer', views.add_golfer, name='add_golfer'),
     path('add_sub', views.add_sub, name='add_sub'),
@@ -39,7 +40,6 @@ urlpatterns = [
     path('api/get_game_entries/<int:week_id>/<int:game_id>/', get_game_entries, name='get_game_entries'),
     
     # New URL patterns with year parameter (4-digit years only) - must come before week patterns
-    path('<year:year>/', views.main_with_year, name='main_with_year'),
     path('<year:year>/<int:week>/', views.scorecards, name="scorecards_with_year"),
     path('<year:year>/stats/<int:golfer_id>/', views.golfer_stats, name="golfer_stats_with_year"),
     path('<year:year>/sub_stats/', views.sub_stats, name="sub_stats_with_year"),
