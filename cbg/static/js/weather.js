@@ -1,5 +1,6 @@
 // Weather functionality for Chatterbox Golf League
 function loadWeatherForecast(nextTuesdayDate, elementId = 'weather-content') {
+    console.log('Loading weather for date:', nextTuesdayDate);
     const latitude = 42.12;
     const longitude = -86.45;
     
@@ -81,6 +82,8 @@ function loadWeatherForecast(nextTuesdayDate, elementId = 'weather-content') {
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&temperature_unit=fahrenheit&timezone=America/Detroit`;
+    
+    console.log('Fetching weather from:', apiUrl);
 
     fetch(apiUrl, { signal: controller.signal })
         .then(response => {
@@ -91,6 +94,7 @@ function loadWeatherForecast(nextTuesdayDate, elementId = 'weather-content') {
             return response.json();
         })
         .then(data => {
+            console.log('Weather data received:', data);
             displayWeather(data);
         })
         .catch(error => {

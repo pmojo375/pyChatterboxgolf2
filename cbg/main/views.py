@@ -310,9 +310,8 @@ def main(request, year=None):
         full_standings = get_full_standings(season)
     
     # Calculate the next Tuesday for weather forecast (always from today, regardless of database)
-    from datetime import timedelta
-    from django.utils import timezone
-    today = timezone.now().date()  # Use timezone-aware date
+    from datetime import timedelta, date
+    today = date.today()  # Use timezone-naive date for consistent calculations
     days_ahead = 1 - today.weekday()  # Tuesday is weekday 1
     if days_ahead <= 0:  # Target day already happened this week
         days_ahead += 7
