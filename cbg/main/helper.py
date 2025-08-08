@@ -11,62 +11,6 @@ def conventional_round(value):
     """
     return math.floor(value + 0.5)
 
-'''
-Need to run the golfer matchup generator weekly. Need to figure out trigger
-Need to figure out the handicap trigger for when the scores are posted and when to run a full generate
-Need to figure out when to run the generate_rounds function
-'''
-
-def get_week(**kwargs):
-    """Gets the week object from the current date. The week
-    object returned is the last week we should have played but is offset by a
-    week if no scores are posted for that week if the offset flag is not set to
-    false.
-
-    Parameters
-    ----------
-    offset : bool, optional
-        A flag to offset if scores are not posted for returned week (default is
-        True)
-    season : Season, optional
-        The season you want to get the week in (default is current season object)
-
-    Returns
-    -------
-    Week
-        The week object of the season requested offset by -1 if there are no
-        posted scores.
-    """
-
-    # offset for returning the previous week if no scores are posted
-    offset = kwargs.get('offset', True)
-    # the year of the season you want
-    season = kwargs.get('season', Season.objects.all().order_by('-year')[0])
-
-    # current datetime
-    now = timezone.now()
-
-    # get week
-    week = Week.objects.filter(date__lte=now).order_by('-date')[0]
-
-    # offset by one week if not all scores are posted
-    if offset:
-        if Score.objects.filter(week=week).count() == 180:
-            week = week
-        else:
-            week = Week.objects.filter(date__lte=now).order_by('-date')[1]
-
-    return week
-
-def get_game_winners(game):
-    if GameEntry.objects.filter(winner=True, game=game).exists():
-        winners = []
-        for winner in GameEntry.objects.filter(winner=True, game=game):
-            winners.append(winner.golfer.name)
-        
-        return winners
-    else:
-        return None
 
 def get_game(week):
     """Get the game object for a given week
@@ -89,6 +33,7 @@ def get_game(week):
         game = None
 
     return game
+
 
 def get_current_season(year=None):
     """Gets the season object for a specific year or the most recent season if no year is specified
@@ -144,6 +89,7 @@ def get_last_week(season=None):
             
         return None
 
+
 def get_next_week(season=None):
     print('Getting next week')
     if season is None:
@@ -160,57 +106,6 @@ def get_next_week(season=None):
                 print(f'Found next week: {week.number} (scores: {score_count}/{week.num_scores})')
                 return week
     return None
-
-def get_golfers(**kwargs):
-    """Gets the golfer objects for a specific season
-
-    Parameters
-    ----------
-    include_subs : boolean, optional
-        Set True if you would like to also include subs in the lookup
-        (default is false)
-    season : Season, optional
-        The season you want to get the week in (default is current season object)
-
-    Returns
-    -------
-    QuerySet
-        Returns a QuerySet of all the golfers for a season with our without subs
-    """
-
-    # get optional parameters
-    subs = kwargs.get('include_subs', False)
-    season = kwargs.get('season', Season.objects.all().order_by('-year')[0])
-
-    if subs:
-        return Golfer.objects.filter(sub__week__season=season).distinct().union(Golfer.objects.filter(team__season=season))
-    else:
-        return Golfer.objects.filter(team__season=season)
-
-
-def get_sub(golfer, week):
-    """Gets a sub object for an absent golfer
-
-    Parameters
-    ----------
-    golfer : Golfer
-        The absent golfer
-    week : Week
-        The week the golfer was absent
-
-    Returns
-    -------
-    Golfer
-        The sub's Golfer object or the original golfer object if there is no sub found
-    """
-
-    if Sub.objects.filter(absent_golfer=golfer, week=week).exists():
-        if Sub.objects.get(absent_golfer=golfer, week=week).no_sub:
-            return None
-        else:
-            return Sub.objects.get(absent_golfer=golfer, week=week).sub_golfer
-    else:
-        return golfer
 
 
 def get_absent_team_from_sub(sub_golfer, week):
@@ -357,7 +252,6 @@ def get_hcp(golfer, week):
         return 0
 
 
-# redo with new golfer matchup data
 def get_schedule(week_model):
     """
     Given a week model, return the schedule of matches for that week.
@@ -406,42 +300,6 @@ def get_schedule(week_model):
 
         return schedule
 
-
-def calculate_team_points(current_week):
-    # Get the current season
-    current_season = current_week.season
-
-    # Get all the weeks for the current season up to the given week
-    weeks = Week.objects.filter(season=current_season, number__lte=current_week.number)
-
-    # Get all the teams in the current season
-    teams = Team.objects.filter(season=current_season)
-
-    # Initialize a dictionary to store team points
-    team_points = {}
-
-    # Iterate through the teams and calculate the total points for each team
-    for team in teams:
-        team_golfers = team.golfers.all()
-        total_points = 0
-
-        # Iterate through the weeks and calculate golfer points for each week
-        for week in weeks:
-            for golfer in team_golfers:
-                # Get the golfer matchup for this golfer and week
-                try:
-                    golfer_matchup = GolferMatchup.objects.get(week=week, golfer=golfer)
-                    golfer_points = get_golfer_points(golfer_matchup)
-                    if isinstance(golfer_points, (int, float)):  # Only add points if the function returns a number
-                        total_points += golfer_points
-                except GolferMatchup.DoesNotExist:
-                    # If no matchup exists for this golfer/week, skip it
-                    continue
-
-        # Store the team points in the dictionary
-        team_points[team.id] = total_points
-
-    return team_points
     
 def get_front_holes(season):
     """
@@ -691,24 +549,6 @@ def get_golfer_points(golfer_matchup, **kwargs):
         return points
 
 
-def check_hcp():
-    """
-    Check handicap for each golfer and week combination.
-    Prints the golfer's name, their recorded handicap, and the calculated handicap.
-    """
-    golfers = Golfer.objects.all()
-    weeks = Week.objects.all()
-    
-    for golfer in golfers:
-        for week in weeks:
-            count = Handicap.objects.filter(golfer=golfer, week=week).count()
-            if count > 1:
-                handicaps = Handicap.objects.filter(golfer=golfer, week=week)
-                for handicap in handicaps:
-                    calc = calculate_handicap(golfer, week.season, week)
-                    print(f'{golfer.name} has {handicap.handicap} handicap for {week.number} and calculated is {calc}')
-        
-
 def calculate_handicap(golfer, season, week):
     """
     Calculates the handicap for a given golfer for a given week in a given season.
@@ -846,93 +686,7 @@ def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
                 except Handicap.DoesNotExist:
                     Handicap.objects.create(golfer=golfer, week=first_week, handicap=second_week_handicap.handicap)   
 
-def get_standings(season, week):
-    """
-    Get the standings for a given season and week.
 
-    Args:
-        season (Season): The season for which to get the standings.
-        week (Week): The week for which to get the standings.
-
-    Returns:
-        List[Tuple[str
-    """
-    
-    
-def get_score_string(data, holes):
-    
-    rank = data['score'] - holes.get(number=data['hole']).par
-    
-    # Getting 2 strokes
-    if data['handicap'] == -2:
-        if rank == -2:
-            rankStr = 'getting2-stroke_eagle'
-        elif rank == -1:
-            rankStr = 'getting2-stroke_birdie'
-        elif rank == 0:
-            rankStr = 'getting2-stroke_par'
-        elif rank == 1:
-            rankStr = 'getting2-stroke_bogey'
-        else:
-            rankStr = 'getting2-stroke_worst'
-    # Getting 1 stroke
-    elif data['handicap'] == -1:
-        if rank == -2:
-            rankStr = 'getting-stroke_eagle'
-        elif rank == -1:
-            rankStr = 'getting-stroke_birdie'
-        elif rank == 0:
-            rankStr = 'getting-stroke_par'
-        elif rank == 1:
-            rankStr = 'getting-stroke_bogey'
-        else:
-            rankStr = 'getting-stroke_worst'
-    # Straight up
-    else:
-        if rank == -2:
-            rankStr = 'eagle'
-        elif rank == -1:
-            rankStr = 'birdie'
-        elif rank == 0:
-            rankStr = 'par'
-        elif rank == 1:
-            rankStr = 'bogey'
-        else:
-            rankStr = 'worst'
-    
-    return rankStr
-
-def adjust_weeks(rained_out_week):
-    """
-    Adjusts the week numbers and dates for subsequent weeks after a rained-out week
-    and adds a new week at the end of the schedule.
-
-    Args:
-        rained_out_week (Week): The week instance that was rained out.
-
-    Functionality:
-        - Increments the week numbers and adjusts the dates for all weeks 
-          that occur after the rained-out week.
-        - Adds a new week at the end of the schedule with an incremented week 
-          number and a date 7 days after the last week's date.
-
-    Note:
-        This function assumes that the `Week` model has `week_number` and `date` 
-        fields and that the `Week.objects` manager provides `filter`, `latest`, 
-        and `create` methods.
-    """
-    from django.utils import timezone
-    from datetime import timedelta
-    subsequent_weeks = Week.objects.filter(week_number__gt=rained_out_week.week_number)
-    for week in subsequent_weeks:
-        week.week_number += 1
-        week.date += timedelta(days=7)
-        week.save()
-    # Add a new week at the end
-    last_week_number = Week.objects.latest('week_number').week_number
-    new_week_date = Week.objects.latest('date').date + timedelta(days=7)
-    Week.objects.create(week_number=last_week_number+1, date=new_week_date)
-    
 def generate_golfer_matchups(week):
     """
     Generates golfer matchups for a given week by pairing golfers from opposing teams
@@ -1159,6 +913,7 @@ def generate_golfer_matchups(week):
             print(f'{team1_B_golfer.name} is subbing for {team1_B_subbing_for.name}') if team1_B_subbing_for else print(f'{team1_B_golfer.name} is not subbing')
             print(f'{team2_B_golfer.name} is subbing for {team2_B_subbing_for.name}') if team2_B_subbing_for else print(f'{team2_B_golfer.name} is not subbing')
 
+
 def create_virtual_matchups_for_team(week, present_team, team_A_golfer, team_B_golfer, team_A_subbing_for, team_B_subbing_for):
     """
     Create virtual matchups for a team that has no opponents due to the opposing team having both golfers absent with no_sub.
@@ -1251,6 +1006,7 @@ def create_virtual_matchups_for_team(week, present_team, team_A_golfer, team_B_g
     
     print(f'Created virtual matchups: {team_A_golfer.name} vs {virtual_A_golfer.name} (A), {team_B_golfer.name} vs {virtual_B_golfer.name} (B)')
 
+
 def process_week(week):
     
     # generate the handicaps for the next week
@@ -1284,6 +1040,7 @@ def get_playing_golfers_for_week(week):
                 else:
                     playing_golfers.add(golfer)  # Add the original golfer
     return list(playing_golfers)
+    
     
 def get_earliest_week_without_full_matchups(season=None):
     """

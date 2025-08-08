@@ -10,6 +10,8 @@ from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from main.models import Team, Score, Sub, Week
 from django.urls import reverse
 
+HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
+
 def get_first_half_standings(season):
     """
     Calculate first half standings (weeks 1-9) using Round models.
@@ -97,6 +99,7 @@ def get_first_half_standings(season):
     
     return standings_list
 
+
 def get_second_half_standings(season):
     """
     Calculate second half standings (weeks 10-18) using Round models.
@@ -135,6 +138,7 @@ def get_second_half_standings(season):
     standings_list = list(team_standings.values())
     standings_list.sort(key=lambda x: x['second'], reverse=True)
     return standings_list
+
 
 def get_full_standings(season):
     """
@@ -192,6 +196,7 @@ def get_full_standings(season):
     standings.sort(key=lambda x: x['total'], reverse=True)
     return standings
 
+
 def create_season(request):
     # Set up season related information and create a new season
     if request.method == 'POST':
@@ -221,7 +226,7 @@ def create_season(request):
     
     return render(request, 'create_season.html', {'form': form})
 
-# Create your views here.
+
 def main(request, year=None):
     if year:
         season = get_current_season(year)
@@ -352,7 +357,6 @@ def main(request, year=None):
     return render(request, 'main.html', context)
 
 
-
 def add_scores(request):
     if request.method == 'POST':
         # Get hidden fields from the form
@@ -364,7 +368,6 @@ def add_scores(request):
 
         try:
             week = Week.objects.get(pk=week_id)
-            matchup = Matchup.objects.get(pk=matchup_id)
         except (Week.DoesNotExist, Matchup.DoesNotExist):
             return HttpResponseBadRequest("Invalid week or matchup.")
 
@@ -430,6 +433,7 @@ def add_scores(request):
             'week': week,  # needed for hidden week_id in template
         })
 
+
 def add_golfer(request):
     if request.method == 'POST':
         form = GolferForm(request.POST)
@@ -455,6 +459,7 @@ def add_golfer(request):
         form = GolferForm()
     
     return render(request, 'add_golfer.html', {'form': form})
+
 
 def add_sub(request):
     current_season = Season.objects.order_by('-year').first()
@@ -519,6 +524,7 @@ def add_sub(request):
     
     return render(request, 'add_sub.html', {'form': form})
 
+
 def enter_schedule(request):
     weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
     teams = Team.objects.filter(season=Season.objects.order_by('-year').first())
@@ -564,6 +570,7 @@ def enter_schedule(request):
         form = ScheduleForm(weeks, teams)
 
     return render(request, 'enter_schedule.html', {'form': form})
+
 
 def golfer_stats(request, golfer_id, year=None):
     import json
@@ -1427,7 +1434,6 @@ def golfer_stats(request, golfer_id, year=None):
     return render(request, 'golfer_stats.html', context)
 
 
-
 def sub_stats(request, golfer_id=None, year=None):
     """
     View for sub statistics - shows stats for any golfer who has subbed in the season
@@ -1919,8 +1925,6 @@ def sub_stats(request, golfer_id=None, year=None):
     return render(request, 'sub_stats.html', context)
 
 
-
-
 def scorecards(request, week, year=None):
     """
     Unified scorecards view that handles both current season and past seasons.
@@ -2131,7 +2135,6 @@ def scorecards(request, week, year=None):
     return render(request, 'scorecards.html', context)
 
 
-
 def set_rainout(request):
     if 'select_week' in request.POST:
         selection_form = WeekSelectionForm(request.POST)
@@ -2146,6 +2149,7 @@ def set_rainout(request):
     return render(request, 'set_rainout.html', {
         'selection_form': selection_form,
     })
+
 
 def create_team(request):
     
@@ -2174,7 +2178,6 @@ def create_team(request):
     
     return render(request, 'create_team.html', {'form': form})
 
-HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
 
 def set_holes(request):
     if request.method == 'POST':
@@ -2232,6 +2235,7 @@ def set_holes(request):
         season_form = SeasonSelectForm()
         formset = HoleFormSet()
     return render(request, 'set_holes.html', {'season_form': season_form, 'formset': formset})
+
 
 def generate_rounds_page(request):
     """View for generating rounds for a specific week"""
@@ -2326,6 +2330,7 @@ def generate_rounds_page(request):
     }
     
     return render(request, 'generate_rounds.html', context)
+
 
 def league_stats(request, year=None):
     """
@@ -2758,6 +2763,7 @@ def league_stats(request, year=None):
     
     return render(request, 'league_stats.html', context)
 
+
 def calculate_skin_winners(week):
     """
     Automatically calculate skin winners based on gross scores.
@@ -2818,6 +2824,7 @@ def calculate_skin_winners(week):
             })
     
     return skin_winners
+
 
 def manage_skins(request):
     """View for managing skins entries and automatically calculating winners"""
@@ -2897,6 +2904,7 @@ def manage_skins(request):
         'selected_week': selected_week,
     }
     return render(request, 'manage_skins.html', context)
+
 
 def manage_games(request):
     """View for managing game entries and winners"""
@@ -3030,6 +3038,7 @@ def manage_games(request):
     }
     return render(request, 'manage_games.html', context)
 
+
 def blank_scorecards(request):
     """View for blank scorecards for the next week to be played"""
     
@@ -3145,6 +3154,7 @@ def blank_scorecards(request):
         "game_for_week": game_for_week,
     })
 
+
 def _build_blank_golfer_data(golfer_matchup, holes, week):
     """Helper function to build blank golfer data for scorecard"""
     
@@ -3194,6 +3204,7 @@ def _build_blank_golfer_data(golfer_matchup, holes, week):
         'round_points': '',
         'total_points': '',
     }
+
 
 def _build_golfer_data(golfer_matchup, rounds, holes, week):
     """Helper function to build golfer data for scorecard"""

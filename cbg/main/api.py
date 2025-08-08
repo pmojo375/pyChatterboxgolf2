@@ -44,6 +44,7 @@ def get_playing_golfers(request, week_id):
     
     return JsonResponse({'golfers': playing_golfers})
 
+
 def get_games_for_week(request, week_id):
     """API endpoint to get all games for a specific week"""
     week = get_object_or_404(Week, pk=week_id)
@@ -61,6 +62,7 @@ def get_games_for_week(request, week_id):
     
     return JsonResponse({'games': games_data})
 
+
 def get_games_by_week(request, week_id):
     """API endpoint to get games for a specific week (for game creation)"""
     week = get_object_or_404(Week, pk=week_id)
@@ -75,6 +77,7 @@ def get_games_by_week(request, week_id):
         })
     
     return JsonResponse({'games': games_data})
+
 
 def get_game_entries(request, week_id, game_id):
     """API endpoint to get all entries for a specific game in a specific week"""
@@ -92,6 +95,7 @@ def get_game_entries(request, week_id, game_id):
         })
     
     return JsonResponse({'entries': entries_data})
+
 
 def get_matchup_data(request, matchup_id):
     matchup = get_object_or_404(Matchup, pk=matchup_id)
