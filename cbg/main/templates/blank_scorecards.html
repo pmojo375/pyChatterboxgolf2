@@ -396,7 +396,7 @@
           <strong>Senior Tee Holes:</strong> Yards with underline indicate holes where seniors can play up
         </div>
         <div class="website-reminder">
-          Visit the website for live stats, standings, schedules, and subs: <strong>www.chatterboxgolf.com</strong>
+            Visit the website for live stats, standings, schedules, and subs: <strong>www.chatterboxgolf.com</strong>
         </div>
       </div>
       
@@ -581,6 +581,11 @@
           <td class="total">{{ card.team2_golferB.total_points }}</td>
         </tr>
       </table>
+      {% if game_for_week %}
+      <div class="card-footer-info" style="font-size: 11px; margin-top: 6px; color: #333;">
+        Week {{ week_number }} Game: <strong>{{ game_for_week.name }}</strong>
+      </div>
+      {% endif %}
     </div>
     <br>
     {% endfor %}

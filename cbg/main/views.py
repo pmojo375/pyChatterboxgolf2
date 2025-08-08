@@ -3131,6 +3131,9 @@ def blank_scorecards(request):
     # Define senior tee holes (holes where seniors can play up)
     senior_tee_holes = {1, 2, 4, 6, 9, 10, 12, 14, 17}
     
+    # Get the week's game (if any) to show inline in the info box
+    game_for_week = Game.objects.filter(week=week).first()
+    
     return render(request, 'blank_scorecards.html', {
         "week_number": week.number,
         "holes": holes,
@@ -3140,6 +3143,7 @@ def blank_scorecards(request):
         "week": week,
         "hole_pars": [hole.par for hole in holes],
         "senior_tee_holes": senior_tee_holes,
+        "game_for_week": game_for_week,
     })
 
 def _build_blank_golfer_data(golfer_matchup, holes, week):
