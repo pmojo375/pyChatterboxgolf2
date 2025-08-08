@@ -319,8 +319,8 @@ def main(request, year=None):
     next_tuesday = today + timedelta(days=days_ahead)
     next_tuesday_date = next_tuesday.strftime('%Y-%m-%d')
     
-    # Get all available seasons for the season selector
-    all_seasons = Season.objects.all().order_by('-year')
+    # Get seasons for the season selector, excluding the currently displayed season
+    season_options = Season.objects.exclude(pk=season.pk).order_by('-year')
     
     # Get the actual current season (most recent) for comparison
     actual_current_season = get_current_season()
@@ -346,7 +346,7 @@ def main(request, year=None):
         'next_tuesday_date': next_tuesday_date,
         'season': season,
         'year': year,
-        'all_seasons': all_seasons,
+        'season_options': season_options,
         'current_season': actual_current_season,
     }
     
