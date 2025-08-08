@@ -197,6 +197,21 @@
     </div>
     {% endif %}
 
+    {% if charts.hole_consistency %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Per-Hole Consistency (Lower is better)</h5>
+                </div>
+                <div class="card-body">
+                    <div id="hole-consistency-chart"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Scoring Breakdown and Consistency -->
     <div class="row mb-5">
         <div class="col-lg-4 mb-4">
@@ -591,6 +606,13 @@
     });
     {% endif %}
     
+    {% if charts.hole_consistency %}
+    Plotly.newPlot('hole-consistency-chart', {{ charts.hole_consistency|safe }}, {}, {
+        responsive: true,
+        displayModeBar: false
+    });
+    {% endif %}
+    
     // Make charts responsive to window resize
     window.addEventListener('resize', function() {
         {% if charts.handicap %}
@@ -620,6 +642,12 @@
         {% if charts.hole_by_hole %}
         Plotly.relayout('hole-by-hole-chart', {
             'width': document.getElementById('hole-by-hole-chart').offsetWidth
+        });
+        {% endif %}
+        
+        {% if charts.hole_consistency %}
+        Plotly.relayout('hole-consistency-chart', {
+            'width': document.getElementById('hole-consistency-chart').offsetWidth
         });
         {% endif %}
     });

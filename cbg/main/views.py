@@ -1100,6 +1100,127 @@ def golfer_stats(request, golfer_id, year=None):
             }
         }
         charts['hole_by_hole'] = json.dumps(hole_chart)
+        
+        # Build per-hole consistency (std dev of score vs par) chart
+        consistency_x = []
+        consistency_y = []
+        consistency_colors = []
+        consistency_custom = []
+        
+        for hole_num in played_hole_numbers:
+            stats = hole_stats.get(hole_num)
+            if not stats or not stats['scores']:
+                continue
+            scores_list = stats['scores']
+            par = stats['par']
+            rel_scores = [s - par for s in scores_list]
+            if len(rel_scores) >= 2:
+                mean_rel = sum(rel_scores) / len(rel_scores)
+                variance = sum((s - mean_rel) ** 2 for s in rel_scores) / len(rel_scores)
+                std_dev = round(variance ** 0.5, 2)
+            else:
+                std_dev = None
+            score_range = round(max(rel_scores) - min(rel_scores), 2) if rel_scores else None
+            
+            consistency_x.append(hole_num)
+            consistency_y.append(std_dev if std_dev is not None else 0)
+            if std_dev is None:
+                consistency_colors.append('#BBBBBB')
+            elif std_dev <= 0.5:
+                consistency_colors.append('#2ca02c')
+            elif std_dev <= 1.0:
+                consistency_colors.append('#ff7f0e')
+            else:
+                consistency_colors.append('#d62728')
+            consistency_custom.append([len(rel_scores), score_range, stats['avg_vs_par']])
+        
+        if consistency_x:
+            hole_consistency_chart = {
+                'data': [{
+                    'x': consistency_x,
+                    'y': consistency_y,
+                    'type': 'bar',
+                    'name': 'Std Dev (Score vs Par)',
+                    'marker': {
+                        'color': consistency_colors
+                    },
+                    'customdata': consistency_custom,
+                    'hovertemplate': 'Hole: %{x}' +
+                                     '<br>Std Dev: %{y:.2f}' +
+                                     '<br>Rounds: %{customdata[0]}' +
+                                     '<br>Range: %{customdata[1]:+.2f}' +
+                                     '<br>Avg vs Par: %{customdata[2]:+.2f}<extra></extra>'
+                }],
+                'layout': {
+                    'title': 'Per-Hole Consistency (Lower = More Consistent)',
+                    'xaxis': {'title': 'Hole Number'},
+                    'yaxis': {'title': 'Std Dev of (Score - Par)'},
+                    'height': 400,
+                    'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                }
+            }
+            charts['hole_consistency'] = json.dumps(hole_consistency_chart)
+        
+        # Build per-hole consistency (std dev of score vs par) chart
+        consistency_x = []
+        consistency_y = []
+        consistency_colors = []
+        consistency_custom = []  # rounds, range, avg_vs_par
+        
+        for hole_num in played_hole_numbers:
+            stats = hole_stats.get(hole_num)
+            if not stats or not stats['scores']:
+                continue
+            scores_list = stats['scores']
+            par = stats['par']
+            rel_scores = [s - par for s in scores_list]
+            if len(rel_scores) >= 2:
+                mean_rel = sum(rel_scores) / len(rel_scores)
+                variance = sum((s - mean_rel) ** 2 for s in rel_scores) / len(rel_scores)
+                std_dev = round(variance ** 0.5, 2)
+            else:
+                std_dev = None
+            score_range = round(max(rel_scores) - min(rel_scores), 2) if rel_scores else None
+            
+            consistency_x.append(hole_num)
+            consistency_y.append(std_dev if std_dev is not None else 0)
+            # Color mapping: greener for lower std dev, red for higher
+            if std_dev is None:
+                consistency_colors.append('#BBBBBB')
+            elif std_dev <= 0.5:
+                consistency_colors.append('#2ca02c')
+            elif std_dev <= 1.0:
+                consistency_colors.append('#ff7f0e')
+            else:
+                consistency_colors.append('#d62728')
+            consistency_custom.append([len(rel_scores), score_range, stats['avg_vs_par']])
+        
+        if consistency_x:
+            hole_consistency_chart = {
+                'data': [{
+                    'x': consistency_x,
+                    'y': consistency_y,
+                    'type': 'bar',
+                    'name': 'Std Dev (Score vs Par)',
+                    'marker': {
+                        'color': consistency_colors
+                    },
+                    'customdata': consistency_custom,
+                    'hovertemplate': 'Hole: %{x}' +
+                                     '<br>Std Dev: %{y:.2f}' +
+                                     '<br>Rounds: %{customdata[0]}' +
+                                     '<br>Range: %{customdata[1]:+.2f}' +
+                                     '<br>Avg vs Par: %{customdata[2]:+.2f}<extra></extra>'
+                }],
+                'layout': {
+                    'title': 'Per-Hole Consistency (Lower = More Consistent)',
+                    'xaxis': {'title': 'Hole Number'},
+                    'yaxis': {'title': 'Std Dev of (Score - Par)'},
+                    'height': 400,
+                    'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                }
+            }
+            charts['hole_consistency'] = json.dumps(hole_consistency_chart)
     
     # Create yearly hole-by-hole heat map
     if yearly_hole_stats and len(yearly_hole_stats) > 1:
