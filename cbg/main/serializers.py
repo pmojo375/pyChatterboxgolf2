@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Golfer, Sub, Matchup, GolferMatchup, Handicap, Week, Team, Score, Hole, Season, Points, Round
+from .models import Sub, GolferMatchup, Handicap
 from main.helper import *
 
 class GolferSerializer(serializers.ModelSerializer):

@@ -1,5 +1,4 @@
-from main.models import Season, Week, Team
-from django.utils import timezone
+from main.models import Week, Team
 from datetime import timedelta
 
 

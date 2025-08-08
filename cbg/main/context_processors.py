@@ -1,5 +1,4 @@
 from main.models import Week, Season
-from django.db.models import Q
 
 def weeks_context(request):
     """Context processor to make weeks and golfers available to all templates"""

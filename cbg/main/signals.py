@@ -1,9 +1,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.db import transaction
-from main.models import Score, GolferMatchup, Sub, Team, Matchup, Week
-from main.helper import generate_golfer_matchups, calculate_and_save_handicaps_for_season, get_week, process_week
-from main.helper import get_hcp
+from main.models import Score, GolferMatchup, Sub, Team, Matchup
 from main.tasks import process_week_async, generate_matchups_async
 
 @receiver(post_save, sender=Score)

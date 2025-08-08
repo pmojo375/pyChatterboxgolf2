@@ -9,7 +9,6 @@ from django.forms import formset_factory
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from main.models import Team, Score, Sub, Week
 from django.urls import reverse
-from datetime import date
 
 def get_first_half_standings(season):
     """

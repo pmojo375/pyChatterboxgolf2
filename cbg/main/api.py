@@ -2,7 +2,6 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from main.models import GolferMatchup, Matchup, Sub, Week, Team, Game, GameEntry, SkinEntry
-from main.serializers import GolferSerializer
 from main.helper import get_absent_team_from_sub
 
 def get_playing_golfers(request, week_id):

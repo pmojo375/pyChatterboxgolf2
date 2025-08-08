@@ -1,6 +1,6 @@
 from celery import shared_task
-from main.models import GolferMatchup, Score, Golfer, Matchup, Week, Season, Team, Sub
-from main.helper import get_sub, generate_golfer_matchups, process_week, calculate_and_save_handicaps_for_season, generate_rounds, generate_round
+from main.models import GolferMatchup, Score, Matchup, Week, Season, Team, Sub
+from main.helper import generate_golfer_matchups, process_week, calculate_and_save_handicaps_for_season, generate_rounds, generate_round
 import logging
 
 logger = logging.getLogger(__name__)

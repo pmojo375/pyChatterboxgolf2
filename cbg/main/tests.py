@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.db.models import Sum
 from django.utils import timezone
 from main.models import *
-from main.helper import get_current_season, get_last_week, get_next_week, get_week, get_golfer_points, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_rounds
+from main.helper import get_current_season, get_last_week, get_next_week, get_golfer_points, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_rounds
 import random
 from django.urls import reverse
 
