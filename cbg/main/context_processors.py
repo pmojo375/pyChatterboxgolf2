@@ -26,6 +26,13 @@ def weeks_context(request):
             # No year specified, use latest season
             current_season = Season.objects.latest('year')
         
+        # Determine if the selected season is the current (latest) season
+        try:
+            latest_season = Season.objects.latest('year')
+            is_current_season = (current_season.year == latest_season.year)
+        except Season.DoesNotExist:
+            is_current_season = False
+        
         # Get all weeks for the current season that have been fully entered
         # A week is considered "fully entered" if it has scores
         from main.models import GolferMatchup, Score
@@ -68,6 +75,7 @@ def weeks_context(request):
             'sub_golfer_list': sub_golfer_list,
             'current_year': year,  # Only set if year is in URL, not for current season
             'all_seasons': all_seasons,
+            'is_current_season': is_current_season,
         }
     except Season.DoesNotExist:
         # No season exists, so no golfers to show
@@ -79,4 +87,5 @@ def weeks_context(request):
             'golfer_list': golfer_list,
             'sub_golfer_list': [],
             'current_year': None,
+            'is_current_season': False,
         } 
