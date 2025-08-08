@@ -309,11 +309,12 @@ def main(request, year=None):
         second_half_standings = get_second_half_standings(season)
         full_standings = get_full_standings(season)
     
-    # Calculate the next Tuesday for weather forecast (always from today, regardless of database)
+    # Calculate the next Tuesday for weather forecast (use today if it's Tuesday)
     from datetime import timedelta, date
     today = date.today()  # Use timezone-naive date for consistent calculations
     days_ahead = 1 - today.weekday()  # Tuesday is weekday 1
-    if days_ahead <= 0:  # Target day already happened this week
+    # If today is Tuesday, use today; otherwise roll forward to the next Tuesday
+    if days_ahead < 0:
         days_ahead += 7
     next_tuesday = today + timedelta(days=days_ahead)
     next_tuesday_date = next_tuesday.strftime('%Y-%m-%d')
