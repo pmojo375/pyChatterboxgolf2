@@ -221,6 +221,16 @@
         -webkit-print-color-adjust: exact;
         color-adjust: exact;
     }
+    /* Show card footer info in print */
+    .card-footer-info {
+        display: block !important;
+        margin-top: 6px;
+        width: 95% !important; /* match scorecard width in print */
+        max-width: 800px !important; /* match scorecard max-width in print */
+        font-size: 11px;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
 }
 
 /* Card header info for print */
@@ -232,6 +242,11 @@
     background-color: #f8f9fa;
     font-size: 12px;
     line-height: 1.4;
+}
+
+/* Card footer info for print (hidden by default) */
+.card-footer-info {
+    display: none; /* Hidden by default, shown only in print */
 }
 
 .card-header-info .stroke-info {
