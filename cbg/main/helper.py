@@ -1012,13 +1012,16 @@ def process_week(week):
     # generate the handicaps for the next week
     calculate_and_save_handicaps_for_season(week.season)
 
-    generate_golfer_matchups(week)
+    # get all weeks before this week including this week
+    weeks = Week.objects.filter(season=week.season, number__lte=week.number)
+    for week in weeks:
+        generate_golfer_matchups(week)
     
-    # get the golfer matchups for the week
-    golfer_matchups = GolferMatchup.objects.filter(week=week)
+        # get the golfer matchups for the week
+        golfer_matchups = GolferMatchup.objects.filter(week=week)
 
-    for golfer_matchup in golfer_matchups:
-        generate_round(golfer_matchup)
+        for golfer_matchup in golfer_matchups:
+            generate_round(golfer_matchup)
         
         
 def get_playing_golfers_for_week(week):
