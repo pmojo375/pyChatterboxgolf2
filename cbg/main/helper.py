@@ -1013,7 +1013,7 @@ def process_week(week):
     calculate_and_save_handicaps_for_season(week.season)
 
     # get all weeks before this week including this week
-    weeks = Week.objects.filter(season=week.season, number__lte=week.number)
+    weeks = Week.objects.filter(season=week.season, number__lte=week.number, rained_out=False)
     for week in weeks:
         generate_golfer_matchups(week)
     
