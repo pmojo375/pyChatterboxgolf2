@@ -1,5 +1,5 @@
 from main.models import *
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.utils import timezone
 import random
 import math
@@ -329,6 +329,16 @@ def get_back_holes(season):
     return Hole.objects.filter(season=season, number__in=hole_numbers).order_by('number')
 
 
+def get_nine_par_totals(season):
+    """
+    Return total par for front and back nines for a season using Hole data.
+    Falls back to 36 if par data is missing.
+    """
+    front_par_total = get_front_holes(season).aggregate(Sum('par'))['par__sum'] or 36
+    back_par_total = get_back_holes(season).aggregate(Sum('par'))['par__sum'] or 36
+    return {'front': front_par_total, 'back': back_par_total}
+
+
 def get_golfer_points(golfer_matchup, **kwargs):
     """
     Calculate the points for a golfer in a matchup based on their scores, handicaps, and the week's holes.
@@ -551,53 +561,64 @@ def get_golfer_points(golfer_matchup, **kwargs):
 
 def calculate_handicap(golfer, season, week):
     """
-    Calculates the handicap for a given golfer for a given week in a given season.
-
-    Parameters:
-        golfer (Golfer): A Golfer instance representing the golfer for whom the handicap is being calculated.
-        season (Season): A Season instance representing the season in which the handicap is being calculated.
-        week (Week): A Week instance representing the week for which the handicap is being calculated.
-
-    Returns:
-        float: The calculated handicap for the given golfer, season, and week.
-
+    Calculate handicap using weekly totals and dynamic par, based on the league rules:
+    - Use up to the last 10 prior complete weeks (same season, before target week).
+    - Weekly value = (weekly gross total − par for that nine).
+    - Handicap = 0.8 × average of those weekly values.
+    - If golfer is a full-time league member and has at least 5 weeks, drop the best and worst weeks.
+    - Subs do not drop any rounds.
+    - Only count weeks with a complete 9-hole scorecard.
     """
 
-    # Get the 10 most recent weeks in which the golfer played
-    subquery = Score.objects.filter(golfer=golfer, week__season=season, week__date__lt=week.date).order_by('-week__date').values('week').distinct()[:10]
+    # Determine if golfer is a full-time member in this season
+    is_full_time_member = Golfer.objects.filter(id=golfer.id, team__season=season).exists()
 
-    # Get all the scores for the golfer in those 10 weeks
-    scores = Score.objects.filter(golfer=golfer, week__in=subquery).order_by('-week__date')
+    # Aggregate weekly totals for the golfer prior to the given week (same season)
+    weekly_qs = (
+        Score.objects
+        .filter(golfer=golfer, week__season=season, week__date__lt=week.date)
+        .values('week', 'week__is_front', 'week__date')
+        .annotate(week_total=Sum('score'), num_holes=Count('id'))
+        .order_by('-week__date')
+    )
 
-    # gets the golfers on the teams for the season (exludes subs unless sub is a team member)
-    normal_season_golfers = Golfer.objects.filter(team__season=season)
-
-    # If there are scores for the golfer in the 10 most recent weeks, calculate the handicap
-    if len(scores) != 0:
-        # Group the scores by week
-        scores_by_week = {}
-        for score in scores:
-            if score.week not in scores_by_week:
-                scores_by_week[score.week] = []
-            scores_by_week[score.week].append(score.score)
-
-        # Sort the weeks by the sum of scores for each week
-        weeks = sorted(scores_by_week.keys(), key=lambda week: sum(scores_by_week[week]))
-
-        # Compute the handicap based on the number of weeks and whether to drop any
-        num_weeks = len(weeks)
-        if num_weeks < 5 or not golfer in normal_season_golfers:
-            # If there are fewer than 5 weeks, use all the scores and subtract 36 (par) from each score
-            handicap = (sum(score for scores in scores_by_week.values() for score in scores) / num_weeks - 36) * 0.8
-        elif golfer in normal_season_golfers:
-            # If there are 5 or more weeks, drop the highest- and lowest-scoring weeks and use the remaining scores
-            drop_weeks = [weeks[0], weeks[-1]]
-            scores = [score for week in weeks if week not in drop_weeks for score in scores_by_week[week]]
-            handicap = (sum(scores) / (num_weeks - len(drop_weeks)) - 36) * 0.8
-
-        return round(handicap, 5)
-    else:
+    if not weekly_qs.exists():
         return 0
+
+    # Only consider complete 9-hole weeks and take up to the last 10
+    complete_weeks = [
+        {
+            'week_id': row['week'],
+            'is_front': row['week__is_front'],
+            'date': row['week__date'],
+            'week_total': row['week_total'],
+        }
+        for row in weekly_qs if row['num_holes'] >= 9
+    ][:10]
+
+    if not complete_weeks:
+        return 0
+
+    # Get dynamic par totals for the season
+    par_totals = get_nine_par_totals(season)
+
+    # Build weekly deltas (gross - par) per week
+    weekly_deltas = []
+    for row in complete_weeks:
+        par_for_nine = par_totals['front'] if row['is_front'] else par_totals['back']
+        weekly_deltas.append(row['week_total'] - par_for_nine)
+
+    # Apply drop rule when applicable (full-time member and at least 5 weeks)
+    if is_full_time_member and len(weekly_deltas) >= 5:
+        # Drop best (lowest delta) and worst (highest delta)
+        deltas_sorted = sorted(weekly_deltas)
+        deltas_kept = deltas_sorted[1:-1]
+        avg_delta = sum(deltas_kept) / len(deltas_kept)
+    else:
+        avg_delta = sum(weekly_deltas) / len(weekly_deltas)
+
+    handicap_value = avg_delta * 0.8
+    return round(handicap_value, 5)
 
 
 def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
