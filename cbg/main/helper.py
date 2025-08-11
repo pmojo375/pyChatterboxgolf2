@@ -1,8 +1,32 @@
 from main.models import *
-from django.db.models import Sum, Count
+from django.db.models import Sum, Count, Q
 from django.utils import timezone
 import random
 import math
+
+
+# Handicap rulesets (hardcoded defaults; structure-ready for future model-driven rules)
+DEFAULT_MEMBER_HCP_RULES = {
+    'max_weeks': 10,            # cap qualifying rounds considered
+    'required_holes': 9,        # must have at least this many holes to count
+    'establish_after_n_weeks': 3,  # include current until establishment; then prior-only
+    'drop_best': 1,             # number of best (lowest delta) rounds to drop when eligible
+    'drop_worst': 1,            # number of worst (highest delta) rounds to drop when eligible
+    'drop_start_threshold': 5,  # start dropping only when at least this many rounds exist
+    'adjust_factor': 0.8,       # 80% factor
+    'rounding_precision': 5,    # decimals to round final handicap
+}
+
+DEFAULT_SUB_HCP_RULES = {
+    'max_weeks': 10,
+    'required_holes': 9,
+    'establish_after_n_weeks': 1,  # subs establish after first round
+    'drop_best': 0,
+    'drop_worst': 0,
+    'drop_start_threshold': 0,
+    'adjust_factor': 0.8,
+    'rounding_precision': 5,
+}
 
 def conventional_round(value):
     """
@@ -559,69 +583,89 @@ def get_golfer_points(golfer_matchup, **kwargs):
         return points
 
 
-def calculate_handicap(golfer, season, week):
+def calculate_handicap(golfer, season, week, ruleset_member=None, ruleset_sub=None):
     """
-    Calculate handicap using weekly totals and dynamic par, based on the league rules:
-    - Use up to the last 10 prior complete weeks (same season, before target week).
-    - Weekly value = (weekly gross total − par for that nine).
-    - Handicap = 0.8 × average of those weekly values.
-    - If golfer is a full-time league member and has at least 5 weeks, drop the best and worst weeks.
-    - Subs do not drop any rounds.
-    - Only count weeks with a complete 9-hole scorecard.
+    Calculate handicap using weekly totals and dynamic par, based on configurable rulesets.
+    This function is stateless and prior-only: it considers only complete rounds strictly
+    before the target week. Establishment/backfill behavior is handled by the season-level
+    driver function, not here.
     """
 
-    # Determine if golfer is a full-time member in this season
+    # Resolve rulesets (members vs subs)
     is_full_time_member = Golfer.objects.filter(id=golfer.id, team__season=season).exists()
+    member_rules = ruleset_member or DEFAULT_MEMBER_HCP_RULES
+    sub_rules = ruleset_sub or DEFAULT_SUB_HCP_RULES
+    rules = member_rules if is_full_time_member else sub_rules
 
-    # Aggregate weekly totals for the golfer prior to the given week (same season)
-    weekly_qs = (
+    # Build base queryset for prior weeks only (strictly before target week)
+    base_filter = Q(golfer=golfer, week__season=season, week__date__lt=week.date)
+
+    weekly_qs_all = (
         Score.objects
-        .filter(golfer=golfer, week__season=season, week__date__lt=week.date)
+        .filter(base_filter)
         .values('week', 'week__is_front', 'week__date')
         .annotate(week_total=Sum('score'), num_holes=Count('id'))
         .order_by('-week__date')
     )
 
-    if not weekly_qs.exists():
+    if not weekly_qs_all.exists():
         return 0
 
-    # Only consider complete 9-hole weeks and take up to the last 10
-    complete_weeks = [
+    # Only consider complete prior weeks
+    complete_weeks_all = [
         {
             'week_id': row['week'],
             'is_front': row['week__is_front'],
             'date': row['week__date'],
             'week_total': row['week_total'],
         }
-        for row in weekly_qs if row['num_holes'] >= 9
-    ][:10]
+        for row in weekly_qs_all if row['num_holes'] >= rules.get('required_holes', 9)
+    ]
 
-    if not complete_weeks:
+    if not complete_weeks_all:
         return 0
 
-    # Get dynamic par totals for the season
+    # Use most recent up to max_weeks
+    weeks_to_use_sorted = sorted(complete_weeks_all, key=lambda x: x['date'], reverse=True)
+    weeks_to_use_limited = weeks_to_use_sorted[: rules.get('max_weeks', 10)]
+
+    # Get dynamic par totals for the season (always on)
     par_totals = get_nine_par_totals(season)
 
     # Build weekly deltas (gross - par) per week
     weekly_deltas = []
-    for row in complete_weeks:
+    for row in weeks_to_use_limited:
         par_for_nine = par_totals['front'] if row['is_front'] else par_totals['back']
         weekly_deltas.append(row['week_total'] - par_for_nine)
 
     # Apply drop rule when applicable (full-time member and at least 5 weeks)
-    if is_full_time_member and len(weekly_deltas) >= 5:
-        # Drop best (lowest delta) and worst (highest delta)
+    drop_best = rules.get('drop_best', 0)
+    drop_worst = rules.get('drop_worst', 0)
+    drop_threshold = rules.get('drop_start_threshold', 0)
+
+    if len(weekly_deltas) >= drop_threshold and (drop_best > 0 or drop_worst > 0):
         deltas_sorted = sorted(weekly_deltas)
-        deltas_kept = deltas_sorted[1:-1]
-        avg_delta = sum(deltas_kept) / len(deltas_kept)
+        start = min(drop_best, len(deltas_sorted))
+        end = len(deltas_sorted) - min(drop_worst, len(deltas_sorted) - start)
+        deltas_kept = deltas_sorted[start:end] if start < end else []
+        if deltas_kept:
+            avg_delta = sum(deltas_kept) / len(deltas_kept)
+        else:
+            avg_delta = sum(weekly_deltas) / len(weekly_deltas)
     else:
         avg_delta = sum(weekly_deltas) / len(weekly_deltas)
 
-    handicap_value = avg_delta * 0.8
-    return round(handicap_value, 5)
+    handicap_value = avg_delta * rules.get('adjust_factor', 0.8)
+    return round(handicap_value, rules.get('rounding_precision', 5))
 
 
-def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
+def calculate_and_save_handicaps_for_season(
+    season,
+    weeks=None,
+    golfers=None,
+    ruleset_member: dict | None = None,
+    ruleset_sub: dict | None = None,
+):
     """
     Calculate and save handicaps for a given season.
 
@@ -647,65 +691,70 @@ def calculate_and_save_handicaps_for_season(season, weeks=None, golfers=None):
 
     # Loop through each golfer and each week in the season
     for golfer in golfers:
+        member_rules = ruleset_member or DEFAULT_MEMBER_HCP_RULES
+        sub_rules = ruleset_sub or DEFAULT_SUB_HCP_RULES
+        is_member = Golfer.objects.filter(id=golfer.id, team__season=season).exists()
+        rules = member_rules if is_member else sub_rules
+        establish_after = rules.get('establish_after_n_weeks', 3)
+        adjust_factor = rules.get('adjust_factor', 0.8)
+        rounding_precision = rules.get('rounding_precision', 5)
+        required_holes = rules.get('required_holes', 9)
+        max_weeks = rules.get('max_weeks', 10)
+
+        # Track played, complete weeks for pre-establishment seeding/backfill
         weeks_played = 0
         weeks_played_list = []
-        backset_first_three = False
+
+        # Preload par totals once
+        par_totals = get_nine_par_totals(season)
+
         for week in weeks:
-            # Calculate the golfer's handicap for the week
-            handicap = calculate_handicap(golfer, season, week)
-            
-            if golfer_played(golfer, week):
-                weeks_played_list.append(week)
-                weeks_played += 1
+            # Calculate the golfer's handicap for the week using prior-only logic
+            handicap_prior_only = calculate_handicap(
+                golfer,
+                season,
+                week,
+                ruleset_member=member_rules,
+                ruleset_sub=sub_rules,
+            )
 
-            # Save the calculated handicap in the database if it doesn't exist
-            handicap_obj, created = Handicap.objects.get_or_create(golfer=golfer, week=week, defaults={'handicap': handicap})
-
-            # Update the handicap if it already exists but has a different value
-            if not created and handicap_obj.handicap != handicap:
-                handicap_obj.handicap = handicap
+            # Save or update the prior-only handicap for this week
+            handicap_obj, created = Handicap.objects.get_or_create(
+                golfer=golfer, week=week, defaults={'handicap': handicap_prior_only}
+            )
+            if not created and handicap_obj.handicap != handicap_prior_only:
+                handicap_obj.handicap = handicap_prior_only
                 handicap_obj.save()
 
-            # Update the first three weeks with the handicap calculated using the fourth week
-            if weeks_played == 4 and not backset_first_three and golfer in normal_season_golfers:
-                backset_first_three = True
-                first_three_weeks = weeks_played_list[:3]
-                for prev_week in first_three_weeks:
-                    try:
-                        handicap_obj = Handicap.objects.get(golfer=golfer, week=prev_week)
-                        handicap_obj.handicap = handicap
-                        handicap_obj.save()
-                    except Handicap.DoesNotExist:
-                        Handicap.objects.create(golfer=golfer, week=prev_week, handicap=handicap)   
-        if weeks_played < 4 and golfer in normal_season_golfers:
-            # If golfer didnt play 4 weeks yet, apply the handicap of their last round to the first 3 or less weeks of the season
-            most_recent_handicap = Handicap.objects.filter(golfer=golfer).order_by('-week__date').first()
-            for week in weeks_played_list:
-                try:
-                    handicap_obj = Handicap.objects.get(golfer=golfer, week=week)
-                    handicap_obj.handicap = most_recent_handicap.handicap
-                    handicap_obj.save()
-                except Handicap.DoesNotExist:
-                    Handicap.objects.create(golfer=golfer, week=week, handicap=most_recent_handicap.handicap)
-        if not golfer in normal_season_golfers and weeks_played > 0:
-            first_week = weeks_played_list[0]
-            if weeks_played == 1:
-                most_recent_handicap = Handicap.objects.filter(golfer=golfer, week__season=season).order_by('-week__date').first()
-                try:
-                    handicap_obj = Handicap.objects.get(golfer=golfer, week=first_week)
-                    handicap_obj.handicap = most_recent_handicap.handicap
-                    handicap_obj.save()
-                except Handicap.DoesNotExist:
-                    Handicap.objects.create(golfer=golfer, week=first_week, handicap=most_recent_handicap.handicap)  
-            else:
-                second_week = weeks_played_list[1]
-                second_week_handicap = Handicap.objects.filter(golfer=golfer, week=second_week).first()
-                try:
-                    handicap_obj = Handicap.objects.get(golfer=golfer, week=first_week)
-                    handicap_obj.handicap = second_week_handicap.handicap
-                    handicap_obj.save()
-                except Handicap.DoesNotExist:
-                    Handicap.objects.create(golfer=golfer, week=first_week, handicap=second_week_handicap.handicap)   
+            # If golfer played this week and it's a complete round, track it
+            if golfer_played(golfer, week):
+                hole_count = Score.objects.filter(golfer=golfer, week=week).count()
+                if hole_count >= required_holes:
+                    weeks_played_list.append(week)
+                    weeks_played += 1
+
+            # Pre-establishment behavior
+            if weeks_played > 0 and weeks_played <= establish_after:
+                # Compute seeded handicap from the played complete weeks including current
+                # Use up to max_weeks most recent played weeks
+                recent_weeks = sorted(weeks_played_list, key=lambda w: w.date, reverse=True)[:max_weeks]
+                deltas = []
+                for wk_used in recent_weeks:
+                    total = Score.objects.filter(golfer=golfer, week=wk_used).aggregate(Sum('score'))['score__sum']
+                    if total is None:
+                        continue
+                    par_for_nine = par_totals['front'] if wk_used.is_front else par_totals['back']
+                    deltas.append(total - par_for_nine)
+                if deltas:
+                    seeded_hcp = round((sum(deltas) / len(deltas)) * adjust_factor, rounding_precision)
+                    # Apply to all played weeks so far (retroactive backfill)
+                    for wk_used in weeks_played_list:
+                        prev_obj, _ = Handicap.objects.get_or_create(golfer=golfer, week=wk_used, defaults={'handicap': seeded_hcp})
+                        if prev_obj.handicap != seeded_hcp:
+                            prev_obj.handicap = seeded_hcp
+                            prev_obj.save()
+
+            # Post-establishment: do nothing special; prior-only applies to next week naturally
 
 
 def generate_golfer_matchups(week):
