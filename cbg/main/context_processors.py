@@ -3,6 +3,13 @@ from main.models import Week, Season
 def weeks_context(request):
     """Context processor to make weeks and golfers available to all templates"""
     try:
+        # Determine if request is coming from the production host
+        try:
+            host = request.get_host().lower()
+            is_production_host = host.endswith('chatterboxgolf.com')
+        except Exception:
+            is_production_host = False
+
         # Check if year is in the URL path
         path_parts = request.path.strip('/').split('/')
         year = None
@@ -76,6 +83,7 @@ def weeks_context(request):
             'current_year': year,  # Only set if year is in URL, not for current season
             'all_seasons': all_seasons,
             'is_current_season': is_current_season,
+            'is_production_host': is_production_host,
         }
     except Season.DoesNotExist:
         # No season exists, so no golfers to show
@@ -88,4 +96,5 @@ def weeks_context(request):
             'sub_golfer_list': [],
             'current_year': None,
             'is_current_season': False,
+            'is_production_host': False,
         } 
