@@ -9,6 +9,7 @@ from django.forms import formset_factory
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from main.models import Team, Score, Sub, Week
 from django.urls import reverse
+from django.utils import timezone
 
 HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
 
@@ -1405,6 +1406,94 @@ def golfer_stats(request, golfer_id, year=None):
         'games_entries': game_entries.count(),
     }
 
+    # Hypothetical skins earnings if the golfer didn't enter skins at all
+    hypothetical_skins = None
+    try:
+        golfer_skins_count = SkinEntry.objects.filter(golfer=golfer, week__season=season).count()
+    except Exception:
+        golfer_skins_count = 0
+
+    if golfer_skins_count == 0:
+        hypothetical_total = 0.0
+        hypothetical_details = []
+        hypothetical_skins_count = 0
+
+        # Consider only weeks that had skins entries to avoid degenerate single-entry cases
+        weeks_with_entries = (
+            Week.objects
+            .filter(season=season, rained_out=False, skinentry__isnull=False)
+            .distinct()
+            .order_by('number')
+        )
+
+        for wk in weeks_with_entries:
+            entries = list(SkinEntry.objects.filter(week=wk).select_related('golfer'))
+            participants = [e.golfer for e in entries]
+
+            if golfer not in participants:
+                participants.append(golfer)
+
+            # Determine the 9 holes for the week
+            if wk.is_front:
+                holes = list(Hole.objects.filter(season=season, number__in=range(1, 10)))
+            else:
+                holes = list(Hole.objects.filter(season=season, number__in=range(10, 19)))
+
+            # Fetch all scores for these participants for the week in one query
+            scores_qs = (
+                Score.objects
+                .filter(week=wk, golfer__in=participants)
+                .select_related('golfer', 'hole')
+            )
+
+            # Build fast lookup: (golfer_id, hole_number) -> score
+            score_map = {}
+            for s in scores_qs:
+                score_map[(s.golfer_id, s.hole.number)] = s.score
+
+            # Compute winners with injected golfer
+            winners_all = []  # list of (golfer_id, hole_number)
+            for hole in holes:
+                hole_scores = []
+                for p in participants:
+                    val = score_map.get((p.id, hole.number))
+                    if val is not None:
+                        hole_scores.append((p.id, val))
+                if not hole_scores:
+                    continue
+                min_score = min(v for _, v in hole_scores)
+                winners = [pid for (pid, v) in hole_scores if v == min_score]
+                if len(winners) == 1:
+                    winners_all.append((winners[0], hole.number))
+
+            if winners_all:
+                # Pot = $5 per entry with golfer injected if they weren't already in
+                pot_entries = len(participants)
+                total_pot = pot_entries * 5.0
+                per_skin_value = total_pot / len(winners_all) if len(winners_all) > 0 else 0.0
+
+                # Add only this golfer's skins to details and totals
+                for winner_id, hole_num in winners_all:
+                    if winner_id == golfer.id:
+                        hypothetical_skins_count += 1
+                        hypothetical_total += per_skin_value
+                        # Find this golfer's score for display
+                        g_score = score_map.get((golfer.id, hole_num))
+                        hypothetical_details.append({
+                            'week': wk.number,
+                            'date': timezone.localtime(wk.date).strftime('%m/%d') if hasattr(wk, 'date') else '',
+                            'hole': hole_num,
+                            'score': g_score,
+                            'payout': round(per_skin_value, 2),
+                        })
+
+        if hypothetical_skins_count > 0:
+            hypothetical_skins = {
+                'total': round(hypothetical_total, 2),
+                'skins': hypothetical_skins_count,
+                'details': hypothetical_details,
+            }
+
     # Calculate theoretical best and worst rounds
     theoretical_rounds = {}
     if all_scores.exists():
@@ -1550,6 +1639,7 @@ def golfer_stats(request, golfer_id, year=None):
         
         # Theoretical rounds
         'theoretical_rounds': theoretical_rounds,
+        'hypothetical_skins': hypothetical_skins,
     }
     
     return render(request, 'golfer_stats.html', context)
