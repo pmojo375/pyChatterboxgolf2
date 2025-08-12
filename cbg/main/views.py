@@ -2788,7 +2788,7 @@ def league_stats(request, year=None):
                 }
             })
     
-    # Hole-by-hole league averages
+    # Hole-by-hole league averages and scoring distribution counts
     hole_stats = {}
     for hole_num in range(1, 19):
         hole_scores = all_scores.filter(hole__number=hole_num)
@@ -2797,19 +2797,62 @@ def league_stats(request, year=None):
             best_score = hole_scores.aggregate(min=Min('score'))['min']
             worst_score = hole_scores.aggregate(max=Max('score'))['max']
             total_rounds = hole_scores.count()
-            
+
             # Get par for this hole
             hole_par = hole_scores.first().hole.par
-            
+
+            # Per-hole scoring distribution (exclude eagles per request)
+            eagle_count = 0
+            birdie_count = 0
+            par_count = 0
+            bogey_count = 0
+            double_count = 0
+            triple_count = 0
+            worse_count = 0
+            for score_obj in hole_scores:
+                relative_to_par = score_obj.score - hole_par
+                if relative_to_par <= -2:
+                    eagle_count += 1
+                elif relative_to_par == -1:
+                    birdie_count += 1
+                elif relative_to_par == 0:
+                    par_count += 1
+                elif relative_to_par == 1:
+                    bogey_count += 1
+                elif relative_to_par == 2:
+                    double_count += 1
+                elif relative_to_par == 3:
+                    triple_count += 1
+                elif relative_to_par > 3:
+                    worse_count += 1
+
             hole_stats[hole_num] = {
                 'avg_score': round(avg_score, 2),
                 'best_score': best_score,
                 'worst_score': worst_score,
                 'total_rounds': total_rounds,
                 'par': hole_par,
-                'avg_vs_par': round(avg_score - hole_par, 2)
+                'avg_vs_par': round(avg_score - hole_par, 2),
+                'eagle_count': eagle_count,
+                'birdie_count': birdie_count,
+                'par_count': par_count,
+                'bogey_count': bogey_count,
+                'double_count': double_count,
+                'triple_count': triple_count,
+                'worse_count': worse_count,
             }
     
+    # Compute per-column maxima for hole scoring distribution
+    hole_stats_column_max = {}
+    if hole_stats:
+        distribution_keys = [
+            'eagle_count', 'birdie_count', 'par_count',
+            'bogey_count', 'double_count', 'triple_count', 'worse_count'
+        ]
+        for key in distribution_keys:
+            values = [stats.get(key, 0) for stats in hole_stats.values()]
+            hole_stats_column_max[key] = max(values) if values else 0
+
     # Scoring breakdown (eagles, birdies, pars, etc.)
     scoring_breakdown = {'eagle': 0, 'birdie': 0, 'par': 0, 'bogey': 0, 'double': 0, 'triple': 0, 'worse': 0}
     total_holes = 0
@@ -3088,6 +3131,7 @@ def league_stats(request, year=None):
         'league_stats': league_stats,
         'weekly_leaders': weekly_leaders,
         'hole_stats': hole_stats,
+        'hole_stats_column_max': hole_stats_column_max,
         'scoring_breakdown': scoring_breakdown,
         'scoring_percentages': scoring_percentages,
         'gross_rankings': gross_rankings[:10],  # Top 10

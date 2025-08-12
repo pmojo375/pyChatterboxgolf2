@@ -327,8 +327,13 @@
                                     <th scope="col" class="text-center">Hole</th>
                                     <th scope="col" class="text-center">Avg Score</th>
                                     <th scope="col" class="text-center">vs Par</th>
-                                    <th scope="col" class="text-center">Best</th>
-                                    <th scope="col" class="text-center">Worst</th>
+                                    <th scope="col" class="text-center">Eagles</th>
+                                    <th scope="col" class="text-center">Birdies</th>
+                                    <th scope="col" class="text-center">Pars</th>
+                                    <th scope="col" class="text-center">Bogeys</th>
+                                    <th scope="col" class="text-center">Doubles</th>
+                                    <th scope="col" class="text-center">Triples</th>
+                                    <th scope="col" class="text-center">Worse</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -341,8 +346,13 @@
                                             {{ hole_stats|get_item:hole_num|get_item:'avg_vs_par' }}
                                         </span>
                                     </td>
-                                    <td class="text-center text-success fw-bold">{{ hole_stats|get_item:hole_num|get_item:'best_score' }}</td>
-                                    <td class="text-center text-danger fw-bold">{{ hole_stats|get_item:hole_num|get_item:'worst_score' }}</td>
+                                    <td class="text-center fw-bold {% if hole_stats|get_item:hole_num|get_item:'eagle_count' == hole_stats_column_max.eagle_count %}text-decoration-underline{% endif %}">{{ hole_stats|get_item:hole_num|get_item:'eagle_count' }}</td>
+                                    <td class="text-center text-success fw-bold {% if hole_stats|get_item:hole_num|get_item:'birdie_count' == hole_stats_column_max.birdie_count %}text-decoration-underline{% endif %}">{{ hole_stats|get_item:hole_num|get_item:'birdie_count' }}</td>
+                                    <td class="text-center fw-bold {% if hole_stats|get_item:hole_num|get_item:'par_count' == hole_stats_column_max.par_count %}text-decoration-underline{% endif %}">{{ hole_stats|get_item:hole_num|get_item:'par_count' }}</td>
+                                    <td class="text-center text-warning fw-bold {% if hole_stats|get_item:hole_num|get_item:'bogey_count' == hole_stats_column_max.bogey_count %}text-decoration-underline{% endif %}">{{ hole_stats|get_item:hole_num|get_item:'bogey_count' }}</td>
+                                    <td class="text-center text-danger fw-bold {% if hole_stats|get_item:hole_num|get_item:'double_count' == hole_stats_column_max.double_count %}text-decoration-underline{% endif %}">{{ hole_stats|get_item:hole_num|get_item:'double_count' }}</td>
+                                    <td class="text-center text-danger fw-bold {% if hole_stats|get_item:hole_num|get_item:'triple_count' == hole_stats_column_max.triple_count %}text-decoration-underline{% endif %}">{{ hole_stats|get_item:hole_num|get_item:'triple_count' }}</td>
+                                    <td class="text-center text-danger fw-bold {% if hole_stats|get_item:hole_num|get_item:'worse_count' == hole_stats_column_max.worse_count %}text-decoration-underline{% endif %}">{{ hole_stats|get_item:hole_num|get_item:'worse_count' }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
