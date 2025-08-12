@@ -855,9 +855,23 @@ def golfer_stats(request, golfer_id, year=None):
         ties = sum(1 for perf in performance_vs_opponent if perf['result'] == 'Tie')
         win_percentage = (wins / len(performance_vs_opponent) * 100) if performance_vs_opponent else 0
         
-        # Handicap trend
-        if len(handicap_data) > 1:
-            handicap_trend = handicap_data[-1]['handicap'] - handicap_data[0]['handicap']
+        # Handicap trend: compare starting handicap to the immediate next week's handicap
+        # after the last played week if it exists; otherwise use the last played week's handicap.
+        if handicap_data:
+            start_handicap_value = float(handicap_data[0]['handicap'])
+            # Determine effective end handicap value (next week's if available)
+            effective_end_hcp = float(handicap_data[-1]['handicap'])
+            try:
+                last_played_week_num = handicap_data[-1]['week']
+                next_week_obj = Week.objects.filter(season=season, number__gt=last_played_week_num).order_by('number').first()
+                if next_week_obj:
+                    next_hcp = Handicap.objects.filter(golfer=golfer, week=next_week_obj).first()
+                    if next_hcp:
+                        effective_end_hcp = float(next_hcp.handicap)
+            except Exception:
+                pass
+            # Only show a numeric trend if we effectively have two points (start and end may be the same week, but that's ok)
+            handicap_trend = effective_end_hcp - start_handicap_value
             handicap_trend_text = f"{handicap_trend:+.1f}" if handicap_trend != 0 else "No change"
             handicap_trend_positive = handicap_trend > 0
         else:
@@ -873,11 +887,28 @@ def golfer_stats(request, golfer_id, year=None):
     charts = {}
     
     if handicap_data:
-        # Handicap progression chart
+        # Extend handicap data with ONLY the immediate next week's handicap after last played week, if present
+        extended_handicap_data = list(handicap_data)
+        next_week_hcp_value = None
+        try:
+            last_played_week_num = extended_handicap_data[-1]['week']
+            next_week_obj = Week.objects.filter(season=season, number__gt=last_played_week_num).order_by('number').first()
+            if next_week_obj:
+                next_hcp = Handicap.objects.filter(golfer=golfer, week=next_week_obj).first()
+                if next_hcp:
+                    next_week_hcp_value = float(next_hcp.handicap)
+                    extended_handicap_data.append({
+                        'week': next_week_obj.number,
+                        'handicap': next_week_hcp_value
+                    })
+        except Exception:
+            next_week_hcp_value = None
+
+        # Handicap progression chart (using possibly extended data)
         handicap_chart = {
             'data': [{
-                'x': [d['week'] for d in handicap_data],
-                'y': [round(d['handicap'], 2) for d in handicap_data],
+                'x': [d['week'] for d in extended_handicap_data],
+                'y': [round(d['handicap'], 2) for d in extended_handicap_data],
                 'type': 'scatter',
                 'mode': 'lines+markers',
                 'name': 'Handicap',
@@ -1674,7 +1705,8 @@ def golfer_stats(request, golfer_id, year=None):
         # Handicap trend
         'handicap_trend': handicap_trend_text,
         'handicap_trend_positive': handicap_trend_positive,
-        'current_handicap': handicap_data[-1]['handicap'] if handicap_data else 'N/A',
+        # Current handicap should be the immediate next week's handicap if available; else last played week's
+        'current_handicap': (next_week_hcp_value if ('next_week_hcp_value' in locals() and next_week_hcp_value is not None) else (handicap_data[-1]['handicap'] if handicap_data else 'N/A')),
         'starting_handicap': handicap_data[0]['handicap'] if handicap_data else 'N/A',
         
         # Subs information
