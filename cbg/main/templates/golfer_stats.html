@@ -92,6 +92,50 @@
                         </div>
                     </div>
                     
+                    {% if actual_skins %}
+                    <hr>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-success">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                    <div>
+                                        <h5 class="mb-1">Skins Won</h5>
+                                        <small class="text-muted">Actual skins you won this season</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold">Total Won: ${{ actual_skins.total }}</div>
+                                        <small class="text-muted">Across {{ actual_skins.skins }} skin(s)</small>
+                                    </div>
+                                </div>
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center">Week</th>
+                                                <th class="text-center">Date</th>
+                                                <th class="text-center">Hole</th>
+                                                <th class="text-center">Your Score</th>
+                                                <th class="text-center">Payout</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for a in actual_skins.details %}
+                                            <tr>
+                                                <td class="text-center fw-bold">{{ a.week }}</td>
+                                                <td class="text-center">{{ a.date }}</td>
+                                                <td class="text-center">{{ a.hole }}</td>
+                                                <td class="text-center">{{ a.score }}</td>
+                                                <td class="text-center fw-bold text-success">${{ a.payout }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% if hypothetical_skins %}
                     <hr>
                     <div class="row mt-4">

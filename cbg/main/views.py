@@ -1355,23 +1355,41 @@ def golfer_stats(request, golfer_id, year=None):
     # Calculate wager statistics for this golfer
     wager_stats = {}
     
-    # Calculate skins money wagered and won
+    # Calculate skins money wagered and won, and build actual skins details
     skin_entries = SkinEntry.objects.filter(golfer=golfer, week__season=season)
     total_skins_wagered = skin_entries.count() * 5  # $5 per skin entry
     
-    # Calculate skins won by this golfer
     skins_won = 0
+    actual_skins = None
+    actual_skins_total = 0.0
+    actual_skins_count = 0
+    actual_skins_details = []
     for week in weeks:
         skin_winners = calculate_skin_winners(week)
         if skin_winners:
-            # Check if this golfer won any skins this week
             week_winners = [winner for winner in skin_winners if winner['golfer'].id == golfer.id]
             if week_winners:
-                # Calculate payout for this week
                 week_skin_entries = SkinEntry.objects.filter(week=week)
                 week_skins_pot = week_skin_entries.count() * 5
                 skin_winner_payout = week_skins_pot / len(skin_winners) if len(skin_winners) > 0 else 0
                 skins_won += skin_winner_payout * len(week_winners)
+                # Build details list (one row per skin won by this golfer)
+                for w in week_winners:
+                    actual_skins_count += 1
+                    actual_skins_total += skin_winner_payout
+                    actual_skins_details.append({
+                        'week': week.number,
+                        'date': timezone.localtime(week.date).strftime('%m/%d') if hasattr(week, 'date') else '',
+                        'hole': w['hole'],
+                        'score': w['score'],
+                        'payout': round(skin_winner_payout, 2),
+                    })
+    if actual_skins_count > 0:
+        actual_skins = {
+            'total': round(actual_skins_total, 2),
+            'skins': actual_skins_count,
+            'details': actual_skins_details,
+        }
     
     # Calculate games money wagered and won
     game_entries = GameEntry.objects.filter(golfer=golfer, week__season=season)
@@ -1640,6 +1658,7 @@ def golfer_stats(request, golfer_id, year=None):
         # Theoretical rounds
         'theoretical_rounds': theoretical_rounds,
         'hypothetical_skins': hypothetical_skins,
+        'actual_skins': actual_skins,
     }
     
     return render(request, 'golfer_stats.html', context)
