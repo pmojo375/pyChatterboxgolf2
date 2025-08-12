@@ -1041,12 +1041,8 @@
 /* Mobile-specific improvements for heatmap */
 @media (max-width: 768px) {
     #yearly-hole-heatmap {
-        min-height: 400px;
-        overflow-x: auto;
-    }
-    
-    .js-plotly-plot .plotly .heatmap {
-        min-width: 600px;
+        min-height: 420px;
+        width: 100%; /* fill container without forcing horizontal scroll */
     }
     
     /* Improve heatmap readability on mobile */
@@ -1108,7 +1104,54 @@
     Plotly.newPlot('yearly-hole-heatmap', {{ charts.yearly_hole_heatmap|safe }}, {}, {
         responsive: true,
         displayModeBar: false
+    }).then(function() {
+        adjustYearlyHeatmap();
     });
+
+    function adjustYearlyHeatmap() {
+        var el = document.getElementById('yearly-hole-heatmap');
+        if (!el) return;
+        var containerWidth = el.offsetWidth;
+        var isDesktop = window.innerWidth >= 1200; // Bootstrap lg breakpoint and up
+        var updates = {
+            width: containerWidth,
+            'title.y': 0.995
+        };
+        if (isDesktop) {
+            // Make the chart significantly larger on desktop
+            updates.height = Math.min(1400, Math.max(900, Math.floor(window.innerHeight * 1.2))); // ~2x mobile height
+            updates['margin.t'] = 200; // prevent title clipping
+            updates['margin.b'] = 120;
+            updates['margin.l'] = 20;
+            updates['margin.r'] = 90;
+            updates['title.pad.t'] = 40;
+            // Widen plot area relative to colorbar
+            updates['xaxis.domain'] = [0, 0.95];
+            updates['yaxis.domain'] = [0, 1];
+            updates['yaxis.scaleanchor'] = null; // allow width expansion on desktop
+        } else {
+            updates.height = 520;
+            updates['margin.t'] = 140;
+            updates['margin.b'] = 80;
+            // Slightly widen the plot area on mobile by reducing side margins
+            updates['margin.l'] = 20;
+            updates['margin.r'] = 30;
+            // Wrap long title for mobile to avoid clipping
+            updates['title.text'] = 'Yearly Hole-by-Hole Performance<br>vs Par';
+            updates['title.pad.t'] = 24;
+            updates['title.font.size'] = 16;
+            updates['yaxis.scaleanchor'] = 'x'; // keep square-ish cells on mobile
+        }
+        Plotly.relayout(el, updates).then(function() {
+            // Slim down the colorbar on mobile to free more width for the grid
+            if (!isDesktop) {
+                Plotly.restyle(el, {
+                    'colorbar.thickness': 10,
+                    'colorbar.len': 0.9
+                }, [0]);
+            }
+        });
+    }
     {% endif %}
     
     // Make charts responsive to window resize
@@ -1149,9 +1192,7 @@
         {% endif %}
         
         {% if charts.yearly_hole_heatmap %}
-        Plotly.relayout('yearly-hole-heatmap', {
-            'width': document.getElementById('yearly-hole-heatmap').offsetWidth
-        });
+        adjustYearlyHeatmap();
         {% endif %}
     });
 </script>

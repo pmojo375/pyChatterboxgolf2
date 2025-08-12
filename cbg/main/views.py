@@ -917,7 +917,7 @@ def golfer_stats(request, golfer_id, year=None):
         charts['points'] = json.dumps(points_chart)
     
     if gross_scores and net_scores:
-        # Gross vs Net scores chart
+        # Gross vs Net scores chart (mobile-friendly legend below chart with extra spacing)
         scores_chart = {
             'data': [
                 {
@@ -946,13 +946,21 @@ def golfer_stats(request, golfer_id, year=None):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Score'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 140},
+                'legend': {
+                    'orientation': 'h',
+                    'x': 0.5,
+                    'xanchor': 'center',
+                    'y': -0.3,
+                    'yanchor': 'top',
+                    'tracegroupgap': 20
+                }
             }
         }
         charts['scores'] = json.dumps(scores_chart)
     
     if performance_vs_opponent:
-        # Performance vs opponent chart
+        # Performance vs opponent chart (wrap title for mobile)
         perf_chart = {
             'data': [{
                 'x': [d['week'] for d in performance_vs_opponent],
@@ -965,11 +973,11 @@ def golfer_stats(request, golfer_id, year=None):
                 'hovertemplate': 'Week: %{x}<br>Net Score Difference: %{y:+.2f}<extra></extra>'
             }],
             'layout': {
-                'title': 'Performance vs Opponent (Negative = Win)',
+                'title': {'text': 'Performance vs Opponent<br>(Negative = Win)', 'x': 0.5, 'xanchor': 'center'},
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Net Score Difference'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 100, 'b': 50}
             }
         }
         charts['performance'] = json.dumps(perf_chart)
@@ -1164,11 +1172,11 @@ def golfer_stats(request, golfer_id, year=None):
                                      '<br>Avg vs Par: %{customdata[2]:+.2f}<extra></extra>'
                 }],
                 'layout': {
-                    'title': 'Per-Hole Consistency (Lower = More Consistent)',
+                    'title': {'text': 'Per-Hole Consistency<br>(Lower = More Consistent)', 'x': 0.5, 'xanchor': 'center'},
                     'xaxis': {'title': 'Hole Number'},
                     'yaxis': {'title': 'Std Dev of (Score - Par)'},
                     'height': 400,
-                    'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                    'margin': {'l': 50, 'r': 50, 't': 100, 'b': 50}
                 }
             }
             charts['hole_consistency'] = json.dumps(hole_consistency_chart)
@@ -1225,11 +1233,11 @@ def golfer_stats(request, golfer_id, year=None):
                                      '<br>Avg vs Par: %{customdata[2]:+.2f}<extra></extra>'
                 }],
                 'layout': {
-                    'title': 'Per-Hole Consistency (Lower = More Consistent)',
+                    'title': {'text': 'Per-Hole Consistency<br>(Lower = More Consistent)', 'x': 0.5, 'xanchor': 'center'},
                     'xaxis': {'title': 'Hole Number'},
                     'yaxis': {'title': 'Std Dev of (Score - Par)'},
                     'height': 400,
-                    'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                    'margin': {'l': 50, 'r': 50, 't': 100, 'b': 50}
                 }
             }
             charts['hole_consistency'] = json.dumps(hole_consistency_chart)
@@ -1257,35 +1265,51 @@ def golfer_stats(request, golfer_id, year=None):
                     year_data.append(None)
             z_values.append(year_data)
         
-        # Calculate min and max vs par values for better color scaling
+        # Calculate min and max vs par values; cap lower end at -1 and ensure upper end is reasonable
         if all_vs_par:
             min_vs_par = min(all_vs_par)
             max_vs_par = max(all_vs_par)
-            # Ensure the range is symmetric around 0 (par) for proper color scaling
-            abs_max = max(abs(min_vs_par), abs(max_vs_par))
-            zmin = -abs_max - 0.5  # Extend range to ensure 0 is centered
-            zmax = abs_max + 0.5
+            # Legend (colorbar) should start at -1, as averages rarely go below -1
+            zmin = -1
+            # Ensure the upper bound includes at least +2 for visibility and any data max
+            zmax = max(max_vs_par, 2)
         else:
-            zmin = -2  # Default range: 2 under par to 2 over par
-            zmax = 2
+            zmin = -1  # Default lower cap at -1
+            zmax = 2   # Default upper cap at +2
         
-        # Create custom color scale that centers white at 0
-        # Calculate the position of 0 in the normalized range
-        zero_position = (0 - zmin) / (zmax - zmin)
+        # Create custom color scale:
+        # - Dark green capped at -1 (values <= -1 share the same dark green)
+        # - White aligned at +1
+        # - Orange near +2, Red at top
+        # Compute normalized positions in [0,1]
+        p_white = (1 - zmin) / (zmax - zmin)
+        p_neg1 = (-1 - zmin) / (zmax - zmin)
+        p_plus2 = (2 - zmin) / (zmax - zmin)
+        # Clamp positions
+        def _clamp01(v):
+            return 0 if v < 0 else (1 if v > 1 else v)
+        p_white = _clamp01(p_white)
+        p_neg1 = _clamp01(p_neg1)
+        p_plus2 = _clamp01(p_plus2)
+        # Intermediate light-green stop between -1 and +1
+        p_light = _clamp01(p_neg1 + 0.6 * (p_white - p_neg1))
         
-        # Create heat map chart
+        # Transpose heatmap so holes are on Y and years on X (better on mobile),
+        # and move colorbar to the side; also expand title margin to avoid clipping
+        z_transposed = [list(col) for col in zip(*z_values)] if z_values else []
         hole_heatmap = {
             'data': [{
-                'z': z_values,
-                'x': holes,
-                'y': years,
+                'z': z_transposed,
+                'x': years,
+                'y': holes,
                 'type': 'heatmap',
                 'colorscale': [
-                    [0, 'rgb(0, 128, 0)'],      # Dark green for under par
-                    [zero_position - 0.2, 'rgb(144, 238, 144)'], # Light green for near par
-                    [zero_position, 'rgb(255, 255, 255)'], # White for par (0)
-                    [zero_position + 0.2, 'rgb(255, 165, 0)'],  # Orange for over par
-                    [1, 'rgb(255, 0, 0)']        # Red for well over par
+                    [0, 'rgb(0, 128, 0)'],               # Dark green floor
+                    [p_neg1, 'rgb(0, 128, 0)'],           # Cap dark green at -1
+                    [p_light, 'rgb(144, 238, 144)'],      # Light green towards +1
+                    [p_white, 'rgb(255, 255, 255)'],      # White at +1
+                    [p_plus2, 'rgb(255, 165, 0)'],        # Orange near +2
+                    [1, 'rgb(255, 0, 0)']                 # Red at top
                 ],
                 'zmin': zmin,
                 'zmax': zmax,
@@ -1294,26 +1318,43 @@ def golfer_stats(request, golfer_id, year=None):
                     'titleside': 'right',
                     'tickformat': '+.1f',
                     'tickmode': 'auto',
-                    'nticks': 7
+                    'nticks': 7,
+                    'len': 0.85,
+                    'thickness': 18
                 },
-                'hovertemplate': 'Year: %{y}<br>Hole: %{x}<br>Avg vs Par: %{z:+.2f}<extra></extra>'
+                'hovertemplate': 'Year: %{x}<br>Hole: %{y}<br>Avg vs Par: %{z:+.2f}<extra></extra>'
             }],
             'layout': {
-                'title': 'Yearly Hole-by-Hole Performance vs Par',
-                'xaxis': {
-                    'title': 'Hole Number',
-                    'tickmode': 'linear',
-                    'tick0': 1,
-                    'dtick': 1
+                'title': {
+                    'text': 'Yearly Hole-by-Hole Performance vs Par',
+                    'x': 0.5,
+                    'xanchor': 'center',
+                    'y': 0.98,
+                    'yanchor': 'top',
+                    'pad': {'t': 20}
                 },
-                'yaxis': {
+                'xaxis': {
                     'title': 'Year',
                     'tickmode': 'linear',
                     'tick0': min(years),
-                    'dtick': 1
+                    'dtick': 1,
+                    'automargin': True,
+                    'range': [min(years) - 0.5, max(years) + 0.5],
+                    'constrain': 'domain'
                 },
-                'height': 500,
-                'margin': {'l': 80, 'r': 80, 't': 80, 'b': 80},
+                'yaxis': {
+                    'title': 'Hole Number',
+                    'tickmode': 'linear',
+                    'tick0': 1,
+                    'dtick': 1,
+                    'automargin': True,
+                    'scaleanchor': 'x',
+                    'scaleratio': 1,
+                    'range': [18.5, 0.5],  # Flip so Hole 1 appears at the top
+                    'constrain': 'domain'
+                },
+                'height': 650,
+                'margin': {'l': 40, 'r': 60, 't': 140, 'b': 80},
                 'autosize': True,
                 'responsive': True
             }
@@ -1939,7 +1980,7 @@ def sub_stats(request, golfer_id=None, year=None):
         charts['points'] = json.dumps(points_chart)
     
     if gross_scores and net_scores:
-        # Gross vs Net scores chart
+        # Gross vs Net scores chart (mobile-friendly legend below chart)
         scores_chart = {
             'data': [
                 {
@@ -1968,13 +2009,21 @@ def sub_stats(request, golfer_id=None, year=None):
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Score'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 140},
+                'legend': {
+                    'orientation': 'h',
+                    'x': 0.5,
+                    'xanchor': 'center',
+                    'y': -0.3,
+                    'yanchor': 'top',
+                    'tracegroupgap': 20
+                }
             }
         }
         charts['scores'] = json.dumps(scores_chart)
     
     if performance_vs_opponent:
-        # Performance vs opponent chart
+        # Performance vs opponent chart (wrap title for mobile)
         perf_chart = {
             'data': [{
                 'x': [d['week'] for d in performance_vs_opponent],
@@ -1987,11 +2036,11 @@ def sub_stats(request, golfer_id=None, year=None):
                 'hovertemplate': 'Week: %{x}<br>Net Score Difference: %{y:+.2f}<extra></extra>'
             }],
             'layout': {
-                'title': 'Performance vs Opponent (Negative = Win)',
+                'title': {'text': 'Performance vs Opponent<br>(Negative = Win)', 'x': 0.5, 'xanchor': 'center'},
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Net Score Difference'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 100, 'b': 50}
             }
         }
         charts['performance'] = json.dumps(perf_chart)
