@@ -1391,21 +1391,38 @@ def golfer_stats(request, golfer_id, year=None):
             'details': actual_skins_details,
         }
     
-    # Calculate games money wagered and won
+    # Calculate games money wagered and won; build actual games details
     game_entries = GameEntry.objects.filter(golfer=golfer, week__season=season)
     total_games_wagered = game_entries.count() * 2  # $2 per game entry
     
-    # Calculate games won by this golfer
     games_won = 0
+    actual_games = None
+    actual_games_total = 0.0
+    actual_games_count = 0
+    actual_games_details = []
     for week in weeks:
-        game_winners = GameEntry.objects.filter(week=week, golfer=golfer, winner=True)
+        game_winners = GameEntry.objects.filter(week=week, golfer=golfer, winner=True).select_related('game')
         if game_winners.exists():
-            # Calculate payout for this week
             week_game_entries = GameEntry.objects.filter(week=week)
             week_games_pot = week_game_entries.count() * 2
             total_winners = GameEntry.objects.filter(week=week, winner=True).count()
             game_winner_payout = week_games_pot / total_winners if total_winners > 0 else 0
             games_won += game_winner_payout * game_winners.count()
+            for ge in game_winners:
+                actual_games_count += 1
+                actual_games_total += game_winner_payout
+                actual_games_details.append({
+                    'week': week.number,
+                    'date': timezone.localtime(week.date).strftime('%m/%d') if hasattr(week, 'date') else '',
+                    'game': ge.game.name if ge.game else 'Game',
+                    'payout': round(game_winner_payout, 2),
+                })
+    if actual_games_count > 0:
+        actual_games = {
+            'total': round(actual_games_total, 2),
+            'wins': actual_games_count,
+            'details': actual_games_details,
+        }
     
     # Calculate total earnings
     total_earned = skins_won + games_won
@@ -1659,6 +1676,7 @@ def golfer_stats(request, golfer_id, year=None):
         'theoretical_rounds': theoretical_rounds,
         'hypothetical_skins': hypothetical_skins,
         'actual_skins': actual_skins,
+        'actual_games': actual_games,
     }
     
     return render(request, 'golfer_stats.html', context)

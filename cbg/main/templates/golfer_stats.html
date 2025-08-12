@@ -136,6 +136,47 @@
                     </div>
                     {% endif %}
 
+                    {% if actual_games %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-primary">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                    <div>
+                                        <h5 class="mb-1">Games Won</h5>
+                                        <small class="text-muted">Actual side games you won this season</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold">Total Won: ${{ actual_games.total }}</div>
+                                        <small class="text-muted">Across {{ actual_games.wins }} win(s)</small>
+                                    </div>
+                                </div>
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center">Week</th>
+                                                <th class="text-center">Date</th>
+                                                <th>Game</th>
+                                                <th class="text-center">Payout</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for g in actual_games.details %}
+                                            <tr>
+                                                <td class="text-center fw-bold">{{ g.week }}</td>
+                                                <td class="text-center">{{ g.date }}</td>
+                                                <td>{{ g.game }}</td>
+                                                <td class="text-center fw-bold text-success">${{ g.payout }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% if hypothetical_skins %}
                     <hr>
                     <div class="row mt-4">
