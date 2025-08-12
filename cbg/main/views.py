@@ -419,6 +419,17 @@ def add_scores(request):
         season = Season.objects.order_by('-year').first()
         print(season.year)
         week = get_next_week()
+
+        # Auto-heal golfer matchups if the count is incorrect (e.g., after a migration)
+        if week:
+            try:
+                expected_matchups = len(get_playing_golfers_for_week(week)) - Sub.objects.filter(week=week, no_sub=True).count()
+                current_matchups = GolferMatchup.objects.filter(week=week).count()
+                if current_matchups != expected_matchups:
+                    generate_golfer_matchups(week)
+            except Exception:
+                # Fail silently to avoid blocking the page; admins can regenerate from tools
+                pass
         matchups = Matchup.objects.filter(week=week)
         front = week.is_front
 
@@ -3298,6 +3309,16 @@ def blank_scorecards(request):
             'error': 'No next week found. The season may be complete or not started.'
         })
     
+    # Auto-heal golfer matchups if counts are off (common after DB migrations)
+    try:
+        expected_matchups = len(get_playing_golfers_for_week(week)) - Sub.objects.filter(week=week, no_sub=True).count()
+        current_matchups = GolferMatchup.objects.filter(week=week).count()
+        if current_matchups != expected_matchups:
+            generate_golfer_matchups(week)
+    except Exception:
+        # Non-fatal; continue to attempt rendering
+        pass
+
     holes = list(Hole.objects.filter(
         number__in=(range(1, 10) if week.is_front else range(10, 19)),
         season=week.season
