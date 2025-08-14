@@ -540,6 +540,8 @@ def add_sub(request):
 def enter_schedule(request):
     weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
     teams = Team.objects.filter(season=Season.objects.order_by('-year').first())
+    message = None
+    message_type = None
     
     if request.method == 'POST':
         form = ScheduleForm(weeks, teams, request.POST)
@@ -570,18 +572,31 @@ def enter_schedule(request):
             print(f'Team 1: {team1}')
             print(f'Team 2: {team2}')
             
-            # Preserve the selected week for the form reload
-            # Create a new form with the same week selected
+            # After successful submit, auto-advance to earliest week missing full matchups
+            try:
+                from main.helper import get_earliest_week_without_full_matchups
+                earliest_incomplete = get_earliest_week_without_full_matchups(week.season)
+            except Exception:
+                earliest_incomplete = None
             form = ScheduleForm(weeks, teams)
-            form.initial['week'] = week_id
+            if earliest_incomplete:
+                form.initial['week'] = earliest_incomplete.id
+            else:
+                # Fallback to last selected week if all filled
+                form.initial['week'] = week_id
+            # Add success message to notify user
+            message = f"Matchup added for Week {week.number}: {team1} vs {team2}."
+            message_type = "success"
             
         else:
             print('Invalid Form\n')
             print(form.errors)
+            message = "Please correct the errors below."
+            message_type = "error"
     else:
         form = ScheduleForm(weeks, teams)
 
-    return render(request, 'enter_schedule.html', {'form': form})
+    return render(request, 'enter_schedule.html', {'form': form, 'message': message, 'message_type': message_type})
 
 
 def golfer_stats(request, golfer_id, year=None):

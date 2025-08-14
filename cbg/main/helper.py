@@ -1117,30 +1117,34 @@ def get_playing_golfers_for_week(week):
     
 def get_earliest_week_without_full_matchups(season=None):
     """
-    Find the earliest week that doesn't have 5 matchups (full schedule).
-    A full schedule typically has 5 matchups for a league with 10 teams.
-    
+    Find the earliest week that doesn't have the expected number of matchups.
+    Expected matchups are computed dynamically as (number of teams in the season) // 2.
+
     Args:
         season (Season, optional): The season to check. Defaults to current season.
-    
+
     Returns:
-        Week: The earliest week without 5 matchups, or None if all weeks are full
+        Week | None: The earliest week without the expected number of matchups, or None if all are full.
     """
     if season is None:
         season = get_current_season()
-    
+
     if not season:
         return None
-    
-    # Get all weeks for the season ordered by week number
+
+    # Determine expected number of matchups per week based on team count
+    team_count = Team.objects.filter(season=season).count()
+    expected_matchups = team_count // 2 if team_count > 0 else 0
+
+    # Get all non-rained-out weeks for the season ordered by week number
     weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
-    
+
     for week in weeks:
         matchup_count = Matchup.objects.filter(week=week).count()
-        if matchup_count < 5:  # Assuming 5 matchups is a full schedule
+        if matchup_count < expected_matchups:
             return week
-    
-    return None  # All weeks have full matchups
+
+    return None
 
 
 def process_season(season):

@@ -53,14 +53,15 @@ class ScheduleForm(forms.Form):
     def __init__(self, weeks, teams, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        # Find the earliest week without full matchups
+        # Find the earliest week without the expected number of matchups (teams/2)
         earliest_week = get_earliest_week_without_full_matchups()
-        
-        # Set initial week to the earliest week without full matchups, or first week if none found
-        if earliest_week:
-            self.initial['week'] = earliest_week.id
-        else:
-            self.initial['week'] = weeks[0].id if weeks else None
+
+        # Only set initial when the form is not bound (GET). For POST, preserve submitted data.
+        if not self.is_bound:
+            if earliest_week:
+                self.initial['week'] = earliest_week.id
+            elif weeks:
+                self.initial['week'] = weeks[0].id
             
         self.fields['week'].choices = [(w.id, f"{w} - {'Front' if w.is_front else 'Back'}") for w in weeks]
         self.fields['team1'].choices = [(t.id, f"{t.golfers.all()[0].name} & {t.golfers.all()[1].name}") for t in teams]
@@ -72,6 +73,9 @@ class ScheduleForm(forms.Form):
         team1 = cleaned_data.get('team1')
         team2 = cleaned_data.get('team2')
         week = cleaned_data.get('week')
+
+        if not week:
+            raise forms.ValidationError('Please select a week before submitting the matchup.')
         if team1 == team2:
             raise forms.ValidationError('Team 1 and Team 2 must be different')
         if Matchup.objects.filter(week_id=week).filter(Q(teams__id=team1) | Q(teams__id=team2)).exists():
