@@ -1,4 +1,5 @@
 from main.models import Week, Team, Matchup
+from django.db import transaction
 from datetime import timedelta
 
 
@@ -37,65 +38,100 @@ def rain_out_update(week):
     """
 
     if week.rained_out is False:
-        week.rained_out = True
-        week.save()
+        with transaction.atomic():
+            season = week.season
+            all_weeks = list(Week.objects.filter(season=season).order_by('date'))
+            # Index of selected week
+            idx_map = {w.id: i for i, w in enumerate(all_weeks)}
+            k = idx_map[week.id]
 
-        # Gather future weeks in chronological order
-        future_weeks = list(
-            Week.objects.filter(season=week.season, date__gt=week.date).order_by('date')
-        )
+            original_side = week.is_front
 
-        # Create a new final week (to keep count), alternating the side
-        last_week_before_append = Week.objects.filter(season=week.season).order_by('-date').first()
-        new_week = Week(
-            season=week.season,
-            number=last_week_before_append.number + 1,
-            date=last_week_before_append.date + timedelta(weeks=1),
-            is_front=not last_week_before_append.is_front,
-            rained_out=False,
-        )
-        new_week.save()
+            # Build proper chain: rained-out week -> first future; each future -> next future; last -> appended (later)
+            future_weeks = all_weeks[k + 1:]
+            shift_sources = [week] + future_weeks
+            # targets will be next future weeks plus appended placeholder
 
-        # Shift matchups forward so original week numbers retain their matchups
-        shift_sources = [week] + future_weeks
-        shift_targets = future_weeks + [new_week]
-        for src_week, dst_week in zip(shift_sources, shift_targets):
-            for mu in list(Matchup.objects.filter(week=src_week)):
-                mu.week = dst_week
-                mu.save()
+            # 2) Mark week as rained out
+            week.rained_out = True
+            week.save()
 
-        # Compress numbers of future weeks by one (keep front/back as-is)
-        for future_week in future_weeks:
-            future_week.number = future_week.number - 1
-            future_week.save()
+            # 3) Compress numbers for future weeks (shift down by 1)
+            for fw in future_weeks:
+                fw.number = fw.number - 1
+                fw.save()
+
+            # 4) Set sides deterministically: first future = opposite of original, then alternate
+            next_side = not original_side
+            for fw in future_weeks:
+                fw.is_front = next_side
+                fw.save()
+                next_side = not next_side
+
+            # 5) Create appended new final week with alternating side
+            last_by_date = all_weeks[-1]
+            appended = Week(
+                season=season,
+                number=(Week.objects.filter(season=season, rained_out=False).order_by('-number').first().number + 1)
+                        if Week.objects.filter(season=season, rained_out=False).exists() else 1,
+                date=last_by_date.date + timedelta(weeks=1),
+                is_front=next_side,  # continue alternation
+                rained_out=False,
+            )
+            appended.save()
+
+            # 6) Complete matchup shift by mapping sources to targets (last future -> appended)
+            shift_targets = future_weeks + [appended]
+            # Move from end to start to avoid cascading re-moves
+            for i in range(len(shift_sources) - 1, -1, -1):
+                src_wk = shift_sources[i]
+                dst_wk = shift_targets[i]
+                for mu in list(Matchup.objects.filter(week=src_wk)):
+                    mu.week = dst_wk
+                    mu.save()
     else:
-        week.rained_out = False
-        week.save()
+        with transaction.atomic():
+            season = week.season
+            all_weeks = list(Week.objects.filter(season=season).order_by('date'))
+            idx_map = {w.id: i for i, w in enumerate(all_weeks)}
+            k = idx_map[week.id]
 
-        # Gather future weeks in chronological order
-        future_weeks = list(
-            Week.objects.filter(season=week.season, date__gt=week.date).order_by('date')
-        )
+            # Identify appended week as the one with max date
+            appended = max(all_weeks, key=lambda w: w.date)
 
-        # Identify final week to remove
-        last_week_to_delete = Week.objects.filter(season=week.season).order_by('-date').first()
+            # 1) Shift matchups backward using reverse order to avoid re-moving
+            future_weeks = [w for w in all_weeks if w.date > week.date]
+            chain = future_weeks + [appended]
+            dests = [week] + future_weeks
+            for i in range(len(chain) - 1, -1, -1):
+                src_wk = chain[i]
+                dst_wk = dests[i]
+                for mu in list(Matchup.objects.filter(week=src_wk)):
+                    mu.week = dst_wk
+                    mu.save()
 
-        # Shift matchups backward to restore original week alignments
-        shift_chain = [week] + future_weeks + [last_week_to_delete]
-        for i in range(len(shift_chain) - 1, 0, -1):
-            src_week = shift_chain[i]
-            dst_week = shift_chain[i - 1]
-            for mu in list(Matchup.objects.filter(week=src_week)):
-                mu.week = dst_week
-                mu.save()
+            # 2) Delete appended week
+            appended.delete()
 
-        # Expand numbers of future weeks by one
-        for future_week in future_weeks:
-            future_week.number = future_week.number + 1
-            future_week.save()
+            # Rebuild list after deletion
+            all_weeks = list(Week.objects.filter(season=season).order_by('date'))
 
-        # Remove the final week
-        last_week_to_delete.delete()
+            # 3) Expand numbers for future weeks (shift up by 1)
+            for w in all_weeks:
+                if w.date > week.date:
+                    w.number = w.number + 1
+                    w.save()
+
+            # 4) Restore sides deterministically from week forward: week keeps its side; then alternate
+            next_side = not week.is_front
+            for w in sorted([w for w in all_weeks if w.date > week.date], key=lambda x: x.date):
+                w.is_front = next_side
+                w.save()
+                next_side = not next_side
+
+            # 5) Unmark the original week as not rained out
+            week.rained_out = False
+            week.save()
 
 def create_teams(season, golfers):
     """
