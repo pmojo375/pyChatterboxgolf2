@@ -24,47 +24,56 @@ def create_weeks(season, weeks, start_date):
 
 def rain_out_update(week):
     """
-    Update the rained_out field for a given week and the future weeks front/back status and dates.
+    Mark a week as rained out (or undo), shift subsequent week numbers, and maintain
+    the calendar's front/back rotation based on dates.
 
-    Args:
-        week (Week): The week object to update.
+    - When marking as rained out: compress subsequent weeks by one number (no side flip),
+      then append a new week at the end with the alternating side.
+    - When un-marking: expand subsequent weeks by one number (no side flip),
+      then remove the final week to restore the original count.
+
+    This ensures that if week X was Front and gets rained out, the new week X (the
+    next calendar week) will be Back, since its side was already scheduled that way.
     """
-    
-    if week.rained_out == False:
+
+    if week.rained_out is False:
         week.rained_out = True
-        
         week.save()
-        
-        # get future weeks ordered by date with the first week being the week after the current week
-        future_weeks = Week.objects.filter(season=week.season, date__gt=week.date).order_by('date')
-        
-        # update the front/back status and date for each future week
+
+        # Pull future weeks forward by one number, keep their front/back as scheduled
+        future_weeks = Week.objects.filter(
+            season=week.season, date__gt=week.date
+        ).order_by('date')
+
         for future_week in future_weeks:
-            future_week.is_front = not future_week.is_front
             future_week.number = future_week.number - 1
             future_week.save()
-            
-        # get the last week in the season
+
+        # Append a new week at the end, alternating the front/back
         last_week = Week.objects.filter(season=week.season).order_by('-date').first()
-        new_week = Week(season=week.season, number=last_week.number + 1, date=last_week.date + timedelta(weeks=1), is_front=not last_week.is_front, rained_out=False)
+        new_week = Week(
+            season=week.season,
+            number=last_week.number + 1,
+            date=last_week.date + timedelta(weeks=1),
+            is_front=not last_week.is_front,
+            rained_out=False,
+        )
         new_week.save()
     else:
         week.rained_out = False
         week.save()
-        
-        # get future weeks ordered by date with the first week being the week after the current week
-        future_weeks = Week.objects.filter(season=week.season, date__gt=week.date).order_by('date')
-        
-        # update the front/back status and date for each future week
+
+        # Push future weeks back by one number, keep their front/back as scheduled
+        future_weeks = Week.objects.filter(
+            season=week.season, date__gt=week.date
+        ).order_by('date')
+
         for future_week in future_weeks:
-            future_week.is_front = not future_week.is_front
             future_week.number = future_week.number + 1
             future_week.save()
-        
-        # get the last week in the season
+
+        # Remove the final week to restore schedule length
         last_week = Week.objects.filter(season=week.season).order_by('-date').first()
-        
-        # delete the last week in the season
         last_week.delete()
 
 def create_teams(season, golfers):
