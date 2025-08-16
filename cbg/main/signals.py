@@ -63,22 +63,18 @@ def sub_deleted(sender, instance, **kwargs):
     transaction.on_commit(update_week_and_matchups)
 
 @receiver(post_save, sender=Matchup)
-def matchup_created(sender, instance, created, **kwargs):
+def matchup_created_or_updated(sender, instance, created, **kwargs):
     """
-    When a matchup is created (schedule is entered), generate initial golfer matchups
-    when all matchups for the week have been entered.
+    When a matchup is created or edited (schedule is entered/changed),
+    generate golfer matchups if all matchups for the week are present.
     """
-    if created:
-        # Use on_commit to ensure the Matchup save is committed before checking and generating matchups
-        def check_and_generate_matchups():
-            week = instance.week
-            total_teams = Team.objects.filter(season=week.season).count()
-            total_matchups = Matchup.objects.filter(week=week).count()
-            
-            # Generate matchups when we have all the matchups (teams/2 since each matchup has 2 teams)
-            # and no golfer matchups exist yet
-            if total_matchups == total_teams // 2 and not GolferMatchup.objects.filter(week=week).exists():
-                print(f'All matchups entered for Week {week.number}. Generating initial golfer matchups.')
-                generate_matchups_async.delay(week.id)
-        
-        transaction.on_commit(check_and_generate_matchups)
+    def check_and_generate_matchups():
+        week = instance.week
+        total_teams = Team.objects.filter(season=week.season).count()
+        total_matchups = Matchup.objects.filter(week=week).count()
+        expected_matchups = total_teams // 2
+        if total_matchups == expected_matchups:
+            # Only regenerate golfer matchups (do not update num_scores based on no_subs)
+            print(f'All matchups entered for Week {week.number}. Regenerating golfer matchups.')
+            generate_matchups_async.delay(week.id)
+    transaction.on_commit(check_and_generate_matchups)
