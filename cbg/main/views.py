@@ -3,13 +3,14 @@ from main.models import *
 from main.signals import *
 from main.helper import *
 from main.forms import *
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, F
 from main.season import *
 from django.forms import formset_factory
 from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from main.models import Team, Score, Sub, Week
 from django.urls import reverse
 from django.utils import timezone
+from collections import defaultdict
 
 HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
 
@@ -1692,6 +1693,10 @@ def golfer_stats(request, golfer_id, year=None):
             }
         }
 
+    # Calculate total birdies and eagles for the season
+    total_birdies = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') - 1).count()
+    total_eagles = Score.objects.filter(round__subbing_for__isnull=True, score__lte=F('hole__par') - 2).count()
+
     context = {
         'golfer': golfer,
         'season': season,
@@ -1779,6 +1784,8 @@ def golfer_stats(request, golfer_id, year=None):
         'hypothetical_skins': hypothetical_skins,
         'actual_skins': actual_skins,
         'actual_games': actual_games,
+        'total_birdies': total_birdies,
+        'total_eagles': total_eagles,
     }
     
     return render(request, 'golfer_stats.html', context)
@@ -3709,3 +3716,206 @@ def _build_golfer_data(golfer_matchup, rounds, holes, week):
         'round_points': round_obj.round_points,
         'total_points': round_obj.total_points or 0,
     }
+
+
+def get_top_n_with_ties(queryset, field, n, reverse=False):
+    # Get values and annotate with rank, including ties
+    values = list(queryset.order_by(f'-{field}' if reverse else field))
+    if not values:
+        return []
+    result = []
+    rank = 1
+    prev_value = getattr(values[0], field)
+    count = 0
+    for i, obj in enumerate(values):
+        value = getattr(obj, field)
+        if i == 0:
+            rank = 1
+        elif value != prev_value:
+            rank = count + 1
+        if rank > n and value != prev_value:
+            break
+        result.append({'rank': rank, 'obj': obj})
+        prev_value = value
+        count += 1
+    return result
+
+
+def historics(request):
+    """
+    All-time league statistics and leaderboards across all seasons
+    """
+    import json
+    from django.db.models import Avg, Count, Min, Max, Q, F
+    from collections import defaultdict
+    
+    # All rounds (excluding subs)
+    rounds = Round.objects.filter(subbing_for__isnull=True).select_related('golfer', 'week', 'handicap').order_by('week__date')
+    all_scores = Score.objects.filter(round__subbing_for__isnull=True).select_related('hole', 'week', 'golfer').order_by('hole__number', 'week__date')
+    weeks = Week.objects.filter(rained_out=False)
+    
+    # Money/Earnings (all-time) using SkinEntry.winner
+    skin_entries = SkinEntry.objects.all()
+    total_skins_wagered = skin_entries.count() * 5
+    # Aggregate skins won by golfer using winner field
+    winning_skins = SkinEntry.objects.filter(winner=True)
+    golfer_skins_won = defaultdict(float)
+    # For money, need to know payout per week
+    for week in weeks:
+        week_winners = SkinEntry.objects.filter(week=week, winner=True)
+        week_entries = SkinEntry.objects.filter(week=week)
+        if week_winners.exists() and week_entries.exists():
+            week_skins_pot = week_entries.count() * 5
+            skin_winner_payout = week_skins_pot / week_winners.count()
+            for entry in week_winners:
+                golfer_skins_won[entry.golfer.name] += skin_winner_payout
+    game_entries = GameEntry.objects.all()
+    total_games_wagered = game_entries.count() * 2
+    golfer_games_won = defaultdict(float)
+    for week in weeks:
+        game_winners = GameEntry.objects.filter(week=week, winner=True).select_related('golfer', 'game')
+        if game_winners.exists():
+            week_game_entries = GameEntry.objects.filter(week=week)
+            week_games_pot = week_game_entries.count() * 2
+            game_winner_payout = week_games_pot / game_winners.count() if game_winners.count() > 0 else 0
+            for winner in game_winners:
+                golfer_name = winner.golfer.name
+                golfer_games_won[golfer_name] += game_winner_payout
+    golfer_total_earnings = {}
+    all_golfers = set(list(golfer_skins_won.keys()) + list(golfer_games_won.keys()))
+    for golfer_name in all_golfers:
+        skins_earned = golfer_skins_won.get(golfer_name, 0)
+        games_earned = golfer_games_won.get(golfer_name, 0)
+        total_earned = skins_earned + games_earned
+        golfer_total_earnings[golfer_name] = {
+            'skins_earned': round(skins_earned, 2),
+            'games_earned': round(games_earned, 2),
+            'total_earned': round(total_earned, 2)
+        }
+    earnings_leaderboard = sorted(
+        golfer_total_earnings.items(),
+        key=lambda x: x[1]['total_earned'],
+        reverse=True
+    )
+    # Find the cutoff for top 5, include ties
+    top_earnings = []
+    prev = None
+    rank = 1
+    for i, (golfer, earnings) in enumerate(earnings_leaderboard):
+        if i == 0:
+            rank = 1
+        elif earnings['total_earned'] != prev:
+            rank = i + 1
+        if rank > 5 and earnings['total_earned'] != prev:
+            break
+        top_earnings.append({'rank': rank, 'golfer': golfer, **earnings})
+        prev = earnings['total_earned']
+
+    # Best/Worst Rounds (gross/net) with ties
+    best_gross_rounds = get_top_n_with_ties(rounds, 'gross', 5, reverse=False)
+    worst_gross_rounds = get_top_n_with_ties(rounds, 'gross', 5, reverse=True)
+    best_net_rounds = get_top_n_with_ties(rounds, 'net', 5, reverse=False)
+    worst_net_rounds = get_top_n_with_ties(rounds, 'net', 5, reverse=True)
+    # Removed best_points_rounds and worst_points_rounds
+
+    # Most rounds played
+    rounds_played_qs = rounds.values('golfer__name').annotate(num_rounds=Count('id')).order_by('-num_rounds')
+    # Find cutoff for top 5, include ties
+    top_rounds_played = []
+    prev = None
+    rank = 1
+    for i, row in enumerate(rounds_played_qs):
+        if i == 0:
+            rank = 1
+        elif row['num_rounds'] != prev:
+            rank = i + 1
+        if rank > 5 and row['num_rounds'] != prev:
+            break
+        top_rounds_played.append({'rank': rank, **row})
+        prev = row['num_rounds']
+
+    # Most birdies/eagles by rate (min 90 holes, robust per golfer)
+    top_birdie_golfers = []
+    top_eagle_golfers = []
+    for golfer in Golfer.objects.all():
+        scores = Score.objects.filter(golfer=golfer, round__subbing_for__isnull=True)
+        holes_played = scores.count()
+        if holes_played >= 90:
+            birdies = scores.filter(score=F('hole__par') - 1).count()
+            eagles = scores.filter(score__lte=F('hole__par') - 2).count()
+            birdie_rate = birdies / holes_played if holes_played else 0
+            eagle_rate = eagles / holes_played if holes_played else 0
+            top_birdie_golfers.append({'golfer': golfer, 'rate': birdie_rate, 'holes': holes_played, 'count': birdies})
+            top_eagle_golfers.append({'golfer': golfer, 'rate': eagle_rate, 'holes': holes_played, 'count': eagles})
+    # Sort and rank with ties
+    def rank_leaderboard(entries, key):
+        entries.sort(key=lambda x: x[key], reverse=True)
+        ranked = []
+        prev = None
+        rank = 1
+        for i, entry in enumerate(entries):
+            if i == 0:
+                rank = 1
+            elif entry[key] != prev:
+                rank = i + 1
+            if rank > 5 and entry[key] != prev:
+                break
+            entry['rank'] = rank
+            ranked.append(entry)
+            prev = entry[key]
+        return ranked
+    top_birdie_golfers = rank_leaderboard(top_birdie_golfers, 'rate')
+    top_eagle_golfers = rank_leaderboard(top_eagle_golfers, 'rate')
+    # For template compatibility
+    top_birdie_golfers = [
+        {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_birdie_golfers
+    ]
+    top_eagle_golfers = [
+        {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_eagle_golfers
+    ]
+
+    # Most consistent (lowest std dev of net, min 10 rounds)
+    import math
+    golfer_stddev = {}
+    for golfer in Golfer.objects.all():
+        golfer_rounds = rounds.filter(golfer=golfer)
+        if golfer_rounds.count() >= 10:
+            net_scores = list(golfer_rounds.values_list('net', flat=True))
+            mean = sum(net_scores) / len(net_scores)
+            variance = sum((x - mean) ** 2 for x in net_scores) / len(net_scores)
+            stddev = math.sqrt(variance)
+            golfer_stddev[golfer.name] = stddev
+    stddev_list = sorted(golfer_stddev.items(), key=lambda x: x[1])
+    most_consistent = []
+    prev = None
+    rank = 1
+    for i, (name, stddev) in enumerate(stddev_list):
+        if i == 0:
+            rank = 1
+        elif stddev != prev:
+            rank = i + 1
+        if rank > 5 and stddev != prev:
+            break
+        most_consistent.append({'rank': rank, 'name': name, 'stddev': stddev})
+        prev = stddev
+
+    # Calculate total birdies and eagles for the season
+    total_birdies = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') - 1).count()
+    total_eagles = Score.objects.filter(round__subbing_for__isnull=True, score__lte=F('hole__par') - 2).count()
+
+    context = {
+        'earnings_leaderboard': top_earnings,
+        'best_gross_rounds': best_gross_rounds,
+        'worst_gross_rounds': worst_gross_rounds,
+        'best_net_rounds': best_net_rounds,
+        'worst_net_rounds': worst_net_rounds,
+        'rounds_played': top_rounds_played,
+        'top_birdie_golfers': top_birdie_golfers,
+        'top_eagle_golfers': top_eagle_golfers,
+        'most_consistent': most_consistent,
+        'total_rounds': rounds.count(),
+        'total_birdies': total_birdies,
+        'total_eagles': total_eagles,
+        'multiple_seasons': Season.objects.count() > 1,
+    }
+    return render(request, 'historics.html', context)

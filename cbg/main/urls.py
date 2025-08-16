@@ -46,6 +46,7 @@ urlpatterns = [
     path('<year:year>/sub_stats/', views.sub_stats, name="sub_stats_with_year"),
     path('<year:year>/sub_stats/<int:golfer_id>/', views.sub_stats, name="sub_stats_detail_with_year"),
     path('<year:year>/league_stats/', views.league_stats, name="league_stats_with_year"),
+    path('historics/', views.historics, name='historics'),
     
     # Week patterns (must come after year patterns to avoid conflicts)
     path('<int:week>/', views.scorecards, name="scorecards"),

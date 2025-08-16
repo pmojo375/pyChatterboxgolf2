@@ -81,6 +81,11 @@
             <a class="nav-link" href="{% url 'league_stats' %}">League Stats</a>
             {% endif %}
           </li>
+          {% if multiple_seasons %}
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'historics' %}">Historics</a>
+          </li>
+          {% endif %}
           {% if available_weeks %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">

@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% block page_content %}
+<div class="container-fluid">
+    <div class="row text-center p-5 bg-gradient-primary text-white mb-5">
+        <div class="col">
+            <h1 class="display-4 fw-bold mb-3">All-Time League Historics</h1>
+            <p class="lead opacity-75">Stats and records across all seasons</p>
+        </div>
+    </div>
+
+    <!-- Money/Earnings Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Top 5 All-Time Money Winners</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Rank</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Skins Won</th>
+                                    <th scope="col" class="text-center">Games Won</th>
+                                    <th scope="col" class="text-center">Total Earnings</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in earnings_leaderboard %}
+                                <tr class="{% cycle 'table-light' 'table-white' %}">
+                                    <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                    <td class="fw-semibold">{{ entry.golfer }}</td>
+                                    <td class="text-center text-success">${{ entry.skins_earned }}</td>
+                                    <td class="text-center text-primary">${{ entry.games_earned }}</td>
+                                    <td class="text-center fw-bold text-success">${{ entry.total_earned }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best and Worst Rounds -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Best Rounds (Gross, Net, Points)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Place</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Gross</th>
+                                    <th scope="col" class="text-center">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in best_gross_rounds %}
+                                <tr>
+                                    <td class="text-center fw-bold">{{ r.rank }}</td>
+                                    <td>{{ r.obj.golfer.name }}</td>
+                                    <td class="text-center">{{ r.obj.gross }}</td>
+                                    <td class="text-center">{{ r.obj.week.date|date:'Y-m-d' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Worst Rounds (Gross, Net, Points)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Place</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Gross</th>
+                                    <th scope="col" class="text-center">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in worst_gross_rounds %}
+                                <tr>
+                                    <td class="text-center fw-bold">{{ r.rank }}</td>
+                                    <td>{{ r.obj.golfer.name }}</td>
+                                    <td class="text-center">{{ r.obj.gross }}</td>
+                                    <td class="text-center">{{ r.obj.week.date|date:'Y-m-d' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Most Rounds Played -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Most Rounds Played (Top 5)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Place</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Rounds Played</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in rounds_played %}
+                                <tr>
+                                    <td class="text-center fw-bold">{{ row.rank }}</td>
+                                    <td>{{ row.golfer__name }}</td>
+                                    <td class="text-center">{{ row.num_rounds }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Most Birdies/Eagles -->
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Most Birdies (Top 5)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Place</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Birdie Rate</th>
+                                    <th scope="col" class="text-center">Holes Played</th>
+                                    <th scope="col" class="text-center">Total Birdies</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in top_birdie_golfers %}
+                                <tr>
+                                    <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                    <td>{{ entry.name }}</td>
+                                    <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                    <td class="text-center">{{ entry.holes }}</td>
+                                    <td class="text-center">{{ entry.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted">Total Birdies: {{ total_birdies }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Most Eagles (Top 5)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Place</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Eagle Rate</th>
+                                    <th scope="col" class="text-center">Holes Played</th>
+                                    <th scope="col" class="text-center">Total Eagles</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in top_eagle_golfers %}
+                                <tr>
+                                    <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                    <td>{{ entry.name }}</td>
+                                    <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                    <td class="text-center">{{ entry.holes }}</td>
+                                    <td class="text-center">{{ entry.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="text-muted">Total Eagles: {{ total_eagles }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Most Consistent -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Most Consistent (Lowest Std Dev of Net, Top 5, min 10 rounds)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 modern-stats-table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col" class="text-center">Place</th>
+                                    <th scope="col">Golfer</th>
+                                    <th scope="col" class="text-center">Std Dev</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in most_consistent %}
+                                <tr>
+                                    <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                    <td>{{ entry.name }}</td>
+                                    <td class="text-center">{{ entry.stddev|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
