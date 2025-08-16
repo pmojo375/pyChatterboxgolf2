@@ -477,7 +477,7 @@ def add_sub(request):
     current_season = Season.objects.order_by('-year').first()
     absent_golfers = Golfer.objects.filter(team__season=current_season)
     sub_golfers = Golfer.objects.all()
-    weeks = Week.objects.filter(season=current_season).order_by('-date')
+    weeks = Week.objects.filter(season=current_season, rained_out=False).order_by('-date')
     
     if request.method == 'POST':
         form = SubForm(absent_golfers, sub_golfers, weeks, request.POST)
@@ -538,7 +538,7 @@ def add_sub(request):
 
 
 def enter_schedule(request):
-    weeks = Week.objects.filter(season=Season.objects.order_by('-year').first()).order_by('-date')
+    weeks = Week.objects.filter(season=Season.objects.order_by('-year').first(), rained_out=False).order_by('-date')
     teams = Team.objects.filter(season=Season.objects.order_by('-year').first())
     message = None
     message_type = None
