@@ -74,6 +74,7 @@ def weeks_context(request):
         # Get all seasons for the season selector
         all_seasons = Season.objects.all().order_by('-year')
         
+        multiple_seasons = Season.objects.count() > 1
         return {
             'available_weeks': weeks_with_complete_scores,
             'current_season': current_season,
@@ -84,6 +85,7 @@ def weeks_context(request):
             'all_seasons': all_seasons,
             'is_current_season': is_current_season,
             'is_production_host': is_production_host,
+            'multiple_seasons': multiple_seasons,
         }
     except Season.DoesNotExist:
         # No season exists, so no golfers to show
@@ -97,4 +99,5 @@ def weeks_context(request):
             'current_year': None,
             'is_current_season': False,
             'is_production_host': False,
+            'multiple_seasons': False,
         } 

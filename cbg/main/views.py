@@ -3916,6 +3916,6 @@ def historics(request):
         'total_rounds': rounds.count(),
         'total_birdies': total_birdies,
         'total_eagles': total_eagles,
-        'multiple_seasons': Season.objects.count() > 1,
+        # 'multiple_seasons': Season.objects.count() > 1,  # Removed, now handled by context processor
     }
     return render(request, 'historics.html', context)
