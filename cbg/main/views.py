@@ -3834,19 +3834,39 @@ def historics(request):
         top_rounds_played.append({'rank': rank, **row})
         prev = row['num_rounds']
 
-    # Most birdies/eagles by rate (min 90 holes, robust per golfer)
+    # Most birdies/eagles/pars/bogeys/doubles/triples/worse by rate (min 90 holes, robust per golfer)
     top_birdie_golfers = []
     top_eagle_golfers = []
+    top_par_golfers = []
+    top_bogey_golfers = []
+    top_double_golfers = []
+    top_triple_golfers = []
+    top_worse_golfers = []
     for golfer in Golfer.objects.all():
         scores = Score.objects.filter(golfer=golfer, round__subbing_for__isnull=True)
         holes_played = scores.count()
         if holes_played >= 90:
             birdies = scores.filter(score=F('hole__par') - 1).count()
             eagles = scores.filter(score__lte=F('hole__par') - 2).count()
+            pars = scores.filter(score=F('hole__par')).count()
+            bogeys = scores.filter(score=F('hole__par') + 1).count()
+            doubles = scores.filter(score=F('hole__par') + 2).count()
+            triples = scores.filter(score=F('hole__par') + 3).count()
+            worse = scores.filter(score__gte=F('hole__par') + 4).count()
             birdie_rate = birdies / holes_played if holes_played else 0
             eagle_rate = eagles / holes_played if holes_played else 0
+            par_rate = pars / holes_played if holes_played else 0
+            bogey_rate = bogeys / holes_played if holes_played else 0
+            double_rate = doubles / holes_played if holes_played else 0
+            triple_rate = triples / holes_played if holes_played else 0
+            worse_rate = worse / holes_played if holes_played else 0
             top_birdie_golfers.append({'golfer': golfer, 'rate': birdie_rate, 'holes': holes_played, 'count': birdies})
             top_eagle_golfers.append({'golfer': golfer, 'rate': eagle_rate, 'holes': holes_played, 'count': eagles})
+            top_par_golfers.append({'golfer': golfer, 'rate': par_rate, 'holes': holes_played, 'count': pars})
+            top_bogey_golfers.append({'golfer': golfer, 'rate': bogey_rate, 'holes': holes_played, 'count': bogeys})
+            top_double_golfers.append({'golfer': golfer, 'rate': double_rate, 'holes': holes_played, 'count': doubles})
+            top_triple_golfers.append({'golfer': golfer, 'rate': triple_rate, 'holes': holes_played, 'count': triples})
+            top_worse_golfers.append({'golfer': golfer, 'rate': worse_rate, 'holes': holes_played, 'count': worse})
     # Sort and rank with ties
     def rank_leaderboard(entries, key):
         entries.sort(key=lambda x: x[key], reverse=True)
@@ -3866,12 +3886,32 @@ def historics(request):
         return ranked
     top_birdie_golfers = rank_leaderboard(top_birdie_golfers, 'rate')
     top_eagle_golfers = rank_leaderboard(top_eagle_golfers, 'rate')
+    top_par_golfers = rank_leaderboard(top_par_golfers, 'rate')
+    top_bogey_golfers = rank_leaderboard(top_bogey_golfers, 'rate')
+    top_double_golfers = rank_leaderboard(top_double_golfers, 'rate')
+    top_triple_golfers = rank_leaderboard(top_triple_golfers, 'rate')
+    top_worse_golfers = rank_leaderboard(top_worse_golfers, 'rate')
     # For template compatibility
     top_birdie_golfers = [
         {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_birdie_golfers
     ]
     top_eagle_golfers = [
         {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_eagle_golfers
+    ]
+    top_par_golfers = [
+        {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_par_golfers
+    ]
+    top_bogey_golfers = [
+        {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_bogey_golfers
+    ]
+    top_double_golfers = [
+        {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_double_golfers
+    ]
+    top_triple_golfers = [
+        {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_triple_golfers
+    ]
+    top_worse_golfers = [
+        {'rank': e['rank'], 'name': e['golfer'].name, 'rate': e['rate'], 'holes': e['holes'], 'count': e['count']} for e in top_worse_golfers
     ]
 
     # Most consistent (lowest std dev of net, min 10 rounds)
@@ -3902,6 +3942,11 @@ def historics(request):
     # Calculate total birdies and eagles for the season
     total_birdies = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') - 1).count()
     total_eagles = Score.objects.filter(round__subbing_for__isnull=True, score__lte=F('hole__par') - 2).count()
+    total_pars = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par')).count()
+    total_bogeys = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') + 1).count()
+    total_doubles = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') + 2).count()
+    total_triples = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') + 3).count()
+    total_worse = Score.objects.filter(round__subbing_for__isnull=True, score__gte=F('hole__par') + 4).count()
 
     context = {
         'earnings_leaderboard': top_earnings,
@@ -3912,10 +3957,19 @@ def historics(request):
         'rounds_played': top_rounds_played,
         'top_birdie_golfers': top_birdie_golfers,
         'top_eagle_golfers': top_eagle_golfers,
+        'top_par_golfers': top_par_golfers,
+        'top_bogey_golfers': top_bogey_golfers,
+        'top_double_golfers': top_double_golfers,
+        'top_triple_golfers': top_triple_golfers,
+        'top_worse_golfers': top_worse_golfers,
         'most_consistent': most_consistent,
         'total_rounds': rounds.count(),
         'total_birdies': total_birdies,
         'total_eagles': total_eagles,
-        # 'multiple_seasons': Season.objects.count() > 1,  # Removed, now handled by context processor
+        'total_pars': total_pars,
+        'total_bogeys': total_bogeys,
+        'total_doubles': total_doubles,
+        'total_triples': total_triples,
+        'total_worse': total_worse,
     }
     return render(request, 'historics.html', context)

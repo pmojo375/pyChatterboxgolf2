@@ -144,73 +144,216 @@
         </div>
     </div>
 
-    <!-- Most Birdies/Eagles -->
+    <!-- Scoring Breakdown (Top 5 by Rate, min 90 holes) -->
     <div class="row mb-5">
-        <div class="col-lg-6 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0">Most Birdies (Top 5)</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 modern-stats-table">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th scope="col" class="text-center">Place</th>
-                                    <th scope="col">Golfer</th>
-                                    <th scope="col" class="text-center">Birdie Rate</th>
-                                    <th scope="col" class="text-center">Holes Played</th>
-                                    <th scope="col" class="text-center">Total Birdies</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for entry in top_birdie_golfers %}
-                                <tr>
-                                    <td class="text-center fw-bold">{{ entry.rank }}</td>
-                                    <td>{{ entry.name }}</td>
-                                    <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
-                                    <td class="text-center">{{ entry.holes }}</td>
-                                    <td class="text-center">{{ entry.count }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <p class="text-muted">Total Birdies: {{ total_birdies }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6 mb-4">
+        <div class="col-12">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Most Eagles (Top 5)</h5>
+                    <h5 class="mb-0">Scoring Breakdown (Top 5 by Rate, min 90 holes)</h5>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 modern-stats-table">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th scope="col" class="text-center">Place</th>
-                                    <th scope="col">Golfer</th>
-                                    <th scope="col" class="text-center">Eagle Rate</th>
-                                    <th scope="col" class="text-center">Holes Played</th>
-                                    <th scope="col" class="text-center">Total Eagles</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for entry in top_eagle_golfers %}
-                                <tr>
-                                    <td class="text-center fw-bold">{{ entry.rank }}</td>
-                                    <td>{{ entry.name }}</td>
-                                    <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
-                                    <td class="text-center">{{ entry.holes }}</td>
-                                    <td class="text-center">{{ entry.count }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="row">
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="fw-bold mb-2">Eagles</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 modern-stats-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center">Place</th>
+                                            <th scope="col">Golfer</th>
+                                            <th scope="col" class="text-center">Eagle Rate</th>
+                                            <th scope="col" class="text-center">Holes Played</th>
+                                            <th scope="col" class="text-center">Total Eagles</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in top_eagle_golfers %}
+                                        <tr>
+                                            <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                            <td>{{ entry.name }}</td>
+                                            <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                            <td class="text-center">{{ entry.holes }}</td>
+                                            <td class="text-center">{{ entry.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted">Total Eagles: {{ total_eagles }}</p>
+                        </div>
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="fw-bold mb-2">Birdies</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 modern-stats-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center">Place</th>
+                                            <th scope="col">Golfer</th>
+                                            <th scope="col" class="text-center">Birdie Rate</th>
+                                            <th scope="col" class="text-center">Holes Played</th>
+                                            <th scope="col" class="text-center">Total Birdies</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in top_birdie_golfers %}
+                                        <tr>
+                                            <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                            <td>{{ entry.name }}</td>
+                                            <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                            <td class="text-center">{{ entry.holes }}</td>
+                                            <td class="text-center">{{ entry.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted">Total Birdies: {{ total_birdies }}</p>
+                        </div>
                     </div>
-                    <p class="text-muted">Total Eagles: {{ total_eagles }}</p>
+                    <div class="row">
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="fw-bold mb-2">Pars</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 modern-stats-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center">Place</th>
+                                            <th scope="col">Golfer</th>
+                                            <th scope="col" class="text-center">Par Rate</th>
+                                            <th scope="col" class="text-center">Holes Played</th>
+                                            <th scope="col" class="text-center">Total Pars</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in top_par_golfers %}
+                                        <tr>
+                                            <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                            <td>{{ entry.name }}</td>
+                                            <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                            <td class="text-center">{{ entry.holes }}</td>
+                                            <td class="text-center">{{ entry.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted">Total Pars: {{ total_pars }}</p>
+                        </div>
+                        <div class="col-lg-6 mb-4">
+                            <h6 class="fw-bold mb-2">Bogeys</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 modern-stats-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center">Place</th>
+                                            <th scope="col">Golfer</th>
+                                            <th scope="col" class="text-center">Bogey Rate</th>
+                                            <th scope="col" class="text-center">Holes Played</th>
+                                            <th scope="col" class="text-center">Total Bogeys</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in top_bogey_golfers %}
+                                        <tr>
+                                            <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                            <td>{{ entry.name }}</td>
+                                            <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                            <td class="text-center">{{ entry.holes }}</td>
+                                            <td class="text-center">{{ entry.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted">Total Bogeys: {{ total_bogeys }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-4 mb-4">
+                            <h6 class="fw-bold mb-2">Doubles</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 modern-stats-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center">Place</th>
+                                            <th scope="col">Golfer</th>
+                                            <th scope="col" class="text-center">Double Rate</th>
+                                            <th scope="col" class="text-center">Holes Played</th>
+                                            <th scope="col" class="text-center">Total Doubles</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in top_double_golfers %}
+                                        <tr>
+                                            <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                            <td>{{ entry.name }}</td>
+                                            <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                            <td class="text-center">{{ entry.holes }}</td>
+                                            <td class="text-center">{{ entry.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted">Total Doubles: {{ total_doubles }}</p>
+                        </div>
+                        <div class="col-lg-4 mb-4">
+                            <h6 class="fw-bold mb-2">Triples</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 modern-stats-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center">Place</th>
+                                            <th scope="col">Golfer</th>
+                                            <th scope="col" class="text-center">Triple Rate</th>
+                                            <th scope="col" class="text-center">Holes Played</th>
+                                            <th scope="col" class="text-center">Total Triples</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in top_triple_golfers %}
+                                        <tr>
+                                            <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                            <td>{{ entry.name }}</td>
+                                            <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                            <td class="text-center">{{ entry.holes }}</td>
+                                            <td class="text-center">{{ entry.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted">Total Triples: {{ total_triples }}</p>
+                        </div>
+                        <div class="col-lg-4 mb-4">
+                            <h6 class="fw-bold mb-2">Worse (Quadruple+)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 modern-stats-table">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col" class="text-center">Place</th>
+                                            <th scope="col">Golfer</th>
+                                            <th scope="col" class="text-center">Worse Rate</th>
+                                            <th scope="col" class="text-center">Holes Played</th>
+                                            <th scope="col" class="text-center">Total Worse</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in top_worse_golfers %}
+                                        <tr>
+                                            <td class="text-center fw-bold">{{ entry.rank }}</td>
+                                            <td>{{ entry.name }}</td>
+                                            <td class="text-center">{{ entry.rate|floatformat:3 }}</td>
+                                            <td class="text-center">{{ entry.holes }}</td>
+                                            <td class="text-center">{{ entry.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted">Total Worse: {{ total_worse }}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
