@@ -10,7 +10,9 @@ from django.http import HttpResponseBadRequest, HttpResponseRedirect
 from main.models import Team, Score, Sub, Week
 from django.urls import reverse
 from django.utils import timezone
-from collections import defaultdict
+from django.contrib import messages
+from django.utils.dateparse import parse_date
+from datetime import timedelta
 
 HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
 
@@ -3973,3 +3975,86 @@ def historics(request):
         'total_worse': total_worse,
     }
     return render(request, 'historics.html', context)
+
+
+def manage_weeks(request):
+    from .models import Season, Week
+    from django.shortcuts import render, redirect
+    from django.contrib import messages
+    from django.utils.dateparse import parse_date
+    from datetime import timedelta
+
+    season = Season.objects.order_by('-year').first()
+    weeks = Week.objects.filter(season=season).order_by('date')
+
+    selected_week_id = request.GET.get('selected_week')
+    selected_week = None
+    prev_week = None
+    next_week = None
+    if selected_week_id:
+        try:
+            selected_week = Week.objects.get(id=selected_week_id)
+            prev_week = Week.objects.filter(season=season, date__lt=selected_week.date).order_by('-date').first()
+            next_week = Week.objects.filter(season=season, date__gt=selected_week.date).order_by('date').first()
+        except Week.DoesNotExist:
+            selected_week = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'save':
+            week_id = request.POST.get('week_id')
+            try:
+                week = Week.objects.get(id=week_id)
+            except Week.DoesNotExist:
+                messages.error(request, 'Week not found.')
+                return redirect('manage_weeks')
+            new_date = request.POST.get('date')
+            is_front = request.POST.get('is_front') == 'true'
+            prev_week = Week.objects.filter(season=season, date__lt=week.date).order_by('-date').first()
+            next_week = Week.objects.filter(season=season, date__gt=week.date).order_by('date').first()
+            if new_date:
+                new_date_obj = parse_date(new_date)
+                if prev_week and new_date_obj <= prev_week.date.date():
+                    messages.error(request, 'Date cannot be before previous week.')
+                elif next_week and new_date_obj >= next_week.date.date():
+                    messages.error(request, 'Date cannot be the same as or after next week.')
+                else:
+                    week.date = week.date.replace(year=new_date_obj.year, month=new_date_obj.month, day=new_date_obj.day)
+                    week.save()
+                    messages.success(request, f'Week {week.number} date updated.')
+            if week.is_front != is_front:
+                week.is_front = is_front
+                week.save()
+                messages.success(request, f'Week {week.number} front/back updated.')
+            return redirect(f'{reverse("manage_weeks")}?selected_week={week.id}')
+        elif action in ['bump', 'flip']:
+            bulk_week_id = request.POST.get('bulk_week_id')
+            if not bulk_week_id:
+                messages.error(request, 'Please select a week for bulk action.')
+                return redirect('manage_weeks')
+            try:
+                bulk_week = Week.objects.get(id=bulk_week_id)
+            except Week.DoesNotExist:
+                messages.error(request, 'Selected week not found.')
+                return redirect('manage_weeks')
+            if action == 'bump':
+                affected = Week.objects.filter(season=season, date__gte=bulk_week.date)
+                for w in affected:
+                    w.date = w.date + timedelta(days=7)
+                    w.save()
+                messages.success(request, f'Weeks {bulk_week.number} and later bumped by 7 days.')
+            elif action == 'flip':
+                affected = Week.objects.filter(season=season, date__gte=bulk_week.date)
+                for w in affected:
+                    w.is_front = not w.is_front
+                    w.save()
+                messages.success(request, f'Weeks {bulk_week.number} and later had front/back flipped.')
+            return redirect(f'{reverse("manage_weeks")}?selected_week={bulk_week.id}')
+
+    context = {
+        'weeks': weeks,
+        'selected_week': selected_week,
+        'prev_week': prev_week,
+        'next_week': next_week,
+    }
+    return render(request, 'manage_weeks.html', context)

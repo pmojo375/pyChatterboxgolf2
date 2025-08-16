@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block page_content %}
+<div class="container mt-4">
+  <h2 class="mb-4 text-center">Manage Weeks</h2>
+  {% if not selected_week and messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+  <form method="get" class="mb-2">
+    <div class="row justify-content-center g-2 align-items-end">
+      <div class="col-12 col-md-6">
+        <select class="form-select text-center" id="selected_week" name="selected_week" onchange="this.form.submit()">
+          <option value="" {% if not selected_week %}selected{% endif %}>Select week</option>
+          {% for week in weeks %}
+            <option value="{{ week.id }}" {% if selected_week and week.id == selected_week.id %}selected{% endif %}>
+              Week {{ week.number }}{% if week.rained_out %}<b>*</b>{% endif %} - {{ week.date|date:'Y-m-d' }} - {% if week.is_front %}Front{% else %}Back{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+        <div class="form-text text-center mt-1">An asterisk (<b class="text-danger">*</b>) indicates a rainout week.</div>
+      </div>
+    </div>
+  </form>
+  {% if selected_week %}
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-md-4">
+        <div class="card">
+          <div class="card-header bg-light">Previous Week</div>
+          <div class="card-body">
+            {% if prev_week %}
+              <div><strong>Week:</strong> {{ prev_week.number }}{% if prev_week.rained_out %}<b class="text-danger">*</b>{% endif %}</div>
+              <div><strong>Date:</strong> {{ prev_week.date|date:'Y-m-d' }}</div>
+              <div><strong>9:</strong> {% if prev_week.is_front %}Front{% else %}Back{% endif %}</div>
+            {% else %}
+              <div class="text-muted">No previous week</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <form method="post" class="card">
+          {% csrf_token %}
+          <div class="card-header bg-primary text-white">Edit Week {{ selected_week.number }}{% if selected_week.rained_out %}<b class="text-warning">*</b>{% endif %}</div>
+          <div class="card-body">
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+              {% endfor %}
+            {% endif %}
+            <input type="hidden" name="week_id" value="{{ selected_week.id }}">
+            <input type="hidden" name="action" value="save">
+            <div class="mb-3">
+              <label for="edit_date" class="form-label">Date</label>
+              <input type="date" id="edit_date" name="date" value="{{ selected_week.date|date:'Y-m-d' }}" class="form-control">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">9 Holes</label>
+              <div class="btn-group w-100" role="group" aria-label="Front or Back">
+                <input type="hidden" name="is_front" id="is_front_input" value="{{ selected_week.is_front|yesno:'true,false' }}">
+                <button type="button" class="btn btn-outline-success {% if selected_week.is_front %}active{% endif %} rounded-start" id="front_btn">Front</button>
+                <button type="button" class="btn btn-outline-secondary {% if not selected_week.is_front %}active{% endif %} rounded-end" id="back_btn">Back</button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-success w-100 mb-3">Save</button>
+          </div>
+        </form>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="card">
+          <div class="card-header bg-light">Next Week</div>
+          <div class="card-body">
+            {% if next_week %}
+              <div><strong>Week:</strong> {{ next_week.number }}{% if next_week.rained_out %}<b class="text-danger">*</b>{% endif %}</div>
+              <div><strong>Date:</strong> {{ next_week.date|date:'Y-m-d' }}</div>
+              <div><strong>9:</strong> {% if next_week.is_front %}Front{% else %}Back{% endif %}</div>
+            {% else %}
+              <div class="text-muted">No next week</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+<script>
+// Interlocked Front/Back buttons
+function setupFrontBackToggle() {
+  var frontBtn = document.getElementById('front_btn');
+  var backBtn = document.getElementById('back_btn');
+  var isFrontInput = document.getElementById('is_front_input');
+  if (!frontBtn || !backBtn || !isFrontInput) return;
+  frontBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    frontBtn.classList.add('active', 'btn-success');
+    frontBtn.classList.remove('btn-outline-success');
+    backBtn.classList.remove('active', 'btn-secondary');
+    backBtn.classList.add('btn-outline-secondary');
+    isFrontInput.value = 'true';
+  });
+  backBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    backBtn.classList.add('active', 'btn-secondary');
+    backBtn.classList.remove('btn-outline-secondary');
+    frontBtn.classList.remove('active', 'btn-success');
+    frontBtn.classList.add('btn-outline-success');
+    isFrontInput.value = 'false';
+  });
+}
+document.addEventListener('DOMContentLoaded', setupFrontBackToggle);
+</script>
+<style>
+@media (max-width: 576px) {
+  .container { padding-left: 12px; padding-right: 12px; }
+  .form-label, .form-select, .btn { font-size: 0.95rem; }
+  .card-header, .card-body { font-size: 0.97rem; }
+}
+.btn-group .btn { min-width: 80px; }
+</style>
+{% endblock %}

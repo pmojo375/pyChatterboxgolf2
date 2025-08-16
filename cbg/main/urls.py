@@ -51,3 +51,7 @@ urlpatterns = [
     # Week patterns (must come after year patterns to avoid conflicts)
     path('<int:week>/', views.scorecards, name="scorecards"),
 ]
+
+urlpatterns += [
+    path('manage_weeks/', views.manage_weeks, name='manage_weeks'),
+]
