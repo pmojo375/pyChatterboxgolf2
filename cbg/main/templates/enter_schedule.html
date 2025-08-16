@@ -70,40 +70,195 @@
     </form>
 </div>
 
+<div id="current-matchups-container" class="mb-4" style="margin-top: 2rem;">
+    <div class="card shadow-sm" style="max-width: 500px; margin: 0 auto;">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-people-fill"></i> Current Matchups for Selected Week</h5>
+        </div>
+        <ul id="current-matchups-list" class="list-group list-group-flush" style="background: #f8f9fa;"></ul>
+    </div>
+</div>
+
     {% block extra_js %}
     <script>
-        // JavaScript to handle dynamic dropdown behavior
-        document.getElementById('{{ form.team1.id_for_label }}').addEventListener('change', function () {
-          var team1Value = this.value;
-          var team2Dropdown = document.getElementById('{{ form.team2.id_for_label }}');
+        // Helper: update team dropdowns to flag teams already in matchups
+        function flagTeamsWithMatchups(teamIds) {
+            var team1Dropdown = document.getElementById('{{ form.team1.id_for_label }}');
+            var team2Dropdown = document.getElementById('{{ form.team2.id_for_label }}');
+            [team1Dropdown, team2Dropdown].forEach(function(dropdown) {
+                Array.from(dropdown.options).forEach(function(option) {
+                    // Remove previous flag
+                    option.textContent = option.textContent.replace(/ \(Already in matchup\)$/,'');
+                    option.classList.remove('already-in-matchup');
+                    if (option.value && teamIds.includes(parseInt(option.value))) {
+                        option.textContent += ' (Already in matchup)';
+                        option.classList.add('already-in-matchup');
+                    }
+                });
+            });
+        }
 
-          console.log(team1Value)
-
-          
-          // Enable all options
-          Array.from(team2Dropdown.options).forEach(function(option) {
-            option.disabled = false;
-          });
-        
-          // Disable the selected team in team1 in team2
-          if (team1Value !== '') {
-            var selectedOption = team2Dropdown.querySelector('option[value="' + team1Value + '"]');
-            
-            console.log(selectedOption)
-            if (selectedOption) {
-              selectedOption.setAttribute("disabled", true);
+        function renderCurrentMatchups(matchupPairs) {
+            var list = document.getElementById('current-matchups-list');
+            list.innerHTML = '';
+            if (matchupPairs && matchupPairs.length > 0) {
+                matchupPairs.forEach(function(pair) {
+                    // pair: {team1: [g1, g2], team2: [g1, g2]}
+                    var team1 = pair.team1 || [];
+                    var team2 = pair.team2 || [];
+                    var maxRows = Math.max(team1.length, team2.length, 2); // Always show 2 rows
+                    var grid = document.createElement('div');
+                    grid.className = 'matchup-row-grid';
+                    grid.style.display = 'grid';
+                    grid.style.gridTemplateColumns = '1fr 60px 1fr';
+                    grid.style.alignItems = 'center';
+                    grid.style.minWidth = '260px';
+                    for (let i = 0; i < maxRows; i++) {
+                        var left = team1[i] ? `<span class='me-2 text-success'><i class='bi bi-person-fill'></i></span><strong>${team1[i]}</strong>` : '';
+                        var right = team2[i] ? `<strong>${team2[i]}</strong><span class='ms-2 text-success'><i class='bi bi-person-fill'></i></span>` : '';
+                        var center = (i === 0) ? "<div class='center' style='justify-self:center;text-align:center;color:#888;font-weight:bold;'>vs</div>" : "<div></div>";
+                        grid.innerHTML += `
+                            <div class='left' style='justify-self:start;text-align:left;'>${left}</div>
+                            ${center}
+                            <div class='right' style='justify-self:end;text-align:right;'>${right}</div>
+                        `;
+                    }
+                    var li = document.createElement('li');
+                    li.className = 'list-group-item p-2';
+                    li.appendChild(grid);
+                    list.appendChild(li);
+                });
+            } else {
+                var li = document.createElement('li');
+                li.className = 'list-group-item text-muted';
+                li.textContent = 'No matchups yet for this week.';
+                list.appendChild(li);
             }
-          }
+        }
 
-          // if the team2 is already the same element, change it to the next in the list
-            if (team1Value === team2Dropdown.value) {
-                var nextOption = team2Dropdown.querySelector('option:not([disabled]):not([value="' + team1Value + '"])');
-                if (nextOption) {
-                nextOption.setAttribute("selected", true);
-                }
+        // Fetch teams in matchups for selected week
+        function fetchTeamsForWeek(weekId) {
+            if (!weekId) return;
+            fetch('/api/get_week_matchups/?week_id=' + weekId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.team_ids) {
+                        flagTeamsWithMatchups(data.team_ids);
+                    }
+                    if (data.matchup_pairs) {
+                        renderCurrentMatchups(data.matchup_pairs);
+                    }
+                });
+        }
+
+        // On week dropdown change, update flags
+        document.getElementById('{{ form.week.id_for_label }}').addEventListener('change', function () {
+            var weekId = this.value;
+            fetchTeamsForWeek(weekId);
+        });
+
+        // On page load, if a week is already selected, flag teams
+        document.addEventListener('DOMContentLoaded', function() {
+            var weekDropdown = document.getElementById('{{ form.week.id_for_label }}');
+            if (weekDropdown.value) {
+                fetchTeamsForWeek(weekDropdown.value);
             }
         });
-        </script>
+
+        // Disable the selected team in the other dropdown (both ways)
+        function syncTeamDropdowns() {
+            var team1Dropdown = document.getElementById('{{ form.team1.id_for_label }}');
+            var team2Dropdown = document.getElementById('{{ form.team2.id_for_label }}');
+            var team1Value = team1Dropdown.value;
+            var team2Value = team2Dropdown.value;
+
+            // Enable all options first
+            Array.from(team1Dropdown.options).forEach(function(option) {
+                option.disabled = false;
+            });
+            Array.from(team2Dropdown.options).forEach(function(option) {
+                option.disabled = false;
+            });
+
+            // Disable the selected team in the other dropdown
+            if (team1Value) {
+                var opt2 = team2Dropdown.querySelector('option[value="' + team1Value + '"]');
+                if (opt2) opt2.disabled = true;
+            }
+            if (team2Value) {
+                var opt1 = team1Dropdown.querySelector('option[value="' + team2Value + '"]');
+                if (opt1) opt1.disabled = true;
+            }
+        }
+        document.getElementById('{{ form.team1.id_for_label }}').addEventListener('change', function () {
+            syncTeamDropdowns();
+        });
+        document.getElementById('{{ form.team2.id_for_label }}').addEventListener('change', function () {
+            syncTeamDropdowns();
+        });
+        // Initial sync on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            syncTeamDropdowns();
+        });
+
+        // Confirmation dialog if picking a team already in a matchup
+        function addConfirmOnAlreadyInMatchup(dropdownId) {
+            var dropdown = document.getElementById(dropdownId);
+            dropdown.addEventListener('change', function(e) {
+                var selectedOption = dropdown.options[dropdown.selectedIndex];
+                if (selectedOption.classList.contains('already-in-matchup')) {
+                    var confirmed = confirm('This team is already in a matchup for this week. If you continue, their old matchup will be deleted and replaced. Continue?');
+                    if (!confirmed) {
+                        // Reset selection
+                        dropdown.selectedIndex = 0;
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            });
+        }
+        addConfirmOnAlreadyInMatchup('{{ form.team1.id_for_label }}');
+        addConfirmOnAlreadyInMatchup('{{ form.team2.id_for_label }}');
+    </script>
+
+    <style>
+        option.already-in-matchup {
+            font-weight: bold;
+        }
+        .matchup-row-grid {
+            display: grid;
+            grid-template-columns: 1fr 60px 1fr;
+            align-items: center;
+            min-width: 260px;
+        }
+        .matchup-row-grid .left {
+            justify-self: start;
+            text-align: left;
+        }
+        .matchup-row-grid .center {
+            justify-self: center;
+            text-align: center;
+            color: #888;
+            font-weight: bold;
+        }
+        .matchup-row-grid .right {
+            justify-self: end;
+            text-align: right;
+        }
+        /* Remove or reduce margin between matchup list items */
+        #current-matchups-list .list-group-item {
+            margin-bottom: 0.2rem;
+            border-radius: 0.5rem;
+        }
+        /* Responsive: add side spacing on mobile */
+        @media (max-width: 600px) {
+            #current-matchups-container .card {
+                margin-left: 1rem !important;
+                margin-right: 1rem !important;
+                width: auto !important;
+            }
+        }
+    </style>
 
 {% endblock %}
 {% endblock %}

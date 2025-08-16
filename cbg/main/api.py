@@ -166,3 +166,33 @@ def get_matchup_data(request, matchup_id):
             row_counter += 1
 
     return JsonResponse({'rows': rows})
+
+
+def get_week_matchups(request):
+    week_id = request.GET.get('week_id')
+    if not week_id:
+        return JsonResponse({'error': 'No week_id provided'}, status=400)
+    try:
+        week = Week.objects.get(id=week_id)
+    except Week.DoesNotExist:
+        return JsonResponse({'error': 'Week not found'}, status=404)
+    matchups = Matchup.objects.filter(week=week).prefetch_related('teams__golfers')
+    team_ids = list(matchups.values_list('teams__id', flat=True))
+    # Build current matchup pairings as list of dicts with golfer names
+    matchup_pairs = []
+    for matchup in matchups:
+        teams = list(matchup.teams.all())
+        if len(teams) == 2:
+            team1_golfers = [g.name for g in teams[0].golfers.all()]
+            team2_golfers = [g.name for g in teams[1].golfers.all()]
+            matchup_pairs.append({
+                'team1': team1_golfers,
+                'team2': team2_golfers
+            })
+        elif len(teams) == 1:
+            team1_golfers = [g.name for g in teams[0].golfers.all()]
+            matchup_pairs.append({
+                'team1': team1_golfers,
+                'team2': []
+            })
+    return JsonResponse({'team_ids': team_ids, 'matchup_pairs': matchup_pairs})

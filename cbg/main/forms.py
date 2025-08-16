@@ -78,8 +78,7 @@ class ScheduleForm(forms.Form):
             raise forms.ValidationError('Please select a week before submitting the matchup.')
         if team1 == team2:
             raise forms.ValidationError('Team 1 and Team 2 must be different')
-        if Matchup.objects.filter(week_id=week).filter(Q(teams__id=team1) | Q(teams__id=team2)).exists():
-            raise forms.ValidationError('Teams have already been scheduled for this week')
+        # Do NOT block if teams are already scheduled; this is handled in the view
         return cleaned_data
 
 class WeekSelectionForm(forms.Form):

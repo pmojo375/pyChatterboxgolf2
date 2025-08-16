@@ -558,12 +558,15 @@ def enter_schedule(request):
             team1 = Team.objects.get(id=team1_id)
             team2 = Team.objects.get(id=team2_id)
             
+            # Remove any existing matchup for either team in this week
+            existing_matchups = Matchup.objects.filter(week=week, teams__in=[team1, team2]).distinct()
+            for matchup in existing_matchups:
+                matchup.delete()
             # Create the matchup object
             matchup = Matchup(
                 week=week
             )
             matchup.save()
-            
             matchup.teams.add(team1)
             matchup.teams.add(team2)
             

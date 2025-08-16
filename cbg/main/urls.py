@@ -1,6 +1,6 @@
 from django.urls import path, register_converter
 from . import views
-from .api import get_matchup_data, get_playing_golfers, get_games_for_week, get_games_by_week, get_game_entries
+from .api import get_matchup_data, get_playing_golfers, get_games_for_week, get_games_by_week, get_game_entries, get_week_matchups
 
 # Custom path converter for 4-digit years
 class YearConverter:
@@ -38,6 +38,7 @@ urlpatterns = [
     path('api/get_games_for_week/<int:week_id>/', get_games_for_week, name='get_games_for_week'),
     path('api/get_games_by_week/<int:week_id>/', get_games_by_week, name='get_games_by_week'),
     path('api/get_game_entries/<int:week_id>/<int:game_id>/', get_game_entries, name='get_game_entries'),
+    path('api/get_week_matchups/', get_week_matchups, name='get_week_matchups'),
     
     # New URL patterns with year parameter (4-digit years only) - must come before week patterns
     path('<year:year>/<int:week>/', views.scorecards, name="scorecards_with_year"),
