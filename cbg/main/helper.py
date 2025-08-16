@@ -308,17 +308,17 @@ def get_schedule(week_model):
             team2_golfer2_hcp = team2_golfer2.handicap_set.all().order_by('-week__date').first().handicap if team2_golfer2.handicap_set.all().order_by('-week__date').first() else 0
 
             if team1_golfer1_hcp > team1_golfer2_hcp and team2_golfer1_hcp > team2_golfer2_hcp:
-                match_low = [team1_golfer2.name, team2_golfer2.name]
-                match_high = [team1_golfer1.name, team2_golfer1.name]
+                match_low = [(team1_golfer2.name, team1_golfer2_hcp), (team2_golfer2.name, team2_golfer2_hcp)]
+                match_high = [(team1_golfer1.name, team1_golfer1_hcp), (team2_golfer1.name, team2_golfer1_hcp)]
             elif team1_golfer1_hcp < team1_golfer2_hcp and team2_golfer1_hcp < team2_golfer2_hcp:
-                match_low = [team1_golfer1.name, team2_golfer1.name]
-                match_high = [team1_golfer2.name, team2_golfer2.name]
+                match_low = [(team1_golfer1.name, team1_golfer1_hcp), (team2_golfer1.name, team2_golfer1_hcp)]
+                match_high = [(team1_golfer2.name, team1_golfer2_hcp), (team2_golfer2.name, team2_golfer2_hcp)]
             elif team1_golfer1_hcp > team1_golfer2_hcp and team2_golfer1_hcp < team2_golfer2_hcp:
-                match_low = [team1_golfer2.name, team2_golfer1.name]
-                match_high = [team1_golfer1.name, team2_golfer2.name]
+                match_low = [(team1_golfer2.name, team1_golfer2_hcp), (team2_golfer1.name, team2_golfer1_hcp)]
+                match_high = [(team1_golfer1.name, team1_golfer1_hcp), (team2_golfer2.name, team2_golfer2_hcp)]
             else:
-                match_low = [team1_golfer1.name, team2_golfer2.name]
-                match_high = [team1_golfer2.name, team2_golfer1.name]
+                match_low = [(team1_golfer1.name, team1_golfer1_hcp), (team2_golfer2.name, team2_golfer2_hcp)]
+                match_high = [(team1_golfer2.name, team1_golfer2_hcp), (team2_golfer1.name, team2_golfer1_hcp)]
 
             schedule.append({'low_match': match_low, 'high_match': match_high})
 

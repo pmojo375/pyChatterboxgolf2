@@ -352,8 +352,8 @@
                       <td class="text-center fw-bold text-info">{{ forloop.counter }}</td>
                       <td class="text-center">
                         <div class="d-flex flex-column">
-                          <span class="fw-semibold">{{ matchup.high_match.0 }}</span>
-                          <span class="fw-semibold">{{ matchup.low_match.0 }}</span>
+                          <span class="fw-semibold">{{ matchup.high_match.0.0 }} <span class="text-muted">({{ matchup.high_match.0.1 }})</span></span>
+                          <span class="fw-semibold">{{ matchup.low_match.0.0 }} <span class="text-muted">({{ matchup.low_match.0.1 }})</span></span>
                         </div>
                       </td>
                       <td class="text-center">
@@ -361,8 +361,8 @@
                       </td>
                       <td class="text-center">
                         <div class="d-flex flex-column">
-                          <span class="fw-semibold">{{ matchup.high_match.1 }}</span>
-                          <span class="fw-semibold">{{ matchup.low_match.1 }}</span>
+                          <span class="fw-semibold">{{ matchup.high_match.1.0 }} <span class="text-muted">({{ matchup.high_match.1.1 }})</span></span>
+                          <span class="fw-semibold">{{ matchup.low_match.1.0 }} <span class="text-muted">({{ matchup.low_match.1.1 }})</span></span>
                         </div>
                       </td>
                     </tr>
