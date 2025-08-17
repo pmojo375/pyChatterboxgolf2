@@ -4012,6 +4012,7 @@ def manage_weeks(request):
             is_front = request.POST.get('is_front') == 'true'
             prev_week = Week.objects.filter(season=season, date__lt=week.date).order_by('-date').first()
             next_week = Week.objects.filter(season=season, date__gt=week.date).order_by('date').first()
+            is_front_changed = (week.is_front != is_front)
             if new_date:
                 new_date_obj = parse_date(new_date)
                 if prev_week and new_date_obj <= prev_week.date.date():
@@ -4022,10 +4023,22 @@ def manage_weeks(request):
                     week.date = week.date.replace(year=new_date_obj.year, month=new_date_obj.month, day=new_date_obj.day)
                     week.save()
                     messages.success(request, f'Week {week.number} date updated.')
-            if week.is_front != is_front:
+            if is_front_changed:
                 week.is_front = is_front
                 week.save()
                 messages.success(request, f'Week {week.number} front/back updated.')
+                from main.tasks import process_week_async, generate_matchups_async
+                num_teams = week.season.team_set.count()
+                num_matchups = week.matchup_set.count()
+                if num_matchups == num_teams // 2:
+                    if Score.objects.filter(week=week).exists():
+                        process_week_async.delay(week.id)
+                        messages.info(request, f'Background task started: Regenerating matchups and rounds for week {week.number}.')
+                    else:
+                        generate_matchups_async.delay(week.id)
+                        messages.info(request, f'Background task started: Regenerating matchups for week {week.number}.')
+                else:
+                    messages.warning(request, f'Not all matchups are entered for week {week.number}. No background tasks started.')
             return redirect(f'{reverse("manage_weeks")}?selected_week={week.id}')
         elif action in ['bump', 'flip']:
             bulk_week_id = request.POST.get('bulk_week_id')
@@ -4045,9 +4058,24 @@ def manage_weeks(request):
                 messages.success(request, f'Weeks {bulk_week.number} and later bumped by 7 days.')
             elif action == 'flip':
                 affected = Week.objects.filter(season=season, date__gte=bulk_week.date)
+                from main.tasks import process_week_async, generate_matchups_async
                 for w in affected:
+                    old_is_front = w.is_front
                     w.is_front = not w.is_front
                     w.save()
+                    if old_is_front != w.is_front:
+                        num_teams = w.season.team_set.count()
+                        num_matchups = w.matchup_set.count()
+                        if num_matchups == num_teams // 2:
+                            if Score.objects.filter(week=w).exists():
+                                process_week_async.delay(w.id)
+                                messages.info(request, f'Background task started: Regenerating matchups and rounds for week {w.number}.')
+                            else:
+                                generate_matchups_async.delay(w.id)
+                                messages.info(request, f'Background task started: Regenerating matchups for week {w.number}.')
+                        else:
+                            # Do not warn the user if not all matchups are entered; just skip background task
+                            pass
                 messages.success(request, f'Weeks {bulk_week.number} and later had front/back flipped.')
             return redirect(f'{reverse("manage_weeks")}?selected_week={bulk_week.id}')
 
