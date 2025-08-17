@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 class Golfer(models.Model):
@@ -12,9 +13,45 @@ class Golfer(models.Model):
     
     def __str__(self):
         return self.name
+    
+    
+class Course(models.Model):
+    name = models.CharField(max_length=80)
+    city = models.CharField(max_length=80)
+    state = models.CharField(max_length=80)
+    
+    class Meta:
+        verbose_name = 'Course'
+        verbose_name_plural = 'Courses'
+    
+    def __str__(self):
+        return f'{self.name}'
+    
+class CourseConfig(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    name = models.CharField(max_length=80)
+    effective_start = models.DateField(blank=True, null=True)
+    effective_end = models.DateField(blank=True, null=True)
+    
+    class Meta:
+        verbose_name = 'Course Config'
+        verbose_name_plural = 'Course Configs'
+    
+    def clean(self):
+        # Ensure at least one bound is set
+        if not self.effective_start and not self.effective_end:
+            raise ValidationError("Either effective_start or effective_end must be set.")
 
+        # Ensure logical order if both are set
+        if self.effective_start and self.effective_end:
+            if self.effective_end < self.effective_start:
+                raise ValidationError("effective_end cannot be before effective_start.")
+    
+    def __str__(self):
+        return f'{self.course.name} - {self.name}' if self.name != "" else f'{self.course.name}'
 class Season(models.Model):
     year = models.IntegerField(primary_key=True)
+    course_config = models.ForeignKey(CourseConfig, on_delete=models.PROTECT, null=True, blank=True)
     
     class Meta:
         ordering = ['-year']
@@ -124,21 +161,20 @@ class SkinEntry(models.Model):
 
 
 class Hole(models.Model):
+    config = models.ForeignKey(CourseConfig, on_delete=models.CASCADE, related_name="holes", null=True, blank=True)
     number = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(18)])
     par = models.IntegerField(validators=[MinValueValidator(3), MaxValueValidator(5)])
     handicap = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(18)])
     handicap9 = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(9)])
     yards = models.IntegerField(validators=[MinValueValidator(1)])
-    season = models.ForeignKey(Season, on_delete=models.CASCADE)
-    
     class Meta:
-        ordering = ['season', 'number']
-        unique_together = ['season', 'number']
+        ordering = ['number']
+        unique_together = ['config', 'number']
         verbose_name = 'Hole'
         verbose_name_plural = 'Holes'
     
     def __str__(self):
-        return f'Hole {self.number} season {self.season.year}'
+        return f'Hole {self.number} ({self.config})'
 
 class Score(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)

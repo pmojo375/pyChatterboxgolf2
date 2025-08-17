@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django import forms
 
-from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup, RandomDrawnTeam
+from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup, RandomDrawnTeam, Course, CourseConfig
 
 
 class GolferAdmin(admin.ModelAdmin):
@@ -23,8 +23,8 @@ class GolferAdmin(admin.ModelAdmin):
 
 
 class SeasonAdmin(admin.ModelAdmin):
-    list_display = ('year', 'get_teams_count', 'get_weeks_count', 'get_golfers_count')
-    search_fields = ('year',)
+    list_display = ("year", "course_config", "get_teams_count", "get_weeks_count", "get_golfers_count")
+    search_fields = ("year",)
     list_per_page = 20
     
     def get_teams_count(self, obj):
@@ -193,24 +193,19 @@ class SkinEntryAdmin(admin.ModelAdmin):
 
 
 class HoleAdmin(admin.ModelAdmin):
-    list_display = ('number', 'par', 'yards', 'handicap', 'handicap9', 'get_season')
-    list_filter = ('season', 'par')
-    search_fields = ('number', 'season__year')
+    list_display = ("number", "par", "yards", "handicap", "handicap9", "config")
+    list_filter = ("par", "config")
+    search_fields = ("number", "config__name")
     list_per_page = 50
     
     fieldsets = (
         ('Hole Information', {
-            'fields': ('number', 'par', 'yards', 'handicap', 'handicap9', 'season')
+            'fields': ('number', 'par', 'yards', 'handicap', 'handicap9', 'config')
         }),
     )
     
-    def get_season(self, obj):
-        return obj.season.year
-    get_season.short_description = 'Season'
-    get_season.admin_order_field = 'season__year'
-    
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('season')
+        return super().get_queryset(request).select_related('config')
 
 
 class ScoreAdmin(admin.ModelAdmin):
@@ -694,6 +689,17 @@ class RandomDrawnTeamAdmin(admin.ModelAdmin):
         )
 
 
+class CourseAdmin(admin.ModelAdmin):
+    list_display = ("name", "city", "state")
+    search_fields = ("name", "city", "state")
+    list_per_page = 20
+
+class CourseConfigAdmin(admin.ModelAdmin):
+    list_display = ("name", "course", "effective_start", "effective_end")
+    list_filter = ("course",)
+    search_fields = ("name", "course__name")
+    list_per_page = 20
+
 # Register all models with their admin classes
 admin.site.register(Golfer, GolferAdmin)
 admin.site.register(Season, SeasonAdmin)
@@ -711,3 +717,5 @@ admin.site.register(Points, PointsAdmin)
 admin.site.register(Round, RoundAdmin)
 admin.site.register(GolferMatchup, GolferMatchupAdmin)
 admin.site.register(RandomDrawnTeam, RandomDrawnTeamAdmin)
+admin.site.register(Course, CourseAdmin)
+admin.site.register(CourseConfig, CourseConfigAdmin)

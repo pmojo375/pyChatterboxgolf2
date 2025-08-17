@@ -438,7 +438,10 @@ def add_scores(request):
         matchups = Matchup.objects.filter(week=week)
         front = week.is_front
 
-        holes = Hole.objects.filter(season=season, number__in=(range(1, 10) if front else range(10, 19)))
+        holes = list(Hole.objects.filter(
+            config=season.course_config,
+            number__in=(range(1, 10) if front else range(10, 19))
+        ).order_by('number'))
         hole_data = [[h.par, h.handicap9, h.yards] for h in holes]
         total_yards = sum(h[2] for h in hole_data)
 
@@ -684,10 +687,12 @@ def golfer_stats(request, golfer_id, year=None):
             week__season__year=year
         ).select_related('week', 'hole')
         
-        # Group scores by hole number
+        # Group scores by hole number, but only include scores from the correct season
         hole_scores = {}
         for score in year_scores:
             hole_num = score.hole.number
+            if score.week.season.year != year:
+                continue
             if hole_num not in hole_scores:
                 hole_scores[hole_num] = []
             hole_scores[hole_num].append(score.score)
@@ -1425,9 +1430,9 @@ def golfer_stats(request, golfer_id, year=None):
             if opponent_round:
                 # Get par for the 9 holes played that week
                 if week.is_front:
-                    holes = Hole.objects.filter(season=season, number__in=range(1, 10))
+                    holes = Hole.objects.filter(config=season.course_config, number__in=range(1, 10))
                 else:
-                    holes = Hole.objects.filter(season=season, number__in=range(10, 19))
+                    holes = Hole.objects.filter(config=season.course_config, number__in=range(10, 19))
                 week_par = sum(hole.par for hole in holes)
                 opp_vs_hcp = opponent_round.net - week_par
                 opponent_vs_hcp_list.append({
@@ -1576,9 +1581,9 @@ def golfer_stats(request, golfer_id, year=None):
 
             # Determine the 9 holes for the week
             if wk.is_front:
-                holes = list(Hole.objects.filter(season=season, number__in=range(1, 10)))
+                holes = list(Hole.objects.filter(config=season.course_config, number__in=range(1, 10)))
             else:
-                holes = list(Hole.objects.filter(season=season, number__in=range(10, 19)))
+                holes = list(Hole.objects.filter(config=season.course_config, number__in=range(10, 19)))
 
             # Fetch all scores for these participants for the week in one query
             scores_qs = (
@@ -2327,8 +2332,8 @@ def scorecards(request, week, year=None):
         })
     
     holes = list(Hole.objects.filter(
-        number__in=(range(1, 10) if week.is_front else range(10, 19)),
-        season=week.season
+        config=season.course_config,
+        number__in=(range(1, 10) if week.is_front else range(10, 19))
     ).order_by('number'))
     
     hole_string = "Front 9" if week.is_front else "Back 9"
@@ -2571,7 +2576,7 @@ def set_holes(request):
                     handicap9 = handicap // 2
                 
                 # check if hole exists for the season and hole number
-                hole = Hole.objects.filter(season=season, number=number)
+                hole = Hole.objects.filter(config=season.course_config, number=number)
                 
                 if hole.exists():
                     # Update the existing hole
@@ -3189,9 +3194,9 @@ def calculate_skin_winners(week):
     
     # Get the holes for this week (front 9 or back 9)
     if week.is_front:
-        holes = Hole.objects.filter(season=week.season, number__in=range(1, 10))
+        holes = Hole.objects.filter(config=week.season.course_config, number__in=range(1, 10))
     else:
-        holes = Hole.objects.filter(season=week.season, number__in=range(10, 19))
+        holes = Hole.objects.filter(config=week.season.course_config, number__in=range(10, 19))
     
     # Dictionary to group skins by golfer
     golfer_skins = {}
@@ -3474,8 +3479,8 @@ def blank_scorecards(request):
         pass
 
     holes = list(Hole.objects.filter(
-        number__in=(range(1, 10) if week.is_front else range(10, 19)),
-        season=week.season
+        config=week.season.course_config,
+        number__in=(range(1, 10) if week.is_front else range(10, 19))
     ).order_by('number'))
     
     hole_string = "Front 9" if week.is_front else "Back 9"

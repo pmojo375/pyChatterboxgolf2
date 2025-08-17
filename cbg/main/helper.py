@@ -327,30 +327,20 @@ def get_schedule(week_model):
     
 def get_front_holes(season):
     """
-    Retrieve the front holes for a given season.
-
-    Args:
-        season (str): The season for which to retrieve the front holes.
-
-    Returns:
-        QuerySet: A queryset of Hole objects representing the front holes for the given season.
+    Retrieve the front holes for a given season's course config.
+    NOTE: When using these holes for stats, always filter scores by week__season=season, not just by hole/config.
     """
     hole_numbers = range(1, 10)
-    return Hole.objects.filter(season=season, number__in=hole_numbers).order_by('number')
+    return Hole.objects.filter(config=season.course_config, number__in=hole_numbers).order_by('number')
 
 
 def get_back_holes(season):
     """
-    Retrieve the back holes for a given season.
-
-    Args:
-        season (str): The season for which to retrieve the back holes.
-
-    Returns:
-        QuerySet: A queryset of Hole objects representing the back holes for the given season.
+    Retrieve the back holes for a given season's course config.
+    NOTE: When using these holes for stats, always filter scores by week__season=season, not just by hole/config.
     """
     hole_numbers = range(10, 19)
-    return Hole.objects.filter(season=season, number__in=hole_numbers).order_by('number')
+    return Hole.objects.filter(config=season.course_config, number__in=hole_numbers).order_by('number')
 
 
 def get_nine_par_totals(season):
