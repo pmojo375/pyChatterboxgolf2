@@ -3,24 +3,24 @@ from django.db import transaction
 from datetime import timedelta
 
 
-def create_weeks(season, weeks, start_date):
+def create_weeks(season, weeks, start_date, start_with="front"):
     """
-    Create a specified number of weeks for a given season, starting from a specified date.
-
+    Create a specified number of weeks for a given season, starting from a specified date and side.
     Args:
         season (Season): The season object for which the weeks are being created.
         weeks (int): The number of weeks to create.
         start_date (datetime): The starting date for the weeks (should be timezone-aware).
-
+        start_with (str): 'front' or 'back' to indicate which nine to start with.
     Returns:
         int: The total number of weeks created.
     """
     # Assume start_date is timezone-aware
+    is_front = True if start_with == "front" else False
     for i in range(1, weeks + 1):
         week_date = start_date + timedelta(weeks=i-1)
-        is_front = (i % 2 != 0)
         week = Week(season=season, number=i, date=week_date, is_front=is_front, rained_out=False)
         week.save()
+        is_front = not is_front  # Alternate each week
     return weeks
 
 def rain_out_update(week):

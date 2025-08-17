@@ -212,6 +212,7 @@ def create_season(request):
             year = form.cleaned_data['year']
             weeks = form.cleaned_data['weeks']
             start_date = form.cleaned_data['start_date']
+            start_with = form.cleaned_data.get('start_with', 'front')
             
             season = Season.objects.get_or_create(year=year)[0]
             
@@ -219,7 +220,8 @@ def create_season(request):
             print(f'Year: {year} Type {type(year)}')
             print(f'Weeks: {weeks} Type {type(weeks)}')
             print(f'Start Date: {start_date} Type {type(start_date)}')
-            create_weeks(season, weeks, start_date)
+            print(f'Start With: {start_with}')
+            create_weeks(season, weeks, start_date, start_with)
 
         else:
             print('Invalid Form\n')

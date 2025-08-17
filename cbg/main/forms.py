@@ -9,6 +9,11 @@ class SeasonForm(forms.Form):
     year = forms.IntegerField(label='Year', min_value=2022, max_value=2100)
     weeks = forms.IntegerField(label='Number of Weeks', min_value=1, max_value=52)
     start_date = forms.DateField(label='Start Date', initial=timezone.now)
+    START_CHOICES = [
+        ("front", "Front Nine"),
+        ("back", "Back Nine"),
+    ]
+    start_with = forms.ChoiceField(label="Start With", choices=START_CHOICES, initial="front")
 
 class GolferForm(forms.Form):
     name = forms.CharField(label='Name', max_length=100)
