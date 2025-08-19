@@ -3912,6 +3912,46 @@ def historics(request):
     total_triples = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') + 3).count()
     total_worse = Score.objects.filter(round__subbing_for__isnull=True, score__gte=F('hole__par') + 4).count()
 
+    # Calculate total wagered by golfer (skins + games)
+    golfer_total_wagered = {}
+    for golfer_name in all_golfers:
+        # Skins: $5 per entry
+        skins_entries = SkinEntry.objects.filter(golfer__name=golfer_name).count()
+        skins_wagered = skins_entries * 5
+        # Games: $2 per entry
+        games_entries = GameEntry.objects.filter(golfer__name=golfer_name).count()
+        games_wagered = games_entries * 2
+        total_wagered = skins_wagered + games_wagered
+        golfer_total_wagered[golfer_name] = {
+            'skins_wagered': skins_wagered,
+            'games_wagered': games_wagered,
+            'total_wagered': total_wagered
+        }
+
+    # Add wagered and net winnings to leaderboard
+    top_earnings = []
+    prev = None
+    rank = 1
+    for i, (golfer, earnings) in enumerate(earnings_leaderboard):
+        wagered = golfer_total_wagered.get(golfer, {'skins_wagered': 0, 'games_wagered': 0, 'total_wagered': 0})
+        net_winnings = earnings['total_earned'] - wagered['total_wagered']
+        if i == 0:
+            rank = 1
+        elif earnings['total_earned'] != prev:
+            rank = i + 1
+        if rank > 5 and earnings['total_earned'] != prev:
+            break
+        top_earnings.append({
+            'rank': rank,
+            'golfer': golfer,
+            **earnings,
+            'skins_wagered': wagered['skins_wagered'],
+            'games_wagered': wagered['games_wagered'],
+            'total_wagered': wagered['total_wagered'],
+            'net_winnings': round(net_winnings, 2)
+        })
+        prev = earnings['total_earned']
+
     context = {
         'earnings_leaderboard': top_earnings,
         'best_gross_rounds': best_gross_rounds,

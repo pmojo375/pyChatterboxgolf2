@@ -25,6 +25,10 @@
                                     <th scope="col" class="text-center">Skins Won</th>
                                     <th scope="col" class="text-center">Games Won</th>
                                     <th scope="col" class="text-center">Total Earnings</th>
+                                    <th scope="col" class="text-center">Skins Bet</th>
+                                    <th scope="col" class="text-center">Games Bet</th>
+                                    <th scope="col" class="text-center">Total Bet</th>
+                                    <th scope="col" class="text-center">Net Winnings</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -35,6 +39,10 @@
                                     <td class="text-center text-success">${{ entry.skins_earned }}</td>
                                     <td class="text-center text-primary">${{ entry.games_earned }}</td>
                                     <td class="text-center fw-bold text-success">${{ entry.total_earned }}</td>
+                                    <td class="text-center">${{ entry.skins_wagered }}</td>
+                                    <td class="text-center">${{ entry.games_wagered }}</td>
+                                    <td class="text-center">${{ entry.total_wagered }}</td>
+                                    <td class="text-center fw-bold {% if entry.net_winnings >= 0 %}text-success{% else %}text-danger{% endif %}">${{ entry.net_winnings }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
