@@ -2,6 +2,8 @@ from celery import shared_task
 from main.models import GolferMatchup, Score, Matchup, Week, Season, Team, Sub
 from main.helper import generate_golfer_matchups, process_week, calculate_and_save_handicaps_for_season, generate_rounds, generate_round
 import logging
+from main.skins import calculate_skin_winners
+from main.models import SkinEntry
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,7 @@ def process_week_async(week_id):
     try:
         week = Week.objects.get(id=week_id)
         process_week(week)
+        set_skin_winners_async.delay(week.id)
         logger.info(f"Week {week.number} processed successfully")
         return f"Week {week.number} processed successfully"
     except Week.DoesNotExist:
@@ -80,6 +83,8 @@ def recalculate_all_async(season_year):
                         generate_round(golfer_matchup)
                     round_weeks.append(week.number)
                     logger.info(f"Rounds generated for week {week.number} (all scores entered)")
+                    # Trigger skins winner setter after rounds are generated
+                    set_skin_winners_async.delay(week.id)
                 else:
                     logger.info(f"Skipping week {week.number} - only {actual_scores}/{expected_scores} scores entered")
         
@@ -120,6 +125,9 @@ def generate_rounds_async(season_year):
     try:
         season = Season.objects.get(year=season_year)
         generate_rounds(season)
+        # After generating rounds for all weeks, set skins winners for all weeks
+        for week in Week.objects.filter(season=season, rained_out=False).order_by('number'):
+            set_skin_winners_async.delay(week.id)
         logger.info(f"Rounds generated for season {season.year}")
         return f"Rounds generated for season {season.year}"
     except Season.DoesNotExist:
@@ -128,3 +136,23 @@ def generate_rounds_async(season_year):
     except Exception as e:
         logger.error(f"Error generating rounds for season {season_year}: {str(e)}")
         return f"Error generating rounds for season {season_year}: {str(e)}"
+
+@shared_task
+def set_skin_winners_async(week_id):
+    """Reset and set SkinEntry.winner for a week using calculate_skin_winners."""
+    try:
+        week = Week.objects.get(id=week_id)
+    except Week.DoesNotExist:
+        logger.error(f"Week with id {week_id} does not exist for skins winner setting")
+        return f"Week with id {week_id} does not exist"
+
+    # Reset all winners for this week
+    SkinEntry.objects.filter(week=week).update(winner=False)
+
+    # Calculate new winners
+    skin_winners = calculate_skin_winners(week)
+    for winner in skin_winners:
+        golfer = winner['golfer']
+        SkinEntry.objects.filter(week=week, golfer=golfer).update(winner=True)
+    logger.info(f"Skins winners set for week {week.number}")
+    return f"Skins winners set for week {week.number}"
