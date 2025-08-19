@@ -104,98 +104,145 @@
       </div>
     </div>
     
+    <!-- Standings Section -->
     <div class="row">
-      {% if last_week %}
-      <div class="col-lg-6 col-md-12 mb-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-primary text-white text-center">
-            <h5 class="mb-0">
-              <i class="fas fa-trophy me-2"></i>First Half Standings
-            </h5>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-hover mb-0 modern-standings">
-                <thead class="table-dark">
-                  <tr>
-                    <th scope="col" class="text-center">Rank</th>
-                    <th scope="col">Team</th>
-                    <th scope="col" class="text-center">Points</th>
-                    <th scope="col" class="text-center">Avg Hcp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for team in firstHalfStandings %}
-                  <tr class="{% cycle 'table-light' 'table-white' %}">
-                    <td class="text-center fw-bold text-primary">{{ forloop.counter }}</td>
-                    <td>
-                      <div class="d-flex flex-column">
-                        <span class="fw-semibold">{{ team.golfer1 }}</span>
-                        <span class="fw-semibold">{{ team.golfer2 }}</span>
-                      </div>
-                    </td>
-                    <td class="text-center fw-bold fs-5 text-success">{{ team.first }}</td>
-                    <td class="text-center">
-                      <div class="d-flex flex-column">
-                        <span class="fw-semibold">{{ team.golfer1FirstHcp|floatformat:1 }}</span>
-                        <span class="fw-semibold">{{ team.golfer2FirstHcp|floatformat:1 }}</span>
-                      </div>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+      {% if has_second_half_scores %}
+        <!-- Second Half Standings FIRST -->
+        <div class="col-lg-6 col-md-12 mb-4">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-success text-white text-center">
+              <h5 class="mb-0">
+                <i class="fas fa-medal me-2"></i>Second Half Standings
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0 modern-standings">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col" class="text-center">Rank</th>
+                      <th scope="col">Team</th>
+                      <th scope="col" class="text-center">Points</th>
+                      <th scope="col" class="text-center">Avg Hcp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for team in secondHalfStandings %}
+                    <tr class="{% cycle 'table-light' 'table-white' %}">
+                      <td class="text-center fw-bold text-success">{{ forloop.counter }}</td>
+                      <td>
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold">{{ team.golfer1 }}</span>
+                          <span class="fw-semibold">{{ team.golfer2 }}</span>
+                        </div>
+                      </td>
+                      <td class="text-center fw-bold fs-5 text-success">{{ team.second }}</td>
+                      <td class="text-center">
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold">{{ team.golfer1SecondHcp|floatformat:1 }}</span>
+                          <span class="fw-semibold">{{ team.golfer2SecondHcp|floatformat:1 }}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      {% endif %}
-
-      {% if is_second_half %}
-      <div class="col-lg-6 col-md-12 mb-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-header bg-success text-white text-center">
-            <h5 class="mb-0">
-              <i class="fas fa-medal me-2"></i>Second Half Standings
-            </h5>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-hover mb-0 modern-standings">
-                <thead class="table-dark">
-                  <tr>
-                    <th scope="col" class="text-center">Rank</th>
-                    <th scope="col">Team</th>
-                    <th scope="col" class="text-center">Points</th>
-                    <th scope="col" class="text-center">Avg Hcp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for team in secondHalfStandings %}
-                  <tr class="{% cycle 'table-light' 'table-white' %}">
-                    <td class="text-center fw-bold text-success">{{ forloop.counter }}</td>
-                    <td>
-                      <div class="d-flex flex-column">
-                        <span class="fw-semibold">{{ team.golfer1 }}</span>
-                        <span class="fw-semibold">{{ team.golfer2 }}</span>
-                      </div>
-                    </td>
-                    <td class="text-center fw-bold fs-5 text-success">{{ team.second }}</td>
-                    <td class="text-center">
-                      <div class="d-flex flex-column">
-                        <span class="fw-semibold">{{ team.golfer1SecondHcp|floatformat:1 }}</span>
-                        <span class="fw-semibold">{{ team.golfer2SecondHcp|floatformat:1 }}</span>
-                      </div>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+        <!-- First Half Standings SECOND -->
+        <div class="col-lg-6 col-md-12 mb-4">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-primary text-white text-center">
+              <h5 class="mb-0">
+                <i class="fas fa-trophy me-2"></i>First Half Standings
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0 modern-standings">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col" class="text-center">Rank</th>
+                      <th scope="col">Team</th>
+                      <th scope="col" class="text-center">Points</th>
+                      <th scope="col" class="text-center">Avg Hcp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for team in firstHalfStandings %}
+                    <tr class="{% cycle 'table-light' 'table-white' %}">
+                      <td class="text-center fw-bold text-primary">{{ forloop.counter }}</td>
+                      <td>
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold">{{ team.golfer1 }}</span>
+                          <span class="fw-semibold">{{ team.golfer2 }}</span>
+                        </div>
+                      </td>
+                      <td class="text-center fw-bold fs-5 text-success">{{ team.first }}</td>
+                      <td class="text-center">
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold">{{ team.golfer1FirstHcp|floatformat:1 }}</span>
+                          <span class="fw-semibold">{{ team.golfer2FirstHcp|floatformat:1 }}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      {% else %}
+        <!-- Only First Half Standings if no second half scores -->
+        <div class="col-lg-6 col-md-12 mb-4">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-primary text-white text-center">
+              <h5 class="mb-0">
+                <i class="fas fa-trophy me-2"></i>First Half Standings
+              </h5>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0 modern-standings">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col" class="text-center">Rank</th>
+                      <th scope="col">Team</th>
+                      <th scope="col" class="text-center">Points</th>
+                      <th scope="col" class="text-center">Avg Hcp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for team in firstHalfStandings %}
+                    <tr class="{% cycle 'table-light' 'table-white' %}">
+                      <td class="text-center fw-bold text-primary">{{ forloop.counter }}</td>
+                      <td>
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold">{{ team.golfer1 }}</span>
+                          <span class="fw-semibold">{{ team.golfer2 }}</span>
+                        </div>
+                      </td>
+                      <td class="text-center fw-bold fs-5 text-success">{{ team.first }}</td>
+                      <td class="text-center">
+                        <div class="d-flex flex-column">
+                          <span class="fw-semibold">{{ team.golfer1FirstHcp|floatformat:1 }}</span>
+                          <span class="fw-semibold">{{ team.golfer2FirstHcp|floatformat:1 }}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       {% endif %}
+    </div>
+    <!-- End Standings Section -->
 
       {% if is_second_half %}
       <div class="col-12 mb-4">

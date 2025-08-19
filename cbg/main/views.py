@@ -315,7 +315,8 @@ def main(request, year=None):
     first_half_standings = get_first_half_standings(season)
     second_half_standings = []
     full_standings = []
-    if is_second_half:
+    has_second_half_scores = Round.objects.filter(week__season=season, week__number__gte=10, week__rained_out=False).exists()
+    if has_second_half_scores:
         second_half_standings = get_second_half_standings(season)
         full_standings = get_full_standings(season)
     
@@ -351,6 +352,7 @@ def main(request, year=None):
         'secondHalfStandings': second_half_standings,
         'fullStandings': full_standings,
         'is_second_half': is_second_half,
+        'has_second_half_scores': has_second_half_scores,
         'unestablished': [],
         'season_golfers': season_golfers,
         'next_tuesday_date': next_tuesday_date,
