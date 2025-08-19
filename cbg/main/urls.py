@@ -1,4 +1,4 @@
-from django.urls import path, register_converter
+from django.urls import path, register_converter, include
 from . import views
 from .api import get_matchup_data, get_playing_golfers, get_games_for_week, get_games_by_week, get_game_entries, get_week_matchups
 
@@ -50,8 +50,6 @@ urlpatterns = [
     
     # Week patterns (must come after year patterns to avoid conflicts)
     path('<int:week>/', views.scorecards, name="scorecards"),
-]
-
-urlpatterns += [
     path('manage_weeks/', views.manage_weeks, name='manage_weeks'),
+    path("accounts/", include("django.contrib.auth.urls")),
 ]

@@ -75,6 +75,14 @@ def weeks_context(request):
         all_seasons = Season.objects.all().order_by('-year')
         
         multiple_seasons = Season.objects.count() > 1
+        # Determine if user is a league manager or superuser
+        is_league_manager = False
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated:
+            if user.is_superuser:
+                is_league_manager = True
+            elif hasattr(current_season, 'league') and current_season.league.managers.filter(pk=user.pk).exists():
+                is_league_manager = True
         return {
             'available_weeks': weeks_with_complete_scores,
             'current_season': current_season,
@@ -86,6 +94,7 @@ def weeks_context(request):
             'is_current_season': is_current_season,
             'is_production_host': is_production_host,
             'multiple_seasons': multiple_seasons,
+            'is_league_manager': is_league_manager,
         }
     except Season.DoesNotExist:
         # No season exists, so no golfers to show

@@ -29,6 +29,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'chatterboxgolf.com', 'www.chatterboxgolf.com']
 
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "main"
+LOGOUT_REDIRECT_URL = "main"
+
 # Application definition
 
 INSTALLED_APPS = [

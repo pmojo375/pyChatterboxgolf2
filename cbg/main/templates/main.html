@@ -292,75 +292,75 @@
     <!-- Last Week Results - Only show for current season -->
     {% if not year or year == current_season.year %}
       {% if last_week %}
-      <div class="row mb-4">
-        <div class="col-12">
-          <h3 class="text-center mb-4 text-success">Week {{ last_week.number }} Results</h3>
+      <div class="container">
+        <div class="row mb-4">
+          <div class="col-12">
+            <h3 class="text-center mb-4 text-success">Week {{ last_week.number }} Results</h3>
+          </div>
         </div>
-      </div>
-      
-      <div class="row">
-        <div class="col-lg-6 col-md-12 mb-4">
-          <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-success text-white text-center">
-              <h5 class="mb-0">
-                <i class="fas fa-dollar-sign me-2"></i>Skins Winners
-              </h5>
-            </div>
-            <div class="card-body">
-              {% if grouped_skin_winners %}
-                <div class="list-group list-group-flush">
-                  {% for golfer_name, golfer_data in grouped_skin_winners.items %}
-                  <div class="list-group-item border-0 px-0">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div class="flex-grow-1">
-                        <h6 class="mb-1 fw-bold text-success">{{ golfer_name }}</h6>
-                        <p class="mb-1 text-muted small">
-                          {% for skin in golfer_data.skins %}
-                            Hole {{ skin.hole }} ({{ skin.score }}){% if not forloop.last %}, {% endif %}
-                          {% endfor %}
-                        </p>
+        <div class="row">
+          <div class="col-lg-6 col-md-12 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+              <div class="card-header bg-success text-white text-center">
+                <h5 class="mb-0">
+                  <i class="fas fa-dollar-sign me-2"></i>Skins Winners
+                </h5>
+              </div>
+              <div class="card-body">
+                {% if grouped_skin_winners %}
+                  <div class="list-group list-group-flush">
+                    {% for golfer_name, golfer_data in grouped_skin_winners.items %}
+                    <div class="list-group-item border-0 px-0">
+                      <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                          <h6 class="mb-1 fw-bold text-success">{{ golfer_name }}</h6>
+                          <p class="mb-1 text-muted small">
+                            {% for skin in golfer_data.skins %}
+                              Hole {{ skin.hole }} ({{ skin.score }}){% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                          </p>
+                        </div>
+                        <span class="badge bg-success fs-6">${{ golfer_data.total_payout|floatformat:2 }}</span>
                       </div>
-                      <span class="badge bg-success fs-6">${{ golfer_data.total_payout|floatformat:2 }}</span>
+                    </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="text-center text-muted py-4">
+                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                    <p class="mb-0">No skin winners this week</p>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% if game_winners %}
+          <div class="col-lg-6 col-md-12 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+              <div class="card-header bg-primary text-white text-center">
+                <h5 class="mb-0">
+                  <i class="fas fa-trophy me-2"></i>Game Winners
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="list-group list-group-flush">
+                  {% for game_winner in game_winners %}
+                  <div class="list-group-item border-0 px-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h6 class="mb-1 fw-bold text-primary">{{ game_winner.golfer.name }}</h6>
+                        <p class="mb-0 text-muted small">{{ game_winner.game.name }}</p>
+                      </div>
+                      <span class="badge bg-primary fs-6">${{ game_winner_payout|floatformat:2 }}</span>
                     </div>
                   </div>
                   {% endfor %}
                 </div>
-              {% else %}
-                <div class="text-center text-muted py-4">
-                  <i class="fas fa-info-circle fa-2x mb-3"></i>
-                  <p class="mb-0">No skin winners this week</p>
-                </div>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-
-        {% if game_winners %}
-        <div class="col-lg-6 col-md-12 mb-4">
-          <div class="card shadow-sm border-0 h-100">
-            <div class="card-header bg-primary text-white text-center">
-              <h5 class="mb-0">
-                <i class="fas fa-trophy me-2"></i>Game Winners
-              </h5>
-            </div>
-            <div class="card-body">
-              <div class="list-group list-group-flush">
-                {% for game_winner in game_winners %}
-                <div class="list-group-item border-0 px-0">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <h6 class="mb-1 fw-bold text-primary">{{ game_winner.golfer.name }}</h6>
-                      <p class="mb-0 text-muted small">{{ game_winner.game.name }}</p>
-                    </div>
-                    <span class="badge bg-primary fs-6">${{ game_winner_payout|floatformat:2 }}</span>
-                  </div>
-                </div>
-                {% endfor %}
               </div>
             </div>
           </div>
+          {% endif %}
         </div>
-        {% endif %}
       </div>
       {% endif %}
     {% endif %}
@@ -368,76 +368,77 @@
     <!-- Next Week Schedule - Only show for current season -->
     {% if not year or year == current_season.year %}
       {% if next_week_schedule %}
-      <div class="row mb-4">
-        <div class="col-12">
-          <h3 class="text-center mb-4 text-info">Next Week Schedule</h3>
+      <div class="container">
+        <div class="row mb-4">
+          <div class="col-12">
+            <h3 class="text-center mb-4 text-info">Next Week Schedule</h3>
+          </div>
         </div>
-      </div>
-      
-      <div class="row">
-        <div class="col-12">
-          <div class="card shadow-sm border-0">
-            <div class="card-header bg-info text-white text-center">
-              <h5 class="mb-0">
-                <i class="fas fa-calendar-alt me-2"></i>Week {{ next_week.number }} Matchups
-              </h5>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-hover mb-0 modern-schedule">
-                  <thead class="table-dark">
-                    <tr>
-                      <th scope="col" class="text-center">Match #</th>
-                      <th scope="col" class="text-center">Team A</th>
-                      <th scope="col" class="text-center">vs</th>
-                      <th scope="col" class="text-center">Team B</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for matchup in next_week_schedule %}
-                    <tr class="{% cycle 'table-light' 'table-white' %}">
-                      <td class="text-center fw-bold text-info">{{ forloop.counter }}</td>
-                      <td class="text-center">
-                        <div class="d-flex flex-column">
-                          <span class="fw-semibold">{{ matchup.high_match.0.0 }} <span class="text-muted">({{ matchup.high_match.0.1 }})</span></span>
-                          <span class="fw-semibold">{{ matchup.low_match.0.0 }} <span class="text-muted">({{ matchup.low_match.0.1 }})</span></span>
-                        </div>
-                      </td>
-                      <td class="text-center">
-                        <span class="badge bg-secondary">vs</span>
-                      </td>
-                      <td class="text-center">
-                        <div class="d-flex flex-column">
-                          <span class="fw-semibold">{{ matchup.high_match.1.0 }} <span class="text-muted">({{ matchup.high_match.1.1 }})</span></span>
-                          <span class="fw-semibold">{{ matchup.low_match.1.0 }} <span class="text-muted">({{ matchup.low_match.1.1 }})</span></span>
-                        </div>
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
+        <div class="row">
+          <div class="col-12">
+            <div class="card shadow-sm border-0">
+              <div class="card-header bg-info text-white text-center">
+                <h5 class="mb-0">
+                  <i class="fas fa-calendar-alt me-2"></i>Week {{ next_week.number }} Matchups
+                </h5>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover mb-0 modern-schedule">
+                    <thead class="table-dark">
+                      <tr>
+                        <th scope="col" class="text-center">Match #</th>
+                        <th scope="col" class="text-center">Team A</th>
+                        <th scope="col" class="text-center">vs</th>
+                        <th scope="col" class="text-center">Team B</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for matchup in next_week_schedule %}
+                      <tr class="{% cycle 'table-light' 'table-white' %}">
+                        <td class="text-center fw-bold text-info">{{ forloop.counter }}</td>
+                        <td class="text-center">
+                          <div class="d-flex flex-column">
+                            <span class="fw-semibold">{{ matchup.high_match.0.0 }} <span class="text-muted">({{ matchup.high_match.0.1 }})</span></span>
+                            <span class="fw-semibold">{{ matchup.low_match.0.0 }} <span class="text-muted">({{ matchup.low_match.0.1 }})</span></span>
+                          </div>
+                        </td>
+                        <td class="text-center">
+                          <span class="badge bg-secondary">vs</span>
+                        </td>
+                        <td class="text-center">
+                          <div class="d-flex flex-column">
+                            <span class="fw-semibold">{{ matchup.high_match.1.0 }} <span class="text-muted">({{ matchup.high_match.1.1 }})</span></span>
+                            <span class="fw-semibold">{{ matchup.low_match.1.0 }} <span class="text-muted">({{ matchup.low_match.1.1 }})</span></span>
+                          </div>
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        
-        <!-- Blank Scorecards Link -->
-        <div class="col-12 mt-3">
-          <div class="text-center">
-            <a href="{% url 'blank_scorecards' %}" class="btn btn-outline-info">
-              <i class="fas fa-print me-2"></i>Print Blank Scorecards
-            </a>
+          <div class="col-12 mt-3">
+            <div class="text-center">
+              <a href="{% url 'blank_scorecards' %}" class="btn btn-outline-info">
+                <i class="fas fa-print me-2"></i>Print Blank Scorecards
+              </a>
+            </div>
           </div>
         </div>
       </div>
       {% else %}
-      <div class="row">
-        <div class="col-12">
-          <div class="card shadow-sm border-0">
-            <div class="card-body text-center py-5">
-              <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-              <h5 class="text-muted">Schedule Not Available</h5>
-              <p class="text-muted mb-0">The schedule for next week has not been entered yet.</p>
+      <div class="container">
+        <div class="row">
+          <div class="col-12">
+            <div class="card shadow-sm border-0">
+              <div class="card-body text-center py-5">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Schedule Not Available</h5>
+                <p class="text-muted mb-0">The schedule for next week has not been entered yet.</p>
+              </div>
             </div>
           </div>
         </div>

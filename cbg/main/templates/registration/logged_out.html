@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white text-center">
+          <h4 class="mb-0"><i class="fas fa-sign-out-alt me-2"></i>Logged Out</h4>
+        </div>
+        <div class="card-body text-center">
+          <p class="mb-4">You have been successfully logged out.</p>
+          <a href="{% url 'login' %}" class="btn btn-success w-100 mb-2"><i class="fas fa-sign-in-alt me-1"></i>Login Again</a>
+        </div>
+        <div class="card-footer text-center bg-light">
+          <a href="{% url 'main' %}" class="text-decoration-none"><i class="fas fa-arrow-left me-1"></i>Back to Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

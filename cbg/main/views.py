@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.contrib import messages
 from django.utils.dateparse import parse_date
 from datetime import timedelta
+from main.permissions import league_manager_required
 
 HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
 
@@ -201,6 +202,7 @@ def get_full_standings(season):
     return standings
 
 
+@league_manager_required
 def create_season(request):
     # Set up season related information and create a new season
     if request.method == 'POST':
@@ -365,6 +367,7 @@ def main(request, year=None):
     return render(request, 'main.html', context)
 
 
+@league_manager_required
 def add_scores(request):
     if request.method == 'POST':
         # Get hidden fields from the form
@@ -456,6 +459,7 @@ def add_scores(request):
         })
 
 
+@league_manager_required
 def add_golfer(request):
     if request.method == 'POST':
         form = GolferForm(request.POST)
@@ -483,6 +487,7 @@ def add_golfer(request):
     return render(request, 'add_golfer.html', {'form': form})
 
 
+@league_manager_required
 def add_sub(request):
     current_season = Season.objects.order_by('-year').first()
     absent_golfers = Golfer.objects.filter(team__season=current_season)
@@ -547,6 +552,7 @@ def add_sub(request):
     return render(request, 'add_sub.html', {'form': form})
 
 
+@league_manager_required
 def enter_schedule(request):
     weeks = Week.objects.filter(season=Season.objects.order_by('-year').first(), rained_out=False).order_by('-date')
     teams = Team.objects.filter(season=Season.objects.order_by('-year').first())
@@ -2511,6 +2517,7 @@ def scorecards(request, week, year=None):
     return render(request, 'scorecards.html', context)
 
 
+@league_manager_required
 def set_rainout(request):
     if 'select_week' in request.POST:
         selection_form = WeekSelectionForm(request.POST)
@@ -2527,6 +2534,7 @@ def set_rainout(request):
     })
 
 
+@league_manager_required
 def create_team(request):
     
     if request.method == 'POST':
@@ -2555,6 +2563,7 @@ def create_team(request):
     return render(request, 'create_team.html', {'form': form})
 
 
+@league_manager_required
 def set_holes(request):
     if request.method == 'POST':
         season_form = SeasonSelectForm(request.POST)
@@ -2613,6 +2622,7 @@ def set_holes(request):
     return render(request, 'set_holes.html', {'season_form': season_form, 'formset': formset})
 
 
+@league_manager_required
 def generate_rounds_page(request):
     """View for generating rounds for a specific week"""
     from main.helper import generate_rounds, process_week, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_round
@@ -3246,6 +3256,7 @@ def calculate_skin_winners(week):
     return skin_winners
 
 
+@league_manager_required
 def manage_skins(request):
     """View for managing skins entries and automatically calculating winners"""
     message = None
@@ -3326,6 +3337,7 @@ def manage_skins(request):
     return render(request, 'manage_skins.html', context)
 
 
+@league_manager_required
 def manage_games(request):
     """View for managing game entries and winners"""
     message = None
@@ -3986,6 +3998,7 @@ def historics(request):
     return render(request, 'historics.html', context)
 
 
+@league_manager_required
 def manage_weeks(request):
     from .models import Season, Week
     from django.shortcuts import render, redirect
