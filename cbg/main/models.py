@@ -84,7 +84,7 @@ class Season(models.Model):
     year = models.IntegerField(primary_key=True)
     course_config = models.ForeignKey(CourseConfig, on_delete=models.PROTECT, null=True, blank=True)
     league = models.ForeignKey(
-        League, on_delete=models.CASCADE, null=False, blank=False, related_name='seasons'
+        League, on_delete=models.CASCADE, null=True, blank=True, related_name='seasons' # changed to allow db restore one last time
     )
     
     class Meta:
