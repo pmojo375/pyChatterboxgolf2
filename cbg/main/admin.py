@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django import forms
 
-from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup, RandomDrawnTeam, Course, CourseConfig
+from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole, Score, Handicap, Matchup, Sub, Points, Round, GolferMatchup, RandomDrawnTeam, Course, CourseConfig, League
 
 
 class GolferAdmin(admin.ModelAdmin):
@@ -23,8 +23,9 @@ class GolferAdmin(admin.ModelAdmin):
 
 
 class SeasonAdmin(admin.ModelAdmin):
-    list_display = ("year", "course_config", "get_teams_count", "get_weeks_count", "get_golfers_count")
-    search_fields = ("year",)
+    list_display = ("year", "league", "course_config", "get_teams_count", "get_weeks_count", "get_golfers_count")
+    search_fields = ("year", "league__name")
+    list_filter = ("league",)
     list_per_page = 20
     
     def get_teams_count(self, obj):
@@ -700,6 +701,17 @@ class CourseConfigAdmin(admin.ModelAdmin):
     search_fields = ("name", "course__name")
     list_per_page = 20
 
+class LeagueAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "get_season_count")
+    search_fields = ("name", "slug")
+    list_per_page = 20
+    readonly_fields = ("slug",)              # show but not editable
+    filter_horizontal = ("managers",)
+
+    def get_season_count(self, obj):
+        return obj.seasons.count()
+    get_season_count.short_description = 'Seasons'
+
 # Register all models with their admin classes
 admin.site.register(Golfer, GolferAdmin)
 admin.site.register(Season, SeasonAdmin)
@@ -719,3 +731,4 @@ admin.site.register(GolferMatchup, GolferMatchupAdmin)
 admin.site.register(RandomDrawnTeam, RandomDrawnTeamAdmin)
 admin.site.register(Course, CourseAdmin)
 admin.site.register(CourseConfig, CourseConfigAdmin)
+admin.site.register(League, LeagueAdmin)

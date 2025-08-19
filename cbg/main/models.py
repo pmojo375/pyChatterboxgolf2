@@ -2,6 +2,8 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.conf import settings
+from django.utils.text import slugify
 
 class Golfer(models.Model):
     name = models.CharField(max_length=40)
@@ -26,7 +28,8 @@ class Course(models.Model):
     
     def __str__(self):
         return f'{self.name}'
-    
+
+
 class CourseConfig(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     name = models.CharField(max_length=80)
@@ -49,9 +52,40 @@ class CourseConfig(models.Model):
     
     def __str__(self):
         return f'{self.course.name} - {self.name}' if self.name != "" else f'{self.course.name}'
+
+
+class League(models.Model):
+    name = models.CharField(max_length=80, unique=True)
+    slug = models.SlugField(max_length=80, unique=True, blank=True, editable=False)
+    managers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name='managed_leagues'
+    )
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = "leagues"
+        
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        if not self.slug:  # only set once; don’t change on name edits
+            base = slugify(self.name)
+            slug = base or "league"
+            i = 2
+            while self.__class__.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{i}"
+                i += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+
 class Season(models.Model):
     year = models.IntegerField(primary_key=True)
     course_config = models.ForeignKey(CourseConfig, on_delete=models.PROTECT, null=True, blank=True)
+    league = models.ForeignKey(
+        League, on_delete=models.CASCADE, null=False, blank=False, related_name='seasons'
+    )
     
     class Meta:
         ordering = ['-year']
@@ -60,6 +94,7 @@ class Season(models.Model):
     
     def __str__(self):
         return f'{self.year}'
+
 
 class Team(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
@@ -75,6 +110,7 @@ class Team(models.Model):
             return f"{golfers[0].name} and {golfers[1].name}"
         else:
             return f"Team {self.pk}"
+
 
 class Week(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE)
