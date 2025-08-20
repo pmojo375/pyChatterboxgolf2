@@ -1,7 +1,21 @@
 from main.models import Week, Season
 
+
 def weeks_context(request):
-    """Context processor to make weeks and golfers available to all templates"""
+    """Provide season and week data to all templates.
+
+    Returns a context dictionary containing:
+    - ``available_weeks``: weeks in the selected season with complete scores.
+    - ``current_season``/``season``: the active :class:`~main.models.Season`.
+    - ``golfer_list``: golfers participating in the current season.
+    - ``sub_golfer_list``: golfers who have subbed in the current season.
+    - ``current_year``: year parsed from the request path, if present.
+    - ``all_seasons``: list of all seasons for selector UIs.
+    - ``is_current_season``: whether the selected season is the latest.
+    - ``is_production_host``: flag for chatterboxgolf.com requests.
+    - ``multiple_seasons``: whether multiple seasons exist in the system.
+    - ``is_league_manager``: whether the user can manage league settings.
+    """
     try:
         # Determine if request is coming from the production host
         try:
@@ -109,4 +123,4 @@ def weeks_context(request):
             'is_current_season': False,
             'is_production_host': False,
             'multiple_seasons': False,
-        } 
+        }
