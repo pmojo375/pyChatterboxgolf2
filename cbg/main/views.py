@@ -322,10 +322,15 @@ def main(request, year=None):
     first_half_standings = get_first_half_standings(season)
     second_half_standings = []
     full_standings = []
+    # Playoff seeds (computed after we have standings availability)
+    from .playoffs import compute_playoff_seeds
+    playoff_seeds = []
     has_second_half_scores = Round.objects.filter(week__season=season, week__number__gte=10, week__rained_out=False).exists()
     if has_second_half_scores:
         second_half_standings = get_second_half_standings(season)
         full_standings = get_full_standings(season)
+        # Compute playoff seeds when we have data from both halves
+        playoff_seeds = compute_playoff_seeds(season)
     
     # Calculate the next Tuesday for weather forecast (use today if it's Tuesday)
     from datetime import timedelta, date
@@ -358,6 +363,7 @@ def main(request, year=None):
         'firstHalfStandings': first_half_standings,
         'secondHalfStandings': second_half_standings,
         'fullStandings': full_standings,
+        'playoffSeeds': playoff_seeds,
         'is_second_half': is_second_half,
         'has_second_half_scores': has_second_half_scores,
         'unestablished': [],

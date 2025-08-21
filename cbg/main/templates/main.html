@@ -126,6 +126,71 @@
 
 <div class="container">
   {% if initialized %}
+    {% if playoffSeeds %}
+    <div class="row mb-4">
+      <div class="col-12">
+        <h3 class="text-center mb-4 text-danger">Projected Playoff Teams</h3>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-8 col-md-12 mx-auto mb-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-danger text-white text-center">
+            <h5 class="mb-0">
+              <i class="fas fa-flag-checkered me-2"></i>Playoff Seeds
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0 modern-standings">
+                <thead class="table-dark">
+                  <tr>
+                    <th scope="col" class="text-center">Seed</th>
+                    <th scope="col">Team</th>
+                    <th scope="col" class="text-center">Source</th>
+                    <th scope="col" class="text-center">1st Half</th>
+                    <th scope="col" class="text-center">2nd Half</th>
+                    <th scope="col" class="text-center">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in playoffSeeds %}
+                  <tr class="{% cycle 'table-light' 'table-white' %}">
+                    <td class="text-center fw-bold">{{ s.seed }}</td>
+                    <td>
+                      <span class="fw-semibold">{{ s.team_name }}</span>
+                    </td>
+                    <td class="text-center">
+                      {% if s.source == 'both_halves' %}
+                        <span class="badge bg-danger">Both Halves</span>
+                      {% elif s.source == 'first_half' %}
+                        <span class="badge bg-primary">1st Half</span>
+                      {% elif s.source == 'second_half' %}
+                        <span class="badge bg-success">2nd Half</span>
+                      {% elif s.source == 'half_tie' %}
+                        <span class="badge bg-warning text-dark">Half Winner (Tie)</span>
+                      {% else %}
+                        <span class="badge bg-secondary">Wildcard</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-center text-primary">{{ s.points_first_half|floatformat:1 }}</td>
+                    <td class="text-center text-success">{{ s.points_second_half|floatformat:1 }}</td>
+                    <td class="text-center fw-bold">{{ s.points_total|floatformat:1 }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% with note=playoffSeeds.0.tiebreak_note %}
+            {% if note %}
+            <div class="p-3 text-muted small">{{ note }}</div>
+            {% endif %}
+            {% endwith %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
     {% if is_second_half or last_week %}
     <div class="row mb-4">
       <div class="col-12">
@@ -272,6 +337,8 @@
       {% endif %}
     </div>
     <!-- End Standings Section -->
+
+    
 
       {% if is_second_half %}
       <div class="col-12 mb-4">
