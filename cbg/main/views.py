@@ -3116,12 +3116,40 @@ def league_stats(request, year=None):
             'total_earned': round(total_earned, 2)
         }
     
-    # Create top 10 leaderboard
-    earnings_leaderboard = sorted(
+    # Create sorted leaderboard (will enrich with wagers and net)
+    sorted_earnings = sorted(
         golfer_total_earnings.items(), 
         key=lambda x: x[1]['total_earned'], 
         reverse=True
-    )[:10]
+    )
+
+    # Calculate wagered by golfer (season only)
+    golfer_total_wagered = {}
+    for golfer_name, _ in sorted_earnings:
+        skins_entries = SkinEntry.objects.filter(week__season=season, golfer__name=golfer_name).count()
+        games_entries = GameEntry.objects.filter(week__season=season, golfer__name=golfer_name).count()
+        skins_wagered = skins_entries * 5
+        games_wagered = games_entries * 2
+        golfer_total_wagered[golfer_name] = {
+            'skins_wagered': skins_wagered,
+            'games_wagered': games_wagered,
+            'total_wagered': skins_wagered + games_wagered,
+        }
+
+    # Enrich leaderboard with wagers and net winnings (limit top 10 by total earned)
+    earnings_leaderboard = []
+    for golfer_name, earnings in sorted_earnings[:10]:
+        wagers = golfer_total_wagered.get(golfer_name, {'skins_wagered': 0, 'games_wagered': 0, 'total_wagered': 0})
+        earnings_leaderboard.append({
+            'golfer': golfer_name,
+            'skins_earned': earnings['skins_earned'],
+            'games_earned': earnings['games_earned'],
+            'total_earned': earnings['total_earned'],
+            'skins_wagered': wagers['skins_wagered'],
+            'games_wagered': wagers['games_wagered'],
+            'total_wagered': wagers['total_wagered'],
+            'net_winnings': round(earnings['total_earned'] - wagers['total_wagered'], 2),
+        })
     
     # Find golfer with most skins money
     most_skins_golfer = max(golfer_skins_won.items(), key=lambda x: x[1]) if golfer_skins_won else None

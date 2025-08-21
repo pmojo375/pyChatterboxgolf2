@@ -115,10 +115,14 @@
                                         <th scope="col" class="text-center">Skins Won</th>
                                         <th scope="col" class="text-center">Games Won</th>
                                         <th scope="col" class="text-center">Total Earnings</th>
+                                        <th scope="col" class="text-center">Skins Bet</th>
+                                        <th scope="col" class="text-center">Games Bet</th>
+                                        <th scope="col" class="text-center">Total Bet</th>
+                                        <th scope="col" class="text-center">Net Winnings</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for golfer_name, earnings in money_stats.earnings_leaderboard %}
+                                    {% for row in money_stats.earnings_leaderboard %}
                                     <tr class="{% cycle 'table-light' 'table-white' %}">
                                         <td class="text-center fw-bold">
                                             {% if forloop.counter == 1 %}
@@ -131,10 +135,14 @@
                                                 {{ forloop.counter }}
                                             {% endif %}
                                         </td>
-                                        <td class="fw-semibold">{{ golfer_name }}</td>
-                                        <td class="text-center text-success">${{ earnings.skins_earned }}</td>
-                                        <td class="text-center text-primary">${{ earnings.games_earned }}</td>
-                                        <td class="text-center fw-bold text-success">${{ earnings.total_earned }}</td>
+                                        <td class="fw-semibold">{{ row.golfer }}</td>
+                                        <td class="text-center text-success">${{ row.skins_earned }}</td>
+                                        <td class="text-center text-primary">${{ row.games_earned }}</td>
+                                        <td class="text-center fw-bold text-success">${{ row.total_earned }}</td>
+                                        <td class="text-center">${{ row.skins_wagered }}</td>
+                                        <td class="text-center">${{ row.games_wagered }}</td>
+                                        <td class="text-center">${{ row.total_wagered }}</td>
+                                        <td class="text-center fw-bold {% if row.net_winnings >= 0 %}text-success{% else %}text-danger{% endif %}">${{ row.net_winnings }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
