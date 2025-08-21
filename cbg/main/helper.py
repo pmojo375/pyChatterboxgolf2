@@ -324,7 +324,84 @@ def get_schedule(week_model):
 
         return schedule
 
+
+def get_golfer_schedule(week_model):
+    """
+    Given a week model, return the schedule of team matchups with individual golfer details.
     
+    This function returns team matchups but with individual golfer names, handicaps, and sub info
+    in a format similar to the original team-based schedule.
+    
+    :param week_model: The week model to retrieve the schedule for.
+    :type week_model: cbg.main.models.Week
+    :return: The schedule of team matchups with golfer details for the given week.
+    :rtype: List[Dict]
+    """
+    golfer_matchups = GolferMatchup.objects.filter(week=week_model).select_related(
+        'golfer', 'opponent', 'subbing_for_golfer'
+    ).order_by('is_A', 'golfer__name')
+    
+    if not golfer_matchups.exists():
+        return None
+    
+    schedule = []
+    team_matchups = week_model.matchup_set.all()
+    
+    for matchup in team_matchups:
+        teams = list(matchup.teams.all())
+        if len(teams) == 2:
+            team1, team2 = teams[0], teams[1]
+            
+            team1_golfer_matchups = golfer_matchups.filter(
+                Q(golfer__in=team1.golfers.all()) | Q(subbing_for_golfer__in=team1.golfers.all())
+            )
+            
+            team2_golfer_matchups = golfer_matchups.filter(
+                Q(golfer__in=team2.golfers.all()) | Q(subbing_for_golfer__in=team2.golfers.all())
+            )
+            
+            # Prepare golfer details for each team with handicap sorting
+            team1_golfers = []
+            team2_golfers = []
+            
+            for gm in team1_golfer_matchups:
+                golfer_name = gm.golfer.name
+                if gm.subbing_for_golfer:
+                    golfer_name += f" (sub for {gm.subbing_for_golfer.name})"
+                
+                golfer_hcp = gm.golfer.handicap_set.filter(week=week_model).first()
+                golfer_hcp_value = golfer_hcp.handicap if golfer_hcp else 999  # High default for missing handicaps
+                
+                team1_golfers.append((golfer_name, golfer_hcp_value))
+            
+            for gm in team2_golfer_matchups:
+                golfer_name = gm.golfer.name
+                if gm.subbing_for_golfer:
+                    golfer_name += f" (sub for {gm.subbing_for_golfer.name})"
+                
+                golfer_hcp = gm.golfer.handicap_set.filter(week=week_model).first()
+                golfer_hcp_value = golfer_hcp.handicap if golfer_hcp else 999  # High default for missing handicaps
+                
+                team2_golfers.append((golfer_name, golfer_hcp_value))
+            
+            # Sort by handicap (lower handicap = A golfer, goes first)
+            team1_golfers.sort(key=lambda x: x[1])
+            team2_golfers.sort(key=lambda x: x[1])
+            
+            # Create the matchup entry in a format similar to original team schedule
+            if team1_golfers and team2_golfers:
+                # Golfers are now sorted by handicap (A = lower handicap, B = higher handicap)
+                schedule.append({
+                    'high_match': (team1_golfers[0] if len(team1_golfers) > 0 else ('', 0), 
+                                 team2_golfers[0] if len(team2_golfers) > 0 else ('', 0)),
+                    'low_match': (team1_golfers[1] if len(team1_golfers) > 1 else ('', 0), 
+                                team2_golfers[1] if len(team2_golfers) > 1 else ('', 0)),
+                    'is_golfer_schedule': True  # Flag to indicate this is golfer-based data
+                })
+    
+    return schedule
+
+
 def get_front_holes(season):
     """
     Retrieve the front holes for a given season's course config.

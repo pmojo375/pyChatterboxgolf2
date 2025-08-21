@@ -255,7 +255,10 @@ def main(request, year=None):
     
     if next_week:
         next_game = get_game(next_week)
-        next_week_schedule = get_schedule(next_week)
+        # Try to get golfer matchups first, fall back to team schedule if none exist
+        next_week_schedule = get_golfer_schedule(next_week)
+        if not next_week_schedule:
+            next_week_schedule = get_schedule(next_week)
     else:
         next_game = None
         next_week_schedule = None

@@ -6,6 +6,35 @@
 <script src="{% static 'js/weather.js' %}"></script>
 {% endblock %}
 
+<style>
+  .modern-schedule .badge {
+    font-size: 0.75em;
+    padding: 0.25em 0.5em;
+  }
+  
+  .modern-schedule .badge.bg-primary {
+    font-weight: 600;
+  }
+  
+  .modern-schedule .badge.bg-warning {
+    font-size: 0.7em;
+    padding: 0.2em 0.4em;
+  }
+  
+  .modern-schedule td {
+    vertical-align: middle;
+    padding: 1rem 0.5rem;
+  }
+  
+  .modern-schedule .d-flex.flex-column {
+    gap: 0.25rem;
+  }
+  
+  .modern-schedule .text-muted.small {
+    font-size: 0.8em;
+  }
+</style>
+
 {% block page_content %}
 
 <!-- Title Section -->
@@ -379,7 +408,7 @@
             <div class="card shadow-sm border-0">
               <div class="card-header bg-info text-white text-center">
                 <h5 class="mb-0">
-                  <i class="fas fa-calendar-alt me-2"></i>Week {{ next_week.number }} Matchups
+                  <i class="fas fa-calendar-alt me-2"></i>Week {{ next_week.number }} Schedule
                 </h5>
               </div>
               <div class="card-body p-0">
@@ -388,13 +417,15 @@
                     <thead class="table-dark">
                       <tr>
                         <th scope="col" class="text-center">Match #</th>
-                        <th scope="col" class="text-center">Team A</th>
+                        <th scope="col" class="text-center">Golfer A</th>
                         <th scope="col" class="text-center">vs</th>
-                        <th scope="col" class="text-center">Team B</th>
+                        <th scope="col" class="text-center">Golfer B</th>
                       </tr>
                     </thead>
                     <tbody>
                       {% for matchup in next_week_schedule %}
+                      {% if matchup.is_golfer_schedule %}
+                      <!-- Golfer-based schedule format -->
                       <tr class="{% cycle 'table-light' 'table-white' %}">
                         <td class="text-center fw-bold text-info">{{ forloop.counter }}</td>
                         <td class="text-center">
@@ -413,6 +444,27 @@
                           </div>
                         </td>
                       </tr>
+                      {% else %}
+                      <!-- Legacy team matchup format -->
+                      <tr class="{% cycle 'table-light' 'table-white' %}">
+                        <td class="text-center fw-bold text-info">{{ forloop.counter }}</td>
+                        <td class="text-center">
+                          <div class="d-flex flex-column">
+                            <span class="fw-semibold">{{ matchup.high_match.0.0 }} <span class="text-muted">({{ matchup.high_match.0.1 }})</span></span>
+                            <span class="fw-semibold">{{ matchup.low_match.0.0 }} <span class="text-muted">({{ matchup.low_match.0.1 }})</span></span>
+                          </div>
+                        </td>
+                        <td class="text-center">
+                          <span class="badge bg-secondary">vs</span>
+                        </td>
+                        <td class="text-center">
+                          <div class="d-flex flex-column">
+                            <span class="fw-semibold">{{ matchup.high_match.1.0 }} <span class="text-muted">({{ matchup.high_match.1.1 }})</span></span>
+                            <span class="fw-semibold">{{ matchup.low_match.1.0 }} <span class="text-muted">({{ matchup.low_match.1.1 }})</span></span>
+                          </div>
+                        </td>
+                      </tr>
+                      {% endif %}
                       {% endfor %}
                     </tbody>
                   </table>
