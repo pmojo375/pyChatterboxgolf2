@@ -325,6 +325,17 @@ def main(request, year=None):
     # Playoff seeds (computed after we have standings availability)
     from .playoffs import compute_playoff_seeds
     playoff_seeds = []
+    # Hardcoded rules for now (will be driven by league config in future)
+    playoff_rules = [
+        "Top team from the first half (Weeks 1–9) automatically qualifies.",
+        "Top team from the second half (Weeks 10–18) automatically qualifies.",
+        "Seed 1 is the higher total season points between those two half winners; the other becomes Seed 2.",
+        "If a half has a tie for first, all tied teams qualify as half winners.",
+        "When multiple half winners exist due to ties, their seeding is determined by head‑to‑head points against each other.",
+        "Remaining playoff spots are wildcards by highest total season points among teams not already qualified.",
+        "If wildcard teams are tied on total season points, head‑to‑head points decide the order.",
+        "Head‑to‑head uses both regular‑season meetings (combined result).",
+    ]
     has_second_half_scores = Round.objects.filter(week__season=season, week__number__gte=10, week__rained_out=False).exists()
     if has_second_half_scores:
         second_half_standings = get_second_half_standings(season)
@@ -364,6 +375,7 @@ def main(request, year=None):
         'secondHalfStandings': second_half_standings,
         'fullStandings': full_standings,
         'playoffSeeds': playoff_seeds,
+        'playoffRules': playoff_rules,
         'is_second_half': is_second_half,
         'has_second_half_scores': has_second_half_scores,
         'unestablished': [],

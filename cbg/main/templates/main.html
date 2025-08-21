@@ -190,6 +190,28 @@
         </div>
       </div>
     </div>
+    <div class="row mb-4">
+      <div class="col-lg-8 col-md-12 mx-auto">
+        <div class="accordion" id="playoffRulesAccordion">
+          <div class="accordion-item border-0 shadow-sm">
+            <h2 class="accordion-header" id="playoffRulesHeading">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#playoffRulesCollapse" aria-expanded="false" aria-controls="playoffRulesCollapse">
+                Playoff Rules
+              </button>
+            </h2>
+            <div id="playoffRulesCollapse" class="accordion-collapse collapse" aria-labelledby="playoffRulesHeading" data-bs-parent="#playoffRulesAccordion">
+              <div class="accordion-body">
+                <ul class="mb-0">
+                  {% for rule in playoffRules %}
+                  <li class="mb-2">{{ rule }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     {% endif %}
     {% if is_second_half or last_week %}
     <div class="row mb-4">
