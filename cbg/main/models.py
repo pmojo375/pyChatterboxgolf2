@@ -81,11 +81,26 @@ class League(models.Model):
 
 
 class Season(models.Model):
+    
+    SKINS_TYPE_CHOICES = [
+        ("GROSS", "Gross"),
+        ("NET", "Net"),
+    ]
+    
     year = models.IntegerField(primary_key=True)
     course_config = models.ForeignKey(CourseConfig, on_delete=models.PROTECT, null=True, blank=True)
     league = models.ForeignKey(
         League, on_delete=models.CASCADE, null=True, blank=True, related_name='seasons' # changed to allow db restore one last time
     )
+    
+    # skins and games settings
+    playing_skins = models.BooleanField(default=False)
+    skins_type = models.CharField(max_length=10, choices=SKINS_TYPE_CHOICES, default='GROSS')
+    skins_entry_fee = models.IntegerField(default=5)
+    playing_games = models.BooleanField(default=False)
+    game_entry_fee = models.IntegerField(default=2)
+    
+    players_per_team = models.IntegerField(default=2)
     
     class Meta:
         ordering = ['-year']
