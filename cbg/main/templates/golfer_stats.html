@@ -46,6 +46,7 @@
         </div>
     </div>
 
+    {% if season.playing_skins or season.playing_games %}
     <!-- Wager Statistics -->
     <div class="row mb-5">
         <div class="col-12">
@@ -62,12 +63,16 @@
                                     <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Total Money Wagered</h6>
                                     <h3 class="text-success fw-bold mb-1">${{ wager_stats.total_wagered }}</h3>
                                     <div class="row text-muted small">
+                                        {% if season.playing_skins %}
                                         <div class="col-6">
                                             <span>Skins: ${{ wager_stats.total_skins_wagered }}</span>
                                         </div>
+                                        {% endif %}
+                                        {% if season.playing_games %}
                                         <div class="col-6">
                                             <span>Games: ${{ wager_stats.total_games_wagered }}</span>
                                         </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -92,7 +97,7 @@
                         </div>
                     </div>
                     
-                    {% if actual_skins %}
+                    {% if season.playing_skins and actual_skins %}
                     <hr>
                     <div class="row mt-4">
                         <div class="col-12">
@@ -136,7 +141,7 @@
                     </div>
                     {% endif %}
 
-                    {% if actual_games %}
+                    {% if season.playing_games and actual_games %}
                     <div class="row mt-3">
                         <div class="col-12">
                             <div class="alert alert-primary">
@@ -177,7 +182,7 @@
                     </div>
                     {% endif %}
 
-                    {% if hypothetical_skins %}
+                    {% if season.playing_skins and hypothetical_skins %}
                     <hr>
                     <div class="row mt-4">
                         <div class="col-12">
@@ -232,16 +237,20 @@
                         </div>
                         <div class="col-lg-4 mb-3">
                             <div class="text-center">
+                                {% if season.playing_skins %}
                                 <h4 class="text-primary fw-bold">{{ wager_stats.skins_entries }}</h4>
                                 <p class="text-muted mb-0">Skins Entries</p>
-                                <small class="text-muted">($5 each)</small>
+                                <small class="text-muted">(${{ season.skins_entry_fee }} each)</small>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="col-lg-4 mb-3">
                             <div class="text-center">
+                                {% if season.playing_games %}
                                 <h4 class="text-warning fw-bold">{{ wager_stats.games_entries }}</h4>
                                 <p class="text-muted mb-0">Games Entries</p>
-                                <small class="text-muted">($2 each)</small>
+                                <small class="text-muted">(${{ season.game_entry_fee }} each)</small>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -249,6 +258,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Opponent vs Handicap Season Summary -->
     <div class="row mb-5">

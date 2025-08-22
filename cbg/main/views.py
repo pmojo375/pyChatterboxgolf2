@@ -254,7 +254,7 @@ def main(request, year=None):
     initialized = True
     
     if next_week:
-        next_game = get_game(next_week)
+        next_game = get_game(next_week) if getattr(season, 'playing_games', False) else None
         # Try to get golfer matchups first, fall back to team schedule if none exist
         next_week_schedule = get_golfer_schedule(next_week)
         if not next_week_schedule:
@@ -269,41 +269,48 @@ def main(request, year=None):
         # check if season is in the second half
         is_second_half = last_week.number > 8
         
-        # Get skins winners for last week
-        skin_winners = calculate_skin_winners(last_week)
-        if skin_winners:
-            # Calculate skins payout (assuming $5 per person in skins)
-            skins_entries = SkinEntry.objects.filter(week=last_week)
-            total_skins_pot = skins_entries.count() * 5
-            skin_winner_payout = total_skins_pot / len(skin_winners) if len(skin_winners) > 0 else 0
-            
-            # Group skin winners by golfer for template display
-            grouped_skin_winners = {}
-            for winner in skin_winners:
-                golfer_name = winner['golfer'].name
-                if golfer_name not in grouped_skin_winners:
-                    grouped_skin_winners[golfer_name] = {
-                        'golfer': winner['golfer'],
-                        'skins': [],
-                        'total_payout': 0
-                    }
-                grouped_skin_winners[golfer_name]['skins'].append({
-                    'hole': winner['hole'],
-                    'score': winner['score']
-                })
-                grouped_skin_winners[golfer_name]['total_payout'] += skin_winner_payout
+        # Get skins winners for last week (only if enabled)
+        if getattr(season, 'playing_skins', False):
+            skin_winners = calculate_skin_winners(last_week)
+            if skin_winners:
+                skins_entries = SkinEntry.objects.filter(week=last_week)
+                total_skins_pot = skins_entries.count() * (last_week.season.skins_entry_fee)
+                skin_winner_payout = total_skins_pot / len(skin_winners) if len(skin_winners) > 0 else 0
+                
+                # Group skin winners by golfer for template display
+                grouped_skin_winners = {}
+                for winner in skin_winners:
+                    golfer_name = winner['golfer'].name
+                    if golfer_name not in grouped_skin_winners:
+                        grouped_skin_winners[golfer_name] = {
+                            'golfer': winner['golfer'],
+                            'skins': [],
+                            'total_payout': 0
+                        }
+                    grouped_skin_winners[golfer_name]['skins'].append({
+                        'hole': winner['hole'],
+                        'score': winner['score']
+                    })
+                    grouped_skin_winners[golfer_name]['total_payout'] += skin_winner_payout
+            else:
+                skin_winners = None
+                grouped_skin_winners = None
+                skin_winner_payout = 0
         else:
             skin_winners = None
             grouped_skin_winners = None
             skin_winner_payout = 0
         
-        # Get game winners for last week
-        game_winners = GameEntry.objects.filter(week=last_week, winner=True).select_related('golfer', 'game')
-        if game_winners.exists():
-            # Calculate game payout (assuming $2 per person in each game)
-            game_entries = GameEntry.objects.filter(week=last_week)
-            total_game_pot = game_entries.count() * 2
-            game_winner_payout = total_game_pot / game_winners.count() if game_winners.count() > 0 else 0
+        # Get game winners for last week (only if enabled)
+        if getattr(season, 'playing_games', False):
+            game_winners = GameEntry.objects.filter(week=last_week, winner=True).select_related('golfer', 'game')
+            if game_winners.exists():
+                game_entries = GameEntry.objects.filter(week=last_week)
+                total_game_pot = game_entries.count() * (last_week.season.game_entry_fee)
+                game_winner_payout = total_game_pot / game_winners.count() if game_winners.count() > 0 else 0
+            else:
+                game_winners = None
+                game_winner_payout = 0
         else:
             game_winners = None
             game_winner_payout = 0
@@ -1499,7 +1506,7 @@ def golfer_stats(request, golfer_id, year=None):
     
     # Calculate skins money wagered and won, and build actual skins details
     skin_entries = SkinEntry.objects.filter(golfer=golfer, week__season=season)
-    total_skins_wagered = skin_entries.count() * 5  # $5 per skin entry
+    total_skins_wagered = skin_entries.count() * (season.skins_entry_fee if getattr(season, 'playing_skins', False) else 0)
     
     skins_won = 0
     actual_skins = None
@@ -1507,12 +1514,14 @@ def golfer_stats(request, golfer_id, year=None):
     actual_skins_count = 0
     actual_skins_details = []
     for week in weeks:
+        if not getattr(season, 'playing_skins', False):
+            continue
         skin_winners = calculate_skin_winners(week)
         if skin_winners:
             week_winners = [winner for winner in skin_winners if winner['golfer'].id == golfer.id]
             if week_winners:
                 week_skin_entries = SkinEntry.objects.filter(week=week)
-                week_skins_pot = week_skin_entries.count() * 5
+                week_skins_pot = week_skin_entries.count() * week.season.skins_entry_fee
                 skin_winner_payout = week_skins_pot / len(skin_winners) if len(skin_winners) > 0 else 0
                 skins_won += skin_winner_payout * len(week_winners)
                 # Build details list (one row per skin won by this golfer)
@@ -1535,7 +1544,7 @@ def golfer_stats(request, golfer_id, year=None):
     
     # Calculate games money wagered and won; build actual games details
     game_entries = GameEntry.objects.filter(golfer=golfer, week__season=season)
-    total_games_wagered = game_entries.count() * 2  # $2 per game entry
+    total_games_wagered = game_entries.count() * (season.game_entry_fee if getattr(season, 'playing_games', False) else 0)
     
     games_won = 0
     actual_games = None
@@ -1543,10 +1552,12 @@ def golfer_stats(request, golfer_id, year=None):
     actual_games_count = 0
     actual_games_details = []
     for week in weeks:
+        if not getattr(season, 'playing_games', False):
+            continue
         game_winners = GameEntry.objects.filter(week=week, golfer=golfer, winner=True).select_related('game')
         if game_winners.exists():
             week_game_entries = GameEntry.objects.filter(week=week)
-            week_games_pot = week_game_entries.count() * 2
+            week_games_pot = week_game_entries.count() * week.season.game_entry_fee
             total_winners = GameEntry.objects.filter(week=week, winner=True).count()
             game_winner_payout = week_games_pot / total_winners if total_winners > 0 else 0
             games_won += game_winner_payout * game_winners.count()
@@ -1590,7 +1601,7 @@ def golfer_stats(request, golfer_id, year=None):
     except Exception:
         golfer_skins_count = 0
 
-    if golfer_skins_count == 0:
+    if golfer_skins_count == 0 and getattr(season, 'playing_skins', False):
         hypothetical_total = 0.0
         hypothetical_details = []
         hypothetical_skins_count = 0
@@ -1644,9 +1655,9 @@ def golfer_stats(request, golfer_id, year=None):
                     winners_all.append((winners[0], hole.number))
 
             if winners_all:
-                # Pot = $5 per entry with golfer injected if they weren't already in
+                # Pot uses season-configured entry fee
                 pot_entries = len(participants)
-                total_pot = pot_entries * 5.0
+                total_pot = pot_entries * float(wk.season.skins_entry_fee)
                 per_skin_value = total_pot / len(winners_all) if len(winners_all) > 0 else 0.0
 
                 # Add only this golfer's skins to details and totals
@@ -3059,18 +3070,21 @@ def league_stats(request, year=None):
     # Money/Earnings Analysis
     money_stats = {}
     
-    # Calculate skins money
+    # Calculate skins money (season-configurable)
     skin_entries = SkinEntry.objects.filter(week__season=season)
-    total_skins_wagered = skin_entries.count() * 5  # $5 per skin entry
+    total_skins_wagered = skin_entries.count() * (season.skins_entry_fee if getattr(season, 'playing_skins', False) else 0)
     
     # Calculate skins won by golfer
     golfer_skins_won = {}
     for week in weeks:
-        skin_winners = calculate_skin_winners(week)
+        if getattr(season, 'playing_skins', False):
+            skin_winners = calculate_skin_winners(week)
+        else:
+            skin_winners = None
         if skin_winners:
             # Calculate payout for this week
             week_skin_entries = SkinEntry.objects.filter(week=week)
-            week_skins_pot = week_skin_entries.count() * 5
+            week_skins_pot = week_skin_entries.count() * week.season.skins_entry_fee
             skin_winner_payout = week_skins_pot / len(skin_winners) if len(skin_winners) > 0 else 0
             
             # Group by golfer
@@ -3082,16 +3096,16 @@ def league_stats(request, year=None):
     
     # Calculate games money
     game_entries = GameEntry.objects.filter(week__season=season)
-    total_games_wagered = game_entries.count() * 2  # $2 per game entry
+    total_games_wagered = game_entries.count() * (season.game_entry_fee if getattr(season, 'playing_games', False) else 0)
     
     # Calculate games won by golfer
     golfer_games_won = {}
     for week in weeks:
-        game_winners = GameEntry.objects.filter(week=week, winner=True).select_related('golfer', 'game')
+        game_winners = GameEntry.objects.filter(week=week, winner=True).select_related('golfer', 'game') if getattr(season, 'playing_games', False) else GameEntry.objects.none()
         if game_winners.exists():
             # Calculate payout for this week
             week_game_entries = GameEntry.objects.filter(week=week)
-            week_games_pot = week_game_entries.count() * 2
+            week_games_pot = week_game_entries.count() * week.season.game_entry_fee
             game_winner_payout = week_games_pot / game_winners.count() if game_winners.count() > 0 else 0
             
             # Group by golfer
@@ -3128,8 +3142,8 @@ def league_stats(request, year=None):
     for golfer_name, _ in sorted_earnings:
         skins_entries = SkinEntry.objects.filter(week__season=season, golfer__name=golfer_name).count()
         games_entries = GameEntry.objects.filter(week__season=season, golfer__name=golfer_name).count()
-        skins_wagered = skins_entries * 5
-        games_wagered = games_entries * 2
+        skins_wagered = skins_entries * (season.skins_entry_fee if getattr(season, 'playing_skins', False) else 0)
+        games_wagered = games_entries * (season.game_entry_fee if getattr(season, 'playing_games', False) else 0)
         golfer_total_wagered[golfer_name] = {
             'skins_wagered': skins_wagered,
             'games_wagered': games_wagered,
@@ -3294,7 +3308,7 @@ def manage_skins(request):
                 # Calculate skin winners for display
                 skin_winners = calculate_skin_winners(week)
                 # Calculate individual payouts
-                total_pot = entries.count() * 5
+                total_pot = entries.count() * (week.season.skins_entry_fee)
                 if skin_winners:
                     # Each skin is worth total pot divided by number of skins
                     per_skin_value = total_pot / len(skin_winners)
@@ -3769,7 +3783,10 @@ def historics(request):
     
     # Money/Earnings (all-time) using SkinEntry.winner
     skin_entries = SkinEntry.objects.all()
-    total_skins_wagered = skin_entries.count() * 5
+    # Use per-week season fee since all-time can span seasons with different fees
+    total_skins_wagered = 0
+    for wk in weeks:
+        total_skins_wagered += SkinEntry.objects.filter(week=wk).count() * (wk.season.skins_entry_fee if getattr(wk.season, 'playing_skins', False) else 0)
     # Aggregate skins won by golfer using winner field
     winning_skins = SkinEntry.objects.filter(winner=True)
     golfer_skins_won = defaultdict(float)
@@ -3777,19 +3794,21 @@ def historics(request):
     for week in weeks:
         week_winners = SkinEntry.objects.filter(week=week, winner=True)
         week_entries = SkinEntry.objects.filter(week=week)
-        if week_winners.exists() and week_entries.exists():
-            week_skins_pot = week_entries.count() * 5
+        if week_winners.exists() and week_entries.exists() and getattr(week.season, 'playing_skins', False):
+            week_skins_pot = week_entries.count() * week.season.skins_entry_fee
             skin_winner_payout = week_skins_pot / week_winners.count()
             for entry in week_winners:
                 golfer_skins_won[entry.golfer.name] += skin_winner_payout
     game_entries = GameEntry.objects.all()
-    total_games_wagered = game_entries.count() * 2
+    total_games_wagered = 0
+    for wk in weeks:
+        total_games_wagered += GameEntry.objects.filter(week=wk).count() * (wk.season.game_entry_fee if getattr(wk.season, 'playing_games', False) else 0)
     golfer_games_won = defaultdict(float)
     for week in weeks:
         game_winners = GameEntry.objects.filter(week=week, winner=True).select_related('golfer', 'game')
-        if game_winners.exists():
+        if game_winners.exists() and getattr(week.season, 'playing_games', False):
             week_game_entries = GameEntry.objects.filter(week=week)
-            week_games_pot = week_game_entries.count() * 2
+            week_games_pot = week_game_entries.count() * week.season.game_entry_fee
             game_winner_payout = week_games_pot / game_winners.count() if game_winners.count() > 0 else 0
             for winner in game_winners:
                 golfer_name = winner.golfer.name
@@ -3964,12 +3983,16 @@ def historics(request):
     # Calculate total wagered by golfer (skins + games)
     golfer_total_wagered = {}
     for golfer_name in all_golfers:
-        # Skins: $5 per entry
-        skins_entries = SkinEntry.objects.filter(golfer__name=golfer_name).count()
-        skins_wagered = skins_entries * 5
-        # Games: $2 per entry
-        games_entries = GameEntry.objects.filter(golfer__name=golfer_name).count()
-        games_wagered = games_entries * 2
+        # Compute wagered per week to respect per-season fees and enable flags
+        skins_wagered = 0
+        games_wagered = 0
+        for wk in weeks:
+            skins_count = SkinEntry.objects.filter(week=wk, golfer__name=golfer_name).count()
+            if getattr(wk.season, 'playing_skins', False):
+                skins_wagered += skins_count * wk.season.skins_entry_fee
+            games_count = GameEntry.objects.filter(week=wk, golfer__name=golfer_name).count()
+            if getattr(wk.season, 'playing_games', False):
+                games_wagered += games_count * wk.season.game_entry_fee
         total_wagered = skins_wagered + games_wagered
         golfer_total_wagered[golfer_name] = {
             'skins_wagered': skins_wagered,

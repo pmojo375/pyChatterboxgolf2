@@ -51,6 +51,7 @@
 
     
 
+    {% if season.playing_skins or season.playing_games %}
     <!-- Money/Earnings Section -->
     <div class="row mb-5">
         <div class="col-12">
@@ -69,12 +70,16 @@
                                     <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Total Money Wagered</h6>
                                     <h3 class="text-success fw-bold mb-1">${{ money_stats.total_wagered }}</h3>
                                     <div class="row text-muted small">
+                                        {% if season.playing_skins %}
                                         <div class="col-6">
                                             <span>Skins: ${{ money_stats.total_skins_wagered }}</span>
                                         </div>
+                                        {% endif %}
+                                        {% if season.playing_games %}
                                         <div class="col-6">
                                             <span>Games: ${{ money_stats.total_games_wagered }}</span>
                                         </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -85,13 +90,13 @@
                             <div class="card border-0 bg-light h-100">
                                 <div class="card-body">
                                     <h6 class="card-title text-muted text-uppercase fw-bold mb-3">Biggest Winners</h6>
-                                    {% if money_stats.most_skins_golfer %}
+                                    {% if season.playing_skins and money_stats.most_skins_golfer %}
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="fw-semibold">Most Skins Money:</span>
                                         <span class="fw-bold text-success">{{ money_stats.most_skins_golfer.name }} - ${{ money_stats.most_skins_golfer.amount }}</span>
                                     </div>
                                     {% endif %}
-                                    {% if money_stats.most_games_golfer %}
+                                    {% if season.playing_games and money_stats.most_games_golfer %}
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="fw-semibold">Most Games Money:</span>
                                         <span class="fw-bold text-success">{{ money_stats.most_games_golfer.name }} - ${{ money_stats.most_games_golfer.amount }}</span>
@@ -154,6 +159,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Best and Worst Scores -->
     <div class="row mb-5">

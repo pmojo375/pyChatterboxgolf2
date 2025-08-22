@@ -63,9 +63,11 @@
                         Skin winners are automatically calculated based on gross scores. 
                         A golfer wins a skin when they have the best score on a hole alone.
                     </p>
+                    {% if season.playing_skins %}
                     <p class="text-muted">
-                        Skins are $5 per golfer. Winners are calculated automatically when scores are entered.
+                        Skins are ${{ season.skins_entry_fee }} per golfer. Winners are calculated automatically when scores are entered.
                     </p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -84,7 +86,7 @@
                         <h5>Week {{ week.number }} - {{ week.date|date:"M d, Y" }}</h5>
                         <div class="row">
                             <div class="col-md-4">
-                                <strong>Golfers in Skins ({{ data.entries.count }} golfers - ${{ data.entries.count|multiply:5 }} total pot):</strong>
+                                <strong>Golfers in Skins ({{ data.entries.count }} golfers - ${{ data.total_pot }} total pot):</strong>
                                 <ul class="list-unstyled">
                                     {% for entry in data.entries %}
                                     <li>{{ entry.golfer.name }}</li>

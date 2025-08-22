@@ -158,7 +158,7 @@
                                         <div class="mt-2">
                                             <strong>Payout:</strong> ${{ data.winner_payout|floatformat:2 }} per winner
                                             <br>
-                                            <small class="text-muted">Total pot: ${{ data.total_pot|floatformat:2 }} ({{ data.entries|length }} × $2)</small>
+                                            <small class="text-muted">Total pot: ${{ data.total_pot|floatformat:2 }} ({{ data.entries|length }} × ${{ week.season.game_entry_fee }})</small>
                                         </div>
                                     {% endif %}
                                 </div>

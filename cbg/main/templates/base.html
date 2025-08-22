@@ -141,12 +141,16 @@
                 <a class="dropdown-item" href="{% url 'generate_rounds' %}">Generate Rounds</a>
               </li>
               <li><hr class="dropdown-divider"></li>
+              {% if season.playing_skins %}
               <li>
                 <a class="dropdown-item" href="{% url 'manage_skins' %}">Manage Skins</a>
               </li>
+              {% endif %}
+              {% if season.playing_games %}
               <li>
                 <a class="dropdown-item" href="{% url 'manage_games' %}">Manage Games</a>
               </li>
+              {% endif %}
               <li>
                 <a class="dropdown-item" href="{% url 'manage_weeks' %}">Manage Weeks</a>
               </li>
