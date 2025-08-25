@@ -117,10 +117,13 @@ def weeks_context(request):
         return {
             'available_weeks': [],
             'current_season': None,
+            'season': None,
             'golfer_list': golfer_list,
             'sub_golfer_list': [],
             'current_year': None,
+            'all_seasons': [],
             'is_current_season': False,
             'is_production_host': False,
             'multiple_seasons': False,
+            'is_league_manager': False,
         }
