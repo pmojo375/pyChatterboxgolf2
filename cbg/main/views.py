@@ -443,7 +443,10 @@ def add_scores(request):
                 except ValueError:
                     return HttpResponseBadRequest(f"Score for {golfer.name} on hole {hole_number} must be a number.")
 
-                hole = Hole.objects.get(number=hole_number, season=week.season)
+                hole = Hole.objects.get(
+                    number=hole_number,
+                    config=week.season.course_config,
+                )
 
                 Score.objects.update_or_create(
                     golfer=golfer,
