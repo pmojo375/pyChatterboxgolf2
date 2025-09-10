@@ -335,7 +335,7 @@ def main(request, year=None):
     # Hardcoded rules for now (will be driven by league config in future)
     playoff_rules = [
         "Top team from the first half (Weeks 1–9) automatically qualifies.",
-        "Top team from the second half (Weeks 10–18) automatically qualifies.",
+        "Top second‑half team not already qualified from the first half automatically qualifies.",
         "Seed 1 is the higher total season points between those two half winners; the other becomes Seed 2.",
         "If a half has a tie for first, all tied teams qualify as half winners.",
         "When multiple half winners exist due to ties, their seeding is determined by head‑to‑head points against each other.",

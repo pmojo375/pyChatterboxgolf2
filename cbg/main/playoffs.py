@@ -109,11 +109,19 @@ def compute_playoff_seeds(season, max_playoff_teams: int = 4) -> List[SeedInfo]:
     first_map, second_map, total_map = _full_points_map(season)
 
     # Determine half winners
+    # First half: all teams tied for max points qualify
     max_first = max(first_map.values()) if first_map else 0.0
-    max_second = max(second_map.values()) if second_map else 0.0
-
     first_half_winner_ids = [tid for tid, pts in first_map.items() if pts == max_first and pts > 0]
-    second_half_winner_ids = [tid for tid, pts in second_map.items() if pts == max_second and pts > 0]
+
+    # Second half: select the top team(s) NOT already qualified from the first half
+    # If the highest second-half team is already qualified via first half, move to the next
+    # best non-qualified team(s); include ties at that level.
+    non_qualified_second_half = {tid: pts for tid, pts in second_map.items() if tid not in first_half_winner_ids}
+    max_second_non_qualified = max(non_qualified_second_half.values()) if non_qualified_second_half else 0.0
+    second_half_winner_ids = [
+        tid for tid, pts in second_map.items()
+        if tid not in first_half_winner_ids and pts == max_second_non_qualified and pts > 0
+    ]
 
     id_to_team: Dict[int, Team] = {t.id: t for t in teams}
 
@@ -150,9 +158,11 @@ def compute_playoff_seeds(season, max_playoff_teams: int = 4) -> List[SeedInfo]:
         if in_first and in_second:
             source = 'both_halves'
         elif in_first:
-            source = 'first_half'
+            # If there was a tie in the first half, mark as half_tie for UI badge
+            source = 'half_tie' if len(first_half_winner_ids) > 1 else 'first_half'
         elif in_second:
-            source = 'second_half'
+            # If there was a tie for the eligible second-half winner(s), mark as half_tie
+            source = 'half_tie' if len(second_half_winner_ids) > 1 else 'second_half'
         else:
             # Fallback: should not happen for half winners; default to wildcard semantics
             source = 'wildcard'
