@@ -71,7 +71,8 @@
   </div>
 
   <!-- Next Game Section - Only show for current season and not during playoffs (Weeks 19-20) -->
-  {% if (not year or year == current_season.year) and next_week and next_week.number < 19 %}
+  {% if not year or year == current_season.year %}
+    {% if next_week and next_week.number < 19 %}
     {% if initialized and season.playing_games and next_game %}
     <div class="row justify-content-center mb-4">
       <div class="col-lg-7">
@@ -146,6 +147,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
     {% endif %}
   {% endif %}
 
@@ -522,7 +524,8 @@
     {% endif %}
 
     <!-- Next Week Schedule - Only show for current season -->
-    {% if (not year or year == current_season.year) and next_week and next_week.number < 19 %}
+    {% if not year or year == current_season.year %}
+      {% if next_week and next_week.number < 19 %}
       {% if next_week_schedule %}
       <div class="container">
         <div class="row mb-4">
@@ -622,6 +625,7 @@
           </div>
         </div>
       </div>
+      {% endif %}
       {% endif %}
     {% endif %}
     
