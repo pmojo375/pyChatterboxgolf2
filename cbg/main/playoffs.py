@@ -136,14 +136,27 @@ def compute_playoff_seeds(season, max_playoff_teams: int = 4) -> List[SeedInfo]:
     half_winners: List[Team] = [id_to_team[tid] for tid in half_winner_ids]
 
     # Order half winners for seeding
-    if len(half_winners) == 2:
-        # Normal case: pick seed by higher total points
-        ordered_half_winners = sorted(half_winners, key=lambda t: (total_map.get(t.id, 0.0), t.id), reverse=True)
-        ordering_note = None
-    elif len(half_winners) > 1:
-        # Tie case: order using head-to-head within the tied group
-        ordered_half_winners = _rank_by_h2h_among_group(half_winners)
-        ordering_note = "Seeding determined by head-to-head among tied half winners"
+    # Rule: Half winners are seeded ahead of wildcards. Within the half-winner group,
+    # order by TOTAL season points (desc). Only break ties on total points using head-to-head.
+    if len(half_winners) > 1:
+        # Group by total points
+        points_to_group: Dict[float, List[Team]] = defaultdict(list)
+        for team in half_winners:
+            points_to_group[total_map.get(team.id, 0.0)].append(team)
+
+        ordered_half_winners: List[Team] = []
+        had_tie_break = False
+        for pts in sorted(points_to_group.keys(), reverse=True):
+            group = points_to_group[pts]
+            if len(group) == 1:
+                ordered_half_winners.extend(group)
+            else:
+                had_tie_break = True
+                ordered_half_winners.extend(_rank_by_h2h_among_group(group))
+        ordering_note = (
+            "Half winners ordered by total points; ties broken by head-to-head"
+            if had_tie_break else None
+        )
     else:
         ordered_half_winners = half_winners
         ordering_note = None
