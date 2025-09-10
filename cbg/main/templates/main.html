@@ -70,8 +70,8 @@
     </div>
   </div>
 
-  <!-- Next Game Section - Only show for current season -->
-  {% if not year or year == current_season.year %}
+  <!-- Next Game Section - Only show for current season and not during playoffs (Weeks 19-20) -->
+  {% if (not year or year == current_season.year) and next_week and next_week.number < 19 %}
     {% if initialized and season.playing_games and next_game %}
     <div class="row justify-content-center mb-4">
       <div class="col-lg-7">
@@ -154,9 +154,18 @@
     {% if playoffSeeds %}
     <div class="row mb-4">
       <div class="col-12">
-        <h3 class="text-center mb-4 text-danger">Projected Playoff Teams</h3>
+        <h3 class="text-center mb-4 text-danger">{% if next_week and next_week.number >= 19 %}Playoff Teams{% else %}Projected Playoff Teams{% endif %}</h3>
       </div>
     </div>
+    {% if next_week and next_week.number >= 19 %}
+    <div class="row">
+      <div class="col-lg-8 col-md-12 mx-auto">
+        <div class="alert alert-warning text-center mb-4">
+          Playoffs are underway (Weeks 19–20). Seeding is finalized; weekly matches decide advancement.
+        </div>
+      </div>
+    </div>
+    {% endif %}
     <div class="row">
       <div class="col-lg-8 col-md-12 mx-auto mb-4">
         <div class="card shadow-sm border-0 h-100">
@@ -513,7 +522,7 @@
     {% endif %}
 
     <!-- Next Week Schedule - Only show for current season -->
-    {% if not year or year == current_season.year %}
+    {% if (not year or year == current_season.year) and next_week and next_week.number < 19 %}
       {% if next_week_schedule %}
       <div class="container">
         <div class="row mb-4">
