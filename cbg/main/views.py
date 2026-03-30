@@ -951,6 +951,7 @@ def golfer_stats(request, golfer_id, year=None):
         best_gross_week = worst_gross_week = best_net_week = worst_net_week = best_points_week = worst_points_week = None
         wins = losses = ties = win_percentage = 0
         handicap_trend_text = "N/A"
+        handicap_trend_positive = False
     
     # Create Plotly charts
     charts = {}
@@ -2042,6 +2043,7 @@ def sub_stats(request, golfer_id=None, year=None):
         best_gross_week = worst_gross_week = best_net_week = worst_net_week = best_points_week = worst_points_week = None
         wins = losses = ties = win_percentage = 0
         handicap_trend_text = "N/A"
+        handicap_trend_positive = False
     
     # Create Plotly charts
     charts = {}
