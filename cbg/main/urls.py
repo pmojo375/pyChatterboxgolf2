@@ -16,6 +16,13 @@ register_converter(YearConverter, 'year')
 
 urlpatterns = [
     path('', views.main, name='main'),
+    # League-prefixed routes (must be before bare <year> so slugs are not parsed as years)
+    path('<slug:league_slug>/<year:year>/', views.main, name='main_with_league_year'),
+    path('<slug:league_slug>/<year:year>/<int:week>/', views.scorecards, name='scorecards_with_league_year'),
+    path('<slug:league_slug>/<year:year>/stats/<int:golfer_id>/', views.golfer_stats, name='golfer_stats_with_league_year'),
+    path('<slug:league_slug>/<year:year>/sub_stats/', views.sub_stats, name='sub_stats_with_league_year'),
+    path('<slug:league_slug>/<year:year>/sub_stats/<int:golfer_id>/', views.sub_stats, name='sub_stats_detail_with_league_year'),
+    path('<slug:league_slug>/<year:year>/league_stats/', views.league_stats, name='league_stats_with_league_year'),
     path('<year:year>/', views.main, name='main_with_year'),
     path('add_round', views.add_scores, name='add_round'),
     path('add_golfer', views.add_golfer, name='add_golfer'),
@@ -41,7 +48,7 @@ urlpatterns = [
     path('api/get_week_matchups/', get_week_matchups, name='get_week_matchups'),
     
     # New URL patterns with year parameter (4-digit years only) - must come before week patterns
-    path('<year:year>/<int:week>/', views.scorecards, name="scorecards_with_year"),
+    path('<year:year>/<int:week>/', views.scorecards, name='scorecards_with_year'),
     path('<year:year>/stats/<int:golfer_id>/', views.golfer_stats, name="golfer_stats_with_year"),
     path('<year:year>/sub_stats/', views.sub_stats, name="sub_stats_with_year"),
     path('<year:year>/sub_stats/<int:golfer_id>/', views.sub_stats, name="sub_stats_detail_with_year"),

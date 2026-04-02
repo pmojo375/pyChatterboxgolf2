@@ -140,6 +140,9 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Optional: pin the default league when the URL has no /<slug>/ prefix (single-league / legacy paths).
+DEFAULT_LEAGUE_SLUG = config('DEFAULT_LEAGUE_SLUG', default='')
+
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']

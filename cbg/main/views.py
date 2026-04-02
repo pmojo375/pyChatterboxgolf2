@@ -14,6 +14,7 @@ from django.contrib import messages
 from django.utils.dateparse import parse_date
 from datetime import timedelta
 from main.permissions import league_manager_required
+from main.league_scope import resolve_league
 from main.tasks import calculate_handicaps_async, generate_rounds_async, generate_matchups_async, recalculate_all_async, process_week_async, set_skin_winners_async
 from main.skins import calculate_skin_winners
 
@@ -240,13 +241,14 @@ def create_season(request):
     return render(request, 'create_season.html', {'form': form})
 
 
-def main(request, year=None):
+def main(request, year=None, league_slug=None):
+    league = resolve_league(league_slug)
     if year:
-        season = get_current_season(year)
+        season = get_current_season(year, league)
         if not season:
             return redirect('main')
     else:
-        season = get_current_season()
+        season = get_current_season(league=league)
 
     if not season:
         return render(request, 'main.html', {'initialized': False})
@@ -364,10 +366,10 @@ def main(request, year=None):
     next_tuesday_date = next_tuesday.strftime('%Y-%m-%d')
     
     # Get seasons for the season selector, excluding the currently displayed season
-    season_options = Season.objects.exclude(pk=season.pk).order_by('-year')
+    season_options = Season.objects.filter(league=league).exclude(pk=season.pk).order_by('-year')
     
     # Get the actual current season (most recent) for comparison
-    actual_current_season = get_current_season()
+    actual_current_season = get_current_season(league=league)
     
     context = {
         'initialized': initialized,
@@ -462,7 +464,7 @@ def add_scores(request):
 
     else:
         # Load the next week + matchup info for the form
-        season = Season.objects.order_by('-year').first()
+        season = get_current_season()
         print(season.year)
         week = get_next_week()
 
@@ -525,7 +527,7 @@ def add_golfer(request):
 
 @league_manager_required
 def add_sub(request):
-    current_season = Season.objects.order_by('-year').first()
+    current_season = get_current_season()
     absent_golfers = Golfer.objects.filter(team__season=current_season)
     sub_golfers = Golfer.objects.all()
     weeks = Week.objects.filter(season=current_season, rained_out=False).order_by('-date')
@@ -590,8 +592,9 @@ def add_sub(request):
 
 @league_manager_required
 def enter_schedule(request):
-    weeks = Week.objects.filter(season=Season.objects.order_by('-year').first(), rained_out=False).order_by('-date')
-    teams = Team.objects.filter(season=Season.objects.order_by('-year').first())
+    _schedule_season = get_current_season()
+    weeks = Week.objects.filter(season=_schedule_season, rained_out=False).order_by('-date')
+    teams = Team.objects.filter(season=_schedule_season)
     message = None
     message_type = None
     
@@ -654,20 +657,24 @@ def enter_schedule(request):
     return render(request, 'enter_schedule.html', {'form': form, 'message': message, 'message_type': message_type})
 
 
-def golfer_stats(request, golfer_id, year=None):
+def golfer_stats(request, golfer_id, year=None, league_slug=None):
     import json
     from django.db.models import Avg, Count, Q, Min, Max
     
+    league = resolve_league(league_slug)
     # Get the golfer object
     golfer = Golfer.objects.get(id=golfer_id)
     
     # Get season - either specified year or current season
     if year is not None:
-        season = get_current_season(year)
+        season = get_current_season(year, league)
         if not season:
             return redirect('main')
     else:
-        season = Season.objects.latest('year')
+        season = get_current_season(league=league)
+    
+    if not season:
+        return redirect('main')
     
     # Get all weeks for the season
     weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
@@ -675,16 +682,18 @@ def golfer_stats(request, golfer_id, year=None):
     # Get best and worst gross scores per year for all years the golfer has played
     yearly_gross_stats = []
     
-    # Get all unique seasons where this golfer has scores
+    # Get all unique seasons where this golfer has scores (within this league)
     golfer_seasons = Score.objects.filter(
-        golfer=golfer
+        golfer=golfer,
+        week__season__league=league,
     ).values_list('week__season__year', flat=True).distinct().order_by('week__season__year')
     
-    for year in golfer_seasons:
+    for cal_year in golfer_seasons:
         # Get all scores for this golfer in this year
         year_scores = Score.objects.filter(
             golfer=golfer,
-            week__season__year=year
+            week__season__year=cal_year,
+            week__season__league=league,
         ).select_related('week', 'hole')
         
         # Group scores by week to calculate gross scores per round
@@ -713,7 +722,7 @@ def golfer_stats(request, golfer_id, year=None):
             worst_gross = max(gross_scores_for_year, key=lambda x: x['gross_score'])
             
             yearly_gross_stats.append({
-                'year': year,
+                'year': cal_year,
                 'best_gross': best_gross,
                 'worst_gross': worst_gross,
                 'total_rounds': len(gross_scores_for_year),
@@ -724,35 +733,36 @@ def golfer_stats(request, golfer_id, year=None):
     yearly_hole_stats = {}
     hole_trends = {}
     
-    for year in golfer_seasons:
+    for cal_year in golfer_seasons:
         # Get all scores for this golfer in this year
         year_scores = Score.objects.filter(
             golfer=golfer,
-            week__season__year=year
+            week__season__year=cal_year,
+            week__season__league=league,
         ).select_related('week', 'hole')
         
         # Group scores by hole number, but only include scores from the correct season
         hole_scores = {}
         for score in year_scores:
             hole_num = score.hole.number
-            if score.week.season.year != year:
+            if score.week.season.year != cal_year:
                 continue
             if hole_num not in hole_scores:
                 hole_scores[hole_num] = []
             hole_scores[hole_num].append(score.score)
         
         # Calculate average score for each hole
-        yearly_hole_stats[year] = {}
+        yearly_hole_stats[cal_year] = {}
         for hole_num in range(1, 19):
             if hole_num in hole_scores and hole_scores[hole_num]:
                 avg_score = sum(hole_scores[hole_num]) / len(hole_scores[hole_num])
-                yearly_hole_stats[year][hole_num] = {
+                yearly_hole_stats[cal_year][hole_num] = {
                     'avg_score': round(avg_score, 2),
                     'rounds_played': len(hole_scores[hole_num]),
                     'par': year_scores.filter(hole__number=hole_num).first().hole.par if year_scores.filter(hole__number=hole_num).exists() else None
                 }
             else:
-                yearly_hole_stats[year][hole_num] = {
+                yearly_hole_stats[cal_year][hole_num] = {
                     'avg_score': None,
                     'rounds_played': 0,
                     'par': None
@@ -760,24 +770,24 @@ def golfer_stats(request, golfer_id, year=None):
     
     # Calculate trends (comparing to previous year)
     sorted_years = sorted(golfer_seasons)
-    for i, year in enumerate(sorted_years):
+    for i, sy in enumerate(sorted_years):
         if i > 0:  # Skip first year (no previous year to compare)
             prev_year = sorted_years[i-1]
-            hole_trends[year] = {}
+            hole_trends[sy] = {}
             
             for hole_num in range(1, 19):
-                current_avg = yearly_hole_stats[year][hole_num]['avg_score']
+                current_avg = yearly_hole_stats[sy][hole_num]['avg_score']
                 prev_avg = yearly_hole_stats[prev_year][hole_num]['avg_score']
                 
                 if current_avg is not None and prev_avg is not None:
                     if current_avg < prev_avg:
-                        hole_trends[year][hole_num] = 'down'  # Improved (green)
+                        hole_trends[sy][hole_num] = 'down'  # Improved (green)
                     elif current_avg > prev_avg:
-                        hole_trends[year][hole_num] = 'up'    # Worsened (red)
+                        hole_trends[sy][hole_num] = 'up'    # Worsened (red)
                     else:
-                        hole_trends[year][hole_num] = 'same'  # No change
+                        hole_trends[sy][hole_num] = 'same'  # No change
                 else:
-                    hole_trends[year][hole_num] = None
+                    hole_trends[sy][hole_num] = None
     
     # Get all rounds for this golfer in the season
     rounds = Round.objects.filter(
@@ -1819,19 +1829,19 @@ def golfer_stats(request, golfer_id, year=None):
         # Create flattened data for easier template rendering
         'yearly_hole_table_data': [
             {
-                'year': year,
+                'year': yk,
                 'holes': [
                     {
                         'hole_num': hole_num,
-                        'avg_score': yearly_hole_stats[year][hole_num]['avg_score'] if yearly_hole_stats[year][hole_num]['avg_score'] else None,
-                        'par': yearly_hole_stats[year][hole_num]['par'] if yearly_hole_stats[year][hole_num]['par'] else None,
-                        'vs_par': (yearly_hole_stats[year][hole_num]['avg_score'] - yearly_hole_stats[year][hole_num]['par']) if (yearly_hole_stats[year][hole_num]['avg_score'] is not None and yearly_hole_stats[year][hole_num]['par'] is not None) else None,
-                        'trend': hole_trends.get(year, {}).get(hole_num) if year in hole_trends else None
+                        'avg_score': yearly_hole_stats[yk][hole_num]['avg_score'] if yearly_hole_stats[yk][hole_num]['avg_score'] else None,
+                        'par': yearly_hole_stats[yk][hole_num]['par'] if yearly_hole_stats[yk][hole_num]['par'] else None,
+                        'vs_par': (yearly_hole_stats[yk][hole_num]['avg_score'] - yearly_hole_stats[yk][hole_num]['par']) if (yearly_hole_stats[yk][hole_num]['avg_score'] is not None and yearly_hole_stats[yk][hole_num]['par'] is not None) else None,
+                        'trend': hole_trends.get(yk, {}).get(hole_num) if yk in hole_trends else None
                     }
                     for hole_num in range(1, 19)
                 ]
             }
-            for year in sorted(yearly_hole_stats.keys()) if yearly_hole_stats
+            for yk in sorted(yearly_hole_stats.keys()) if yearly_hole_stats
         ],
         
         # Wager statistics
@@ -1849,20 +1859,29 @@ def golfer_stats(request, golfer_id, year=None):
     return render(request, 'golfer_stats.html', context)
 
 
-def sub_stats(request, golfer_id=None, year=None):
+def sub_stats(request, golfer_id=None, year=None, league_slug=None):
     """
     View for sub statistics - shows stats for any golfer who has subbed in the season
     """
     import json
     from django.db.models import Avg, Count, Q
     
+    league = resolve_league(league_slug)
     # Get season - either specified year or current season
     if year is not None:
-        season = get_current_season(year)
+        season = get_current_season(year, league)
         if not season:
             return redirect('main')
     else:
-        season = Season.objects.latest('year')
+        season = get_current_season(league=league)
+    
+    if not season:
+        return render(request, 'sub_stats.html', {
+            'golfer': None,
+            'season': None,
+            'sub_golfers': Golfer.objects.none(),
+            'no_subs': True,
+        })
     
     # Get all golfers who have subbed in the current season
     sub_golfers = Golfer.objects.filter(
@@ -2349,7 +2368,7 @@ def sub_stats(request, golfer_id=None, year=None):
     return render(request, 'sub_stats.html', context)
 
 
-def scorecards(request, week, year=None):
+def scorecards(request, week, year=None, league_slug=None):
     """
     Unified scorecards view that handles both current season and past seasons.
     
@@ -2358,17 +2377,18 @@ def scorecards(request, week, year=None):
     - year: optional year parameter (if None, uses current season)
     """
     week_number = week
+    league = resolve_league(league_slug)
     
     # Get the season - either specified year or current season
     if year is not None:
-        season = get_current_season(year)
+        season = get_current_season(year, league)
         if not season:
             return render(request, 'blank_scorecards.html', {
                 'error': f'Season {year} not found.'
             })
     else:
         # Use current season
-        season = get_current_season()
+        season = get_current_season(league=league)
         if not season:
             return render(request, 'blank_scorecards.html', {
                 'error': 'No season found.'
@@ -2683,13 +2703,16 @@ def generate_rounds_page(request):
         if recalc_all:
             # Recalculate all data for the current season
             try:
-                current_season = Season.objects.latest('year')
-                
-                # Start async task for complete recalculation
-                recalculate_all_async.delay(current_season.year)
-                
-                message = f"Started async recalculation of all data for {current_season.year} season. Task is running in the background."
-                message_type = "success"
+                current_season = get_current_season()
+                if not current_season:
+                    message = "No current season found."
+                    message_type = "error"
+                else:
+                    # Start async task for complete recalculation
+                    recalculate_all_async.delay(current_season.pk)
+                    
+                    message = f"Started async recalculation of all data for {current_season.year} season. Task is running in the background."
+                    message_type = "success"
             except Exception as e:
                 message = f"Error starting recalculation task: {str(e)}"
                 message_type = "error"
@@ -2714,13 +2737,16 @@ def generate_rounds_page(request):
             message_type = "error"
         elif generate_handicaps_only:
             try:
-                current_season = Season.objects.latest('year')
-                
-                # Start async task for calculating handicaps
-                calculate_handicaps_async.delay(current_season.year)
-                
-                message = f"Started async calculation of handicaps for {current_season.year} season. Task is running in the background."
-                message_type = "success"
+                current_season = get_current_season()
+                if not current_season:
+                    message = "No current season found."
+                    message_type = "error"
+                else:
+                    # Start async task for calculating handicaps
+                    calculate_handicaps_async.delay(current_season.pk)
+                    
+                    message = f"Started async calculation of handicaps for {current_season.year} season. Task is running in the background."
+                    message_type = "success"
                     
             except Exception as e:
                 message = f"Error starting handicap calculation task: {str(e)}"
@@ -2730,9 +2756,9 @@ def generate_rounds_page(request):
                 week = Week.objects.get(id=week_id)
                 
                 # Start async tasks for all operations
-                calculate_handicaps_async.delay(week.season.year)
+                calculate_handicaps_async.delay(week.season.pk)
                 generate_matchups_async.delay(week.id)
-                generate_rounds_async.delay(week.season.year)
+                generate_rounds_async.delay(week.season.pk)
                 set_skin_winners_async.delay(week.id)
                 
                 message = f"Started async generation of handicaps, matchups, and rounds for Week {week.number} ({week.date.date()}). Tasks are running in the background."
@@ -2749,8 +2775,12 @@ def generate_rounds_page(request):
             message_type = "error"
     
     # Get all weeks from the current season
-    current_season = Season.objects.latest('year')
-    weeks = Week.objects.filter(season=current_season, rained_out=False).order_by('number')
+    current_season = get_current_season()
+    weeks = (
+        Week.objects.filter(season=current_season, rained_out=False).order_by('number')
+        if current_season
+        else Week.objects.none()
+    )
     
     context = {
         'weeks': weeks,
@@ -2761,20 +2791,24 @@ def generate_rounds_page(request):
     return render(request, 'generate_rounds.html', context)
 
 
-def league_stats(request, year=None):
+def league_stats(request, year=None, league_slug=None):
     """
     View for league-wide statistics and leaderboards
     """
     import json
     from django.db.models import Avg, Count, Min, Max, Q
     
+    league = resolve_league(league_slug)
     # Get season - either specified year or current season
     if year is not None:
-        season = get_current_season(year)
+        season = get_current_season(year, league)
         if not season:
             return redirect('main')
     else:
-        season = Season.objects.latest('year')
+        season = get_current_season(league=league)
+    
+    if not season:
+        return redirect('main')
     
     # Get all weeks for the season
     weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
@@ -3274,7 +3308,7 @@ def manage_skins(request):
     message = None
     message_type = None
     selected_week = None
-    current_season = Season.objects.order_by('-year').first()
+    current_season = get_current_season()
     if request.method == 'POST':
         if 'add_skins_entry' in request.POST:
             form = SkinEntryForm(request.POST)
@@ -3356,7 +3390,7 @@ def manage_games(request):
     message_type = None
     selected_week = None
     selected_game = None
-    current_season = Season.objects.order_by('-year').first()
+    current_season = get_current_season()
     if request.method == 'POST':
         if 'create_game' in request.POST:
             form = CreateGameForm(request.POST)
@@ -4067,7 +4101,14 @@ def manage_weeks(request):
     from django.utils.dateparse import parse_date
     from datetime import timedelta
 
-    season = Season.objects.order_by('-year').first()
+    season = get_current_season()
+    if not season:
+        return render(request, 'manage_weeks.html', {
+            'weeks': [],
+            'selected_week': None,
+            'prev_week': None,
+            'next_week': None,
+        })
     weeks = Week.objects.filter(season=season).order_by('date')
 
     selected_week_id = request.GET.get('selected_week')

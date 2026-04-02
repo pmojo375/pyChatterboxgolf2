@@ -4,6 +4,14 @@ from main.models import *
 from main.helper import *
 from django.utils import timezone
 from main.helper import get_playing_golfers_for_week, get_earliest_week_without_full_matchups, get_next_week
+from main.league_scope import get_default_league
+
+
+def _seasons_for_default_league():
+    lg = get_default_league()
+    if not lg:
+        return Season.objects.none()
+    return Season.objects.filter(league=lg).order_by('-year')
 
 class SeasonForm(forms.Form):
     year = forms.IntegerField(label='Year', min_value=2022, max_value=2100)
@@ -115,15 +123,16 @@ class TeamForm(forms.Form):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['season'].queryset = _seasons_for_default_league()
         self.fields['golfer1'].empty_label = None
         self.fields['golfer2'].empty_label = None
 
 class SeasonSelectForm(forms.Form):
-    year = forms.ModelChoiceField(queryset=Season.objects.all().order_by('-year'), required=True, label='Select Season')
+    year = forms.ModelChoiceField(queryset=Season.objects.none(), required=True, label='Select Season')
     
-    class Meta:
-        model = Season
-        fields = ['year']
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['year'].queryset = _seasons_for_default_league()
         
 class HoleForm(forms.Form):
     par = forms.IntegerField(label='Par', required=True, min_value=3, max_value=5)
@@ -149,7 +158,7 @@ class SkinEntryForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Set current season's weeks as default
-        current_season = Season.objects.order_by('-year').first()
+        current_season = get_current_season()
         if current_season:
             self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-date')
             
@@ -219,7 +228,7 @@ class CreateGameForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Get current season weeks
-        current_season = Season.objects.order_by('-year').first()
+        current_season = get_current_season()
         if current_season:
             self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-number')
             
@@ -243,7 +252,7 @@ class GameEntryForm(forms.Form):
     def __init__(self, *args, **kwargs):
         initial_week = kwargs.pop('initial_week', None)
         super().__init__(*args, **kwargs)
-        current_season = Season.objects.order_by('-year').first()
+        current_season = get_current_season()
         if current_season:
             self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-number')
         week = None
@@ -324,7 +333,7 @@ class GameWinnerForm(forms.Form):
     def __init__(self, *args, **kwargs):
         initial_week = kwargs.pop('initial_week', None)
         super().__init__(*args, **kwargs)
-        current_season = Season.objects.order_by('-year').first()
+        current_season = get_current_season()
         if current_season:
             self.fields['week'].queryset = Week.objects.filter(season=current_season).order_by('-number')
         week = None

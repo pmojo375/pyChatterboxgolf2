@@ -45,10 +45,10 @@ def generate_matchups_async(week_id):
         return f"Error generating matchups for week {week_id}: {str(e)}"
 
 @shared_task
-def recalculate_all_async(season_year):
+def recalculate_all_async(season_id):
     """Recalculate all data for a season: handicaps, matchups, and rounds"""
     try:
-        season = Season.objects.get(year=season_year)
+        season = Season.objects.get(pk=season_id)
         
         # Step 1: Calculate handicaps for all weeks
         logger.info(f"Starting handicap calculation for season {season.year}")
@@ -96,34 +96,34 @@ def recalculate_all_async(season_year):
         return f"Recalculation complete for season {season.year}. Handicaps: all weeks, Matchups: {len(matchup_weeks)} weeks, Rounds: {len(round_weeks)} weeks"
         
     except Season.DoesNotExist:
-        logger.error(f"Season with year {season_year} does not exist")
-        return f"Season with year {season_year} does not exist"
+        logger.error(f"Season id {season_id} does not exist")
+        return f"Season id {season_id} does not exist"
     except Exception as e:
-        logger.error(f"Error in recalculation for season {season_year}: {str(e)}")
-        return f"Error in recalculation for season {season_year}: {str(e)}"
+        logger.error(f"Error in recalculation for season {season_id}: {str(e)}")
+        return f"Error in recalculation for season {season_id}: {str(e)}"
 
 
 
 @shared_task
-def calculate_handicaps_async(season_year, weeks=None, golfers=None):
+def calculate_handicaps_async(season_id, weeks=None, golfers=None):
     """Calculate and save handicaps for a season asynchronously"""
     try:
-        season = Season.objects.get(year=season_year)
+        season = Season.objects.get(pk=season_id)
         calculate_and_save_handicaps_for_season(season, weeks=weeks, golfers=golfers)
         logger.info(f"Handicaps calculated for season {season.year}")
         return f"Handicaps calculated for season {season.year}"
     except Season.DoesNotExist:
-        logger.error(f"Season with year {season_year} does not exist")
-        return f"Season with year {season_year} does not exist"
+        logger.error(f"Season id {season_id} does not exist")
+        return f"Season id {season_id} does not exist"
     except Exception as e:
-        logger.error(f"Error calculating handicaps for season {season_year}: {str(e)}")
-        return f"Error calculating handicaps for season {season_year}: {str(e)}"
+        logger.error(f"Error calculating handicaps for season {season_id}: {str(e)}")
+        return f"Error calculating handicaps for season {season_id}: {str(e)}"
 
 @shared_task
-def generate_rounds_async(season_year):
+def generate_rounds_async(season_id):
     """Generate rounds for a season asynchronously"""
     try:
-        season = Season.objects.get(year=season_year)
+        season = Season.objects.get(pk=season_id)
         generate_rounds(season)
         # After generating rounds for all weeks, set skins winners for all weeks
         for week in Week.objects.filter(season=season, rained_out=False).order_by('number'):
@@ -131,11 +131,11 @@ def generate_rounds_async(season_year):
         logger.info(f"Rounds generated for season {season.year}")
         return f"Rounds generated for season {season.year}"
     except Season.DoesNotExist:
-        logger.error(f"Season with year {season_year} does not exist")
-        return f"Season with year {season_year} does not exist"
+        logger.error(f"Season id {season_id} does not exist")
+        return f"Season id {season_id} does not exist"
     except Exception as e:
-        logger.error(f"Error generating rounds for season {season_year}: {str(e)}")
-        return f"Error generating rounds for season {season_year}: {str(e)}"
+        logger.error(f"Error generating rounds for season {season_id}: {str(e)}")
+        return f"Error generating rounds for season {season_id}: {str(e)}"
 
 @shared_task
 def set_skin_winners_async(week_id):
