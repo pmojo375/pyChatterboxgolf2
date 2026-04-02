@@ -87,10 +87,11 @@ class Season(models.Model):
         ("NET", "Net"),
     ]
     
-    year = models.IntegerField(primary_key=True)
+    id = models.BigAutoField(primary_key=True)
+    year = models.IntegerField()
     course_config = models.ForeignKey(CourseConfig, on_delete=models.PROTECT, null=True, blank=True)
     league = models.ForeignKey(
-        League, on_delete=models.CASCADE, null=True, blank=True, related_name='seasons' # changed to allow db restore one last time
+        League, on_delete=models.CASCADE, related_name='seasons'
     )
     
     # skins and games settings
@@ -106,6 +107,12 @@ class Season(models.Model):
         ordering = ['-year']
         verbose_name = 'Season'
         verbose_name_plural = 'Seasons'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('league', 'year'),
+                name='season_unique_league_year',
+            ),
+        ]
     
     def __str__(self):
         return f'{self.year}'

@@ -218,7 +218,10 @@ def create_season(request):
             start_date = form.cleaned_data['start_date']
             start_with = form.cleaned_data.get('start_with', 'front')
             
-            season = Season.objects.get_or_create(year=year)[0]
+            league = League.objects.order_by('pk').first()
+            if league is None:
+                league = League.objects.create(name='Chatterbox Golf')
+            season, _ = Season.objects.get_or_create(year=year, league=league)
             
             # Print info for debugging
             print(f'Year: {year} Type {type(year)}')

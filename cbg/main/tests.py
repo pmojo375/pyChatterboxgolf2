@@ -7,9 +7,16 @@ import random
 from django.urls import reverse
 
 
+def _test_league():
+    league = League.objects.order_by('pk').first()
+    if league is None:
+        league = League.objects.create(name='Test League')
+    return league
+
+
 class GenerateGolferMatchupsTests(TestCase):
     def setUp(self):
-        self.season = Season.objects.create(year=timezone.now().year)
+        self.season = Season.objects.create(year=timezone.now().year, league=_test_league())
         self.week = Week.objects.create(date=timezone.now(), season=self.season, number=1, rained_out=False, is_front=True)
         self.golfer1 = Golfer.objects.create(name='Team 1 Golfer 1')
         self.golfer2 = Golfer.objects.create(name='Team 1 Golfer 2')
@@ -128,7 +135,7 @@ class SeasonWeekTests(TestCase):
         self.future_date = timezone.now() + timedelta(weeks=1)
         
         # Create a current season
-        self.current_season = Season.objects.create(year=self.current_year)
+        self.current_season = Season.objects.create(year=self.current_year, league=_test_league())
         
         # Create weeks for the current season
         self.past_week = Week.objects.create(season=self.current_season, date=self.past_date, number=1, rained_out=False, is_front=True)
@@ -192,7 +199,7 @@ class RoundTestCase(TestCase):
     def setUp(self):
         from datetime import timedelta
         self.current_date = timezone.now().date()
-        self.season = Season.objects.create(year=self.current_date.year)
+        self.season = Season.objects.create(year=self.current_date.year, league=_test_league())
         self.week1 = Week.objects.create(date=self.current_date - timedelta(days=7), season=self.season, number=1, rained_out=False, is_front=True)
         
         self.team1_golfer1 = Golfer.objects.create(name='Team 1 Test Golfer 1') # Hcp 12 playing golfer 2 hcp 9 - 3 strokes gotten
@@ -271,7 +278,7 @@ class HandicapTestCase(TestCase):
         self.current_date = timezone.now().date()
         
         # Create test season
-        self.season = Season.objects.create(year=self.current_date.year)
+        self.season = Season.objects.create(year=self.current_date.year, league=_test_league())
         
         # Create test weeks
         self.week8 = Week.objects.create(date=self.current_date, season=self.season, number=8, rained_out=False, is_front=False)
@@ -412,7 +419,7 @@ class PointsTestCase(TestCase):
         
         self.current_date = timezone.now().date()
         
-        self.season = Season.objects.create(year=self.current_date.year)
+        self.season = Season.objects.create(year=self.current_date.year, league=_test_league())
         
         self.week1 = Week.objects.create(date=self.current_date, season=self.season, number=1, rained_out=False, is_front=True)
         
@@ -635,7 +642,7 @@ class AddRoundViewTests(TestCase):
 
     def setUp(self):
         self.current_date = timezone.now().date()
-        self.season = Season.objects.create(year=self.current_date.year)
+        self.season = Season.objects.create(year=self.current_date.year, league=_test_league())
         self.golfer = Golfer.objects.create(name='John Doe')
         self.week = Week.objects.create(date=self.current_date, season=self.season, number=1, rained_out=False, is_front=True)
         for i in range(1, 19):
@@ -691,7 +698,7 @@ class AddSubViewTests(TestCase):
 
     def setUp(self):
         self.current_date = timezone.now().date()
-        self.season = Season.objects.create(year=self.current_date.year)
+        self.season = Season.objects.create(year=self.current_date.year, league=_test_league())
         self.week = Week.objects.create(date=self.current_date, season=self.season, number=1, rained_out=False, is_front=True)
         self.absent_golfer = Golfer.objects.create(name='John Doe')
         self.team = Team.objects.create(season=self.season)
