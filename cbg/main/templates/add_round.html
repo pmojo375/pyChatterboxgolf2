@@ -20,7 +20,7 @@
         </div>
 
         <!-- Scorecard -->
-        <form id="scoreForm" method="post" action="{% url 'add_round' %}">
+        <form id="scoreForm" method="post" action="{% if league_slug and league_nav_year %}{% url 'add_round_with_league_year' league_slug=league_slug year=league_nav_year %}{% else %}{% url 'add_round' %}{% endif %}">
             {% csrf_token %}
             <input type="hidden" name="week_id" value="{{ week.id }}">
             <input type="hidden" name="matchup_id" id="matchup_id">

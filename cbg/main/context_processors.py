@@ -1,5 +1,15 @@
-from main.models import Week, Season
+from main.models import Week, Season, League
 from main.league_scope import league_and_year_from_path
+
+
+def _league_nav_year(league, path_year):
+    """Year for building /slug/year/… links: path year, else latest season for league."""
+    if path_year is not None:
+        return path_year
+    if league is None:
+        return None
+    s = Season.objects.filter(league=league).order_by('-year').first()
+    return s.year if s else None
 
 
 def weeks_context(request):
@@ -17,6 +27,8 @@ def weeks_context(request):
     - ``multiple_seasons``: whether multiple seasons exist for the league.
     - ``is_league_manager``: whether the user can manage league settings.
     - ``current_league`` / ``league_slug``: resolved league for URL building.
+    - ``league_nav_year``: year for league-prefixed nav links (path year or latest season).
+    - ``strip_league_nav``: when True, hide league-scoped nav (unused for landing-style pages).
     """
     try:
         try:
@@ -24,6 +36,29 @@ def weeks_context(request):
             is_production_host = host.endswith('chatterboxgolf.com')
         except Exception:
             is_production_host = False
+
+        match = getattr(request, 'resolver_match', None)
+        # League chooser, set holes, manage courses: same navbar as landing (brand + superuser tools, no league menus)
+        if (request.path == '/' and League.objects.exists()) or (
+            match and match.url_name in ('set_holes', 'manage_courses')
+        ):
+            return {
+                'available_weeks': [],
+                'current_season': None,
+                'season': None,
+                'golfer_list': [],
+                'sub_golfer_list': [],
+                'current_year': None,
+                'all_seasons': [],
+                'is_current_season': False,
+                'is_production_host': is_production_host,
+                'multiple_seasons': False,
+                'is_league_manager': False,
+                'current_league': None,
+                'league_slug': None,
+                'league_nav_year': None,
+                'strip_league_nav': False,
+            }
 
         league, path_year = league_and_year_from_path(request.path)
 
@@ -75,6 +110,8 @@ def weeks_context(request):
                 'is_league_manager': is_league_manager,
                 'current_league': league,
                 'league_slug': league.slug,
+                'league_nav_year': _league_nav_year(league, path_year),
+                'strip_league_nav': False,
             }
 
         weeks_with_complete_scores = []
@@ -119,6 +156,8 @@ def weeks_context(request):
             'is_league_manager': is_league_manager,
             'current_league': league,
             'league_slug': league.slug,
+            'league_nav_year': _league_nav_year(league, path_year),
+            'strip_league_nav': False,
         }
     except Season.DoesNotExist:
         golfer_list = []
@@ -137,4 +176,6 @@ def weeks_context(request):
             'is_league_manager': False,
             'current_league': None,
             'league_slug': None,
+            'league_nav_year': None,
+            'strip_league_nav': False,
         }

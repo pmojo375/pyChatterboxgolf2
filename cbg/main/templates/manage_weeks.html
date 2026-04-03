@@ -15,7 +15,7 @@
           <option value="" {% if not selected_week %}selected{% endif %}>Select week</option>
           {% for week in weeks %}
             <option value="{{ week.id }}" {% if selected_week and week.id == selected_week.id %}selected{% endif %}>
-              Week {{ week.number }}{% if week.rained_out %}<b>*</b>{% endif %} - {{ week.date|date:'Y-m-d' }} - {% if week.is_front %}Front{% else %}Back{% endif %}
+              {{ week.season.league.name }} {{ week.season.year }} - Week {{ week.number }}{% if week.rained_out %}<b>*</b>{% endif %} - {{ week.date|date:'m-d' }} - {% if week.is_front %}Front{% else %}Back{% endif %}
             </option>
           {% endfor %}
         </select>

@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from main.models import *
 from main.signals import *
 from main.helper import *
@@ -11,14 +11,62 @@ from main.models import Team, Score, Sub, Week
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib import messages
+from django.contrib.auth.decorators import user_passes_test
 from django.utils.dateparse import parse_date
 from datetime import timedelta
 from main.permissions import league_manager_required
 from main.league_scope import resolve_league
+from main.url_helpers import redirect_home, redirect_sub_stats_detail
 from main.tasks import calculate_handicaps_async, generate_rounds_async, generate_matchups_async, recalculate_all_async, process_week_async, set_skin_winners_async
 from main.skins import calculate_skin_winners
 
 HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
+
+
+def _management_season(league_slug, year):
+    """League + season for management views (path year selects which season)."""
+    league = resolve_league(league_slug)
+    if year is not None:
+        return get_current_season(year, league), league
+    return get_current_season(league=league), league
+
+
+def _management_redirect(view_name, league, season_year):
+    """Redirect to league-scoped management URL after POST."""
+    if league is not None and season_year is not None:
+        return redirect(
+            f'{view_name}_with_league_year',
+            league_slug=league.slug,
+            year=season_year,
+        )
+    return redirect(view_name)
+
+
+def _manage_games_redirect(league, path_year, week_id):
+    if league is not None and path_year is not None:
+        return HttpResponseRedirect(
+            f"{reverse('manage_games_with_league_year', kwargs={'league_slug': league.slug, 'year': path_year})}?week={week_id}"
+        )
+    return HttpResponseRedirect(f"{reverse('manage_games')}?week={week_id}")
+
+
+def _manage_weeks_redirect(league, path_year, selected_week_id):
+    if league is not None and path_year is not None:
+        return redirect(
+            f"{reverse('manage_weeks_with_league_year', kwargs={'league_slug': league.slug, 'year': path_year})}?selected_week={selected_week_id}"
+        )
+    return redirect(f'{reverse("manage_weeks")}?selected_week={selected_week_id}')
+
+
+def _league_chooser_rows():
+    """League + latest season year for building links to main_with_league_year."""
+    rows = []
+    for lg in League.objects.all().order_by('name'):
+        s = Season.objects.filter(league=lg).order_by('-year').first()
+        y = s.year if s else timezone.now().year
+        rows.append({'league': lg, 'year': y})
+    return rows
+
 
 def get_first_half_standings(season):
     """
@@ -206,10 +254,11 @@ def get_full_standings(season):
 
 
 @league_manager_required
-def create_season(request):
+def create_season(request, league_slug=None, year=None):
     # Set up season related information and create a new season
+    league_ctx = resolve_league(league_slug) if league_slug else None
     if request.method == 'POST':
-        form = SeasonForm(request.POST)
+        form = SeasonForm(request.POST, user=request.user)
         if form.is_valid():
             print('Valid Form\n')
             
@@ -218,11 +267,17 @@ def create_season(request):
             weeks = form.cleaned_data['weeks']
             start_date = form.cleaned_data['start_date']
             start_with = form.cleaned_data.get('start_with', 'front')
+            league = form.cleaned_data['league']
+            course_config = form.cleaned_data['course_config']
             
-            league = League.objects.order_by('pk').first()
-            if league is None:
-                league = League.objects.create(name='Chatterbox Golf')
-            season, _ = Season.objects.get_or_create(year=year, league=league)
+            season, created = Season.objects.get_or_create(
+                year=year,
+                league=league,
+                defaults={'course_config': course_config},
+            )
+            if not created:
+                season.course_config = course_config
+                season.save(update_fields=['course_config'])
             
             # Print info for debugging
             print(f'Year: {year} Type {type(year)}')
@@ -236,22 +291,52 @@ def create_season(request):
             print(form.errors)
     
     else:
-        form = SeasonForm()
-    
+        form = SeasonForm(user=request.user)
+        if league_ctx and form.fields['league'].queryset.filter(pk=league_ctx.pk).exists():
+            form.initial['league'] = league_ctx.pk
+
     return render(request, 'create_season.html', {'form': form})
 
 
+@user_passes_test(lambda u: u.is_superuser)
+def add_league(request):
+    """Create a league (superuser only). POST from the multi-league chooser page."""
+    if request.method != 'POST':
+        return redirect('main')
+    form = LeagueForm(request.POST)
+    if form.is_valid():
+        league = form.save()
+        messages.success(request, f'League "{league.name}" was created.')
+        return redirect('main')
+    return render(
+        request,
+        'choose_league.html',
+        {
+            'league_rows': _league_chooser_rows(),
+            'add_league_form': form,
+        },
+    )
+
+
 def main(request, year=None, league_slug=None):
+    if year is None and league_slug is None and League.objects.exists():
+        ctx = {'league_rows': _league_chooser_rows()}
+        if request.user.is_superuser:
+            ctx['add_league_form'] = LeagueForm()
+        return render(request, 'choose_league.html', ctx)
+
     league = resolve_league(league_slug)
     if year:
         season = get_current_season(year, league)
-        if not season:
-            return redirect('main')
     else:
         season = get_current_season(league=league)
 
     if not season:
-        return render(request, 'main.html', {'initialized': False})
+        return render(
+            request,
+            'main.html',
+            {'initialized': False, 'year': year, 'league': league},
+        )
 
     last_week = get_last_week(season)
     next_week = get_next_week(season)
@@ -403,7 +488,10 @@ def main(request, year=None, league_slug=None):
 
 
 @league_manager_required
-def add_scores(request):
+def add_scores(request, league_slug=None, year=None):
+    season, league = _management_season(league_slug, year)
+    if not season:
+        return redirect_home(league, year)
     if request.method == 'POST':
         # Get hidden fields from the form
         week_id = request.POST.get('week_id')
@@ -416,6 +504,8 @@ def add_scores(request):
             week = Week.objects.get(pk=week_id)
         except (Week.DoesNotExist, Matchup.DoesNotExist):
             return HttpResponseBadRequest("Invalid week or matchup.")
+        if week.season.league_id != league.pk:
+            return HttpResponseBadRequest("Week does not belong to this league.")
 
         hole_numbers = range(1, 10) if week.is_front else range(10, 19)
 
@@ -460,24 +550,24 @@ def add_scores(request):
                     defaults={'score': score_value}
                 )
 
-        return redirect('add_round')
+        return _management_redirect('add_round', league, season.year)
 
     else:
         # Load the next week + matchup info for the form
-        season = get_current_season()
         print(season.year)
-        week = get_next_week()
+        week = get_next_week(season)
+        if not week:
+            return redirect_home(league, season.year)
 
         # Auto-heal golfer matchups if the count is incorrect (e.g., after a migration)
-        if week:
-            try:
-                expected_matchups = len(get_playing_golfers_for_week(week)) - Sub.objects.filter(week=week, no_sub=True).count()
-                current_matchups = GolferMatchup.objects.filter(week=week).count()
-                if current_matchups != expected_matchups:
-                    generate_golfer_matchups(week)
-            except Exception:
-                # Fail silently to avoid blocking the page; admins can regenerate from tools
-                pass
+        try:
+            expected_matchups = len(get_playing_golfers_for_week(week)) - Sub.objects.filter(week=week, no_sub=True).count()
+            current_matchups = GolferMatchup.objects.filter(week=week).count()
+            if current_matchups != expected_matchups:
+                generate_golfer_matchups(week)
+        except Exception:
+            # Fail silently to avoid blocking the page; admins can regenerate from tools
+            pass
         matchups = Matchup.objects.filter(week=week)
         front = week.is_front
 
@@ -498,42 +588,44 @@ def add_scores(request):
 
 
 @league_manager_required
-def add_golfer(request):
+def add_golfer(request, league_slug=None, year=None):
+    season, league = _management_season(league_slug, year)
+    if not season:
+        return redirect_home(league, year)
     if request.method == 'POST':
         form = GolferForm(request.POST)
         if form.is_valid():
             print('Valid Form\n')
-            
-            # Get form data
+
             name = form.cleaned_data['name']
-            
-            # Create the golfer object
-            golfer = Golfer(
-                name=name,
-            )
-            
-            # Print info for debugging
+
+            golfer = Golfer(name=name)
+
             print(f'Name: {name}')
-            
+
             golfer.save()
+            golfer.leagues.add(league)
         else:
             print('Invalid Form\n')
             print(form.errors)
     else:
         form = GolferForm()
-    
+
     return render(request, 'add_golfer.html', {'form': form})
 
 
 @league_manager_required
-def add_sub(request):
-    current_season = get_current_season()
+def add_sub(request, league_slug=None, year=None):
+    season, league = _management_season(league_slug, year)
+    if not season:
+        return redirect_home(league, year)
+    current_season = season
     absent_golfers = Golfer.objects.filter(team__season=current_season)
-    sub_golfers = Golfer.objects.all()
+    sub_golfers = Golfer.objects.filter(leagues=league)
     weeks = Week.objects.filter(season=current_season, rained_out=False).order_by('-date')
-    
+
     if request.method == 'POST':
-        form = SubForm(absent_golfers, sub_golfers, weeks, request.POST)
+        form = SubForm(absent_golfers, sub_golfers, weeks, request.POST, season=season)
         if form.is_valid():
             print('Valid Form\n')
             print(form.cleaned_data)
@@ -577,29 +669,31 @@ def add_sub(request):
             
             # Preserve the selected week for the form reload
             # Create a new form with the same week selected
-            form = SubForm(absent_golfers, sub_golfers, weeks)
+            form = SubForm(absent_golfers, sub_golfers, weeks, season=season)
             form.initial['week'] = week_id
-            
+
         else:
             print('Invalid Form\n')
             print(form.errors.items())
-    
+
     else:
-        form = SubForm(absent_golfers, sub_golfers, weeks)
-    
+        form = SubForm(absent_golfers, sub_golfers, weeks, season=season)
+
     return render(request, 'add_sub.html', {'form': form})
 
 
 @league_manager_required
-def enter_schedule(request):
-    _schedule_season = get_current_season()
+def enter_schedule(request, league_slug=None, year=None):
+    _schedule_season, league = _management_season(league_slug, year)
+    if not _schedule_season:
+        return redirect_home(league, year)
     weeks = Week.objects.filter(season=_schedule_season, rained_out=False).order_by('-date')
     teams = Team.objects.filter(season=_schedule_season)
     message = None
     message_type = None
-    
+
     if request.method == 'POST':
-        form = ScheduleForm(weeks, teams, request.POST)
+        form = ScheduleForm(weeks, teams, request.POST, season=_schedule_season)
         if form.is_valid():
             print('Valid Form\n')
             
@@ -636,7 +730,7 @@ def enter_schedule(request):
                 earliest_incomplete = get_earliest_week_without_full_matchups(week.season)
             except Exception:
                 earliest_incomplete = None
-            form = ScheduleForm(weeks, teams)
+            form = ScheduleForm(weeks, teams, season=week.season)
             if earliest_incomplete:
                 form.initial['week'] = earliest_incomplete.id
             else:
@@ -652,7 +746,7 @@ def enter_schedule(request):
             message = "Please correct the errors below."
             message_type = "error"
     else:
-        form = ScheduleForm(weeks, teams)
+        form = ScheduleForm(weeks, teams, season=_schedule_season)
 
     return render(request, 'enter_schedule.html', {'form': form, 'message': message, 'message_type': message_type})
 
@@ -669,12 +763,12 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
     if year is not None:
         season = get_current_season(year, league)
         if not season:
-            return redirect('main')
+            return redirect_home(league, year)
     else:
         season = get_current_season(league=league)
     
     if not season:
-        return redirect('main')
+        return redirect_home(league, year)
     
     # Get all weeks for the season
     weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
@@ -1871,7 +1965,7 @@ def sub_stats(request, golfer_id=None, year=None, league_slug=None):
     if year is not None:
         season = get_current_season(year, league)
         if not season:
-            return redirect('main')
+            return redirect_home(league, year)
     else:
         season = get_current_season(league=league)
     
@@ -1896,7 +1990,8 @@ def sub_stats(request, golfer_id=None, year=None, league_slug=None):
     if golfer_id is None:
         if sub_golfers.exists():
             # Redirect to the first sub golfer
-            return redirect('sub_stats_detail', golfer_id=sub_golfers.first().id)
+            _yr = year if year is not None else season.year
+            return redirect_sub_stats_detail(sub_golfers.first().id, league, _yr)
         else:
             # No sub golfers exist, show empty state
             return render(request, 'sub_stats.html', {
@@ -1912,7 +2007,8 @@ def sub_stats(request, golfer_id=None, year=None, league_slug=None):
     except Golfer.DoesNotExist:
         if sub_golfers.exists():
             # Redirect to the first sub golfer if the requested one doesn't exist
-            return redirect('sub_stats_detail', golfer_id=sub_golfers.first().id)
+            _yr = year if year is not None else season.year
+            return redirect_sub_stats_detail(sub_golfers.first().id, league, _yr)
         else:
             return render(request, 'sub_stats.html', {
                 'golfer': None,
@@ -2580,27 +2676,33 @@ def scorecards(request, week, year=None, league_slug=None):
 
 
 @league_manager_required
-def set_rainout(request):
+def set_rainout(request, league_slug=None, year=None):
+    season, league = _management_season(league_slug, year)
+    if not season:
+        return redirect_home(league, year)
     if 'select_week' in request.POST:
-        selection_form = WeekSelectionForm(request.POST)
+        selection_form = WeekSelectionForm(request.POST, current_season=season)
         if selection_form.is_valid():
-            
+
             selected_week = selection_form.cleaned_data['week']
-        
+
             rain_out_update(selected_week)
     else:
-        selection_form = WeekSelectionForm()
-    
+        selection_form = WeekSelectionForm(current_season=season)
+
     return render(request, 'set_rainout.html', {
         'selection_form': selection_form,
     })
 
 
 @league_manager_required
-def create_team(request):
-    
+def create_team(request, league_slug=None, year=None):
+    season, league = _management_season(league_slug, year)
+    if not season:
+        return redirect_home(league, year)
+
     if request.method == 'POST':
-        form = TeamForm(request.POST)
+        form = TeamForm(request.POST, league=league)
         if form.is_valid():
             print('Valid Form\n')
             
@@ -2620,90 +2722,197 @@ def create_team(request):
             print('Invalid Form\n')
             print(form.errors)
     else:
-        form = TeamForm()
-    
+        form = TeamForm(league=league)
+
     return render(request, 'create_team.html', {'form': form})
 
 
-@league_manager_required
+@user_passes_test(lambda u: u.is_superuser)
 def set_holes(request):
+    course_configs = CourseConfig.objects.select_related('course').order_by('course__name', 'name')
+    selected_config = None
+    formset = None
+
     if request.method == 'POST':
-        season_form = SeasonSelectForm(request.POST)
         formset = HoleFormSet(request.POST)
-        
-        if season_form.is_valid() and formset.is_valid():
-            print('Valid Form\n')
-            
-            season = season_form.cleaned_data['year']  # Get the selected season
-            
-            for i, form in enumerate(formset.forms):           
+        post_pk = request.POST.get('course_config')
+        if post_pk:
+            try:
+                selected_config = CourseConfig.objects.select_related('course').get(pk=post_pk)
+            except (CourseConfig.DoesNotExist, ValueError):
+                messages.error(request, 'Invalid course layout.')
+        else:
+            messages.error(request, 'Select a course layout.')
+
+        if selected_config and formset.is_valid():
+            for i, form in enumerate(formset.forms):
                 par = form.cleaned_data.get('par')
                 handicap = form.cleaned_data.get('handicap')
                 yards = form.cleaned_data.get('yards')
                 number = i + 1
-                
                 if number <= 9:
                     handicap9 = (handicap + 1) // 2
-                # For the second nine holes
                 else:
                     handicap9 = handicap // 2
-                
-                # check if hole exists for the season and hole number
-                hole = Hole.objects.filter(config=season.course_config, number=number)
-                
-                if hole.exists():
-                    # Update the existing hole
-                    hole = hole.first()
+                hole_qs = Hole.objects.filter(config=selected_config, number=number)
+                if hole_qs.exists():
+                    hole = hole_qs.first()
                     hole.par = par
                     hole.handicap = handicap
                     hole.handicap9 = handicap9
                     hole.yards = yards
                     hole.save()
                 else:
-                    # Create a new Hole instance
-                    hole = Hole(
+                    Hole.objects.create(
                         number=number,
                         par=par,
                         handicap=handicap,
                         handicap9=handicap9,
                         yards=yards,
-                        season=season
+                        config=selected_config,
                     )
-                    hole.save()  # Save the instance to the database
-        else:
-            print('Invalid Form\n')
-            # Debugging: Print errors
-            if not season_form.is_valid():
-                print("Season form errors:", season_form.errors)
-            if not formset.is_valid():
-                for form in formset:
-                    print("Form errors:", form.errors)
+            messages.success(request, 'Saved holes for %s.' % selected_config)
+            return redirect(f"{reverse('set_holes')}?config={selected_config.pk}")
     else:
-        season_form = SeasonSelectForm()
-        formset = HoleFormSet()
-    return render(request, 'set_holes.html', {'season_form': season_form, 'formset': formset})
+        config_id = request.GET.get('config')
+        if config_id:
+            selected_config = get_object_or_404(
+                CourseConfig.objects.select_related('course'),
+                pk=config_id,
+            )
+            initial = hole_formset_initial_for_config(selected_config)
+            formset = HoleFormSet(initial=initial)
+
+    return render(
+        request,
+        'set_holes.html',
+        {
+            'course_configs': course_configs,
+            'selected_config': selected_config,
+            'formset': formset,
+        },
+    )
+
+
+@user_passes_test(lambda u: u.is_superuser)
+def manage_courses(request):
+    """Create/edit courses and course layouts (not league-scoped)."""
+    courses = Course.objects.all().order_by('name')
+    configs = CourseConfig.objects.select_related('course').order_by('course__name', 'name')
+
+    def _render(course_form, config_form, editing_course, editing_config):
+        return render(
+            request,
+            'manage_courses.html',
+            {
+                'courses': courses,
+                'configs': configs,
+                'course_form': course_form,
+                'config_form': config_form,
+                'editing_course': editing_course,
+                'editing_config': editing_config,
+            },
+        )
+
+    if request.method == 'POST':
+        form_type = request.POST.get('form')
+        if form_type == 'delete_course':
+            course = get_object_or_404(Course, pk=request.POST.get('course_id'))
+            if Season.objects.filter(course_config__course=course).exists():
+                messages.error(
+                    request,
+                    'Cannot delete this course: one or more seasons use a layout at this course.',
+                )
+            else:
+                course.delete()
+                messages.success(request, 'Course deleted.')
+            return redirect('manage_courses')
+        if form_type == 'delete_config':
+            config = get_object_or_404(
+                CourseConfig.objects.select_related('course'),
+                pk=request.POST.get('config_id'),
+            )
+            if Season.objects.filter(course_config=config).exists():
+                messages.error(
+                    request,
+                    'Cannot delete this layout: one or more seasons use it.',
+                )
+            else:
+                config.delete()
+                messages.success(request, 'Course layout deleted.')
+            return redirect('manage_courses')
+        if form_type == 'course':
+            cid = request.POST.get('course_id')
+            inst = Course.objects.filter(pk=cid).first() if cid else None
+            course_form = CourseManageForm(request.POST, instance=inst)
+            if course_form.is_valid():
+                course_form.save()
+                messages.success(request, 'Course saved.')
+                return redirect('manage_courses')
+            return _render(
+                course_form,
+                CourseConfigManageForm(),
+                editing_course=inst,
+                editing_config=None,
+            )
+        if form_type == 'config':
+            cfg_id = request.POST.get('config_id')
+            inst = CourseConfig.objects.filter(pk=cfg_id).first() if cfg_id else None
+            config_form = CourseConfigManageForm(request.POST, instance=inst)
+            if config_form.is_valid():
+                config_form.save()
+                messages.success(request, 'Course layout saved.')
+                return redirect('manage_courses')
+            return _render(
+                CourseManageForm(),
+                config_form,
+                editing_course=None,
+                editing_config=inst,
+            )
+
+    course_form = CourseManageForm()
+    config_form = CourseConfigManageForm()
+    editing_course = None
+    editing_config = None
+    ec = request.GET.get('edit_course')
+    if ec:
+        editing_course = get_object_or_404(Course, pk=ec)
+        course_form = CourseManageForm(instance=editing_course)
+    ecf = request.GET.get('edit_config')
+    if ecf:
+        editing_config = get_object_or_404(
+            CourseConfig.objects.select_related('course'),
+            pk=ecf,
+        )
+        config_form = CourseConfigManageForm(instance=editing_config)
+
+    return _render(course_form, config_form, editing_course, editing_config)
 
 
 @league_manager_required
-def generate_rounds_page(request):
+def generate_rounds_page(request, league_slug=None, year=None):
     """View for generating rounds for a specific week"""
     from main.helper import generate_rounds, process_week, calculate_and_save_handicaps_for_season, generate_golfer_matchups, generate_round
     from main.tasks import calculate_handicaps_async, generate_rounds_async, generate_matchups_async, recalculate_all_async, process_week_async, set_skin_winners_async
-    
+
+    mgmt_season, league = _management_season(league_slug, year)
+    if not mgmt_season:
+        return redirect_home(league, year)
+
     message = None
     message_type = None
-    
+
     if request.method == 'POST':
         week_id = request.POST.get('week_id')
         recalc_all = request.POST.get('recalc_all')
         generate_matchups_only = request.POST.get('generate_matchups_only')
         generate_handicaps_only = request.POST.get('generate_handicaps_only')
         generate_rounds_only = request.POST.get('generate_rounds_only')
-        
+
         if recalc_all:
             # Recalculate all data for the current season
             try:
-                current_season = get_current_season()
+                current_season = mgmt_season
                 if not current_season:
                     message = "No current season found."
                     message_type = "error"
@@ -2719,7 +2928,9 @@ def generate_rounds_page(request):
         elif generate_matchups_only and week_id:
             try:
                 week = Week.objects.get(id=week_id)
-                
+                if week.season.league_id != league.pk:
+                    raise Week.DoesNotExist
+
                 # Start async task for generating golfer matchups for specific week
                 generate_matchups_async.delay(week.id)
                 
@@ -2737,24 +2948,26 @@ def generate_rounds_page(request):
             message_type = "error"
         elif generate_handicaps_only:
             try:
-                current_season = get_current_season()
+                current_season = mgmt_season
                 if not current_season:
                     message = "No current season found."
                     message_type = "error"
                 else:
                     # Start async task for calculating handicaps
                     calculate_handicaps_async.delay(current_season.pk)
-                    
+
                     message = f"Started async calculation of handicaps for {current_season.year} season. Task is running in the background."
                     message_type = "success"
-                    
+
             except Exception as e:
                 message = f"Error starting handicap calculation task: {str(e)}"
                 message_type = "error"
         elif week_id:
             try:
                 week = Week.objects.get(id=week_id)
-                
+                if week.season.league_id != league.pk:
+                    raise Week.DoesNotExist
+
                 # Start async tasks for all operations
                 calculate_handicaps_async.delay(week.season.pk)
                 generate_matchups_async.delay(week.id)
@@ -2773,21 +2986,15 @@ def generate_rounds_page(request):
         else:
             message = "Please select a week."
             message_type = "error"
-    
-    # Get all weeks from the current season
-    current_season = get_current_season()
-    weeks = (
-        Week.objects.filter(season=current_season, rained_out=False).order_by('number')
-        if current_season
-        else Week.objects.none()
-    )
-    
+
+    weeks = Week.objects.filter(season=mgmt_season, rained_out=False).order_by('number')
+
     context = {
         'weeks': weeks,
         'message': message,
         'message_type': message_type,
     }
-    
+
     return render(request, 'generate_rounds.html', context)
 
 
@@ -2803,12 +3010,12 @@ def league_stats(request, year=None, league_slug=None):
     if year is not None:
         season = get_current_season(year, league)
         if not season:
-            return redirect('main')
+            return redirect_home(league, year)
     else:
         season = get_current_season(league=league)
     
     if not season:
-        return redirect('main')
+        return redirect_home(league, year)
     
     # Get all weeks for the season
     weeks = Week.objects.filter(season=season, rained_out=False).order_by('number')
@@ -3303,19 +3510,23 @@ def league_stats(request, year=None, league_slug=None):
 
 
 @league_manager_required
-def manage_skins(request):
+def manage_skins(request, league_slug=None, year=None):
     """View for managing skins entries and automatically calculating winners"""
+    current_season, league = _management_season(league_slug, year)
+    if not current_season:
+        return redirect_home(league, year)
     message = None
     message_type = None
     selected_week = None
-    current_season = get_current_season()
     if request.method == 'POST':
         if 'add_skins_entry' in request.POST:
-            form = SkinEntryForm(request.POST)
+            form = SkinEntryForm(request.POST, current_season=current_season)
             if form.is_valid():
                 week = form.cleaned_data['week']
                 golfers = form.cleaned_data['golfers']
                 selected_week = week  # Preserve selected week
+                if week.season.league_id != league.pk:
+                    return HttpResponseBadRequest('Invalid week.')
                 # Clear existing entries for this week
                 SkinEntry.objects.filter(week=week).delete()
                 # Create new entries
@@ -3334,11 +3545,11 @@ def manage_skins(request):
                     selected_week = form.cleaned_data['week']
     else:
         # Set default week in form initial for GET
-        default_week = get_next_week()
+        default_week = get_next_week(current_season)
         initial = {}
         if default_week:
             initial['week'] = default_week.id
-        form = SkinEntryForm(initial=initial)
+        form = SkinEntryForm(initial=initial, current_season=current_season)
         selected_week = default_week  # Ensure JS loads golfers for default week
     # Get skins entries for current season
     skins_entries = {}
@@ -3384,32 +3595,39 @@ def manage_skins(request):
 
 
 @league_manager_required
-def manage_games(request):
+def manage_games(request, league_slug=None, year=None):
     """View for managing game entries and winners"""
+    current_season, league = _management_season(league_slug, year)
+    if not current_season:
+        return redirect_home(league, year)
+    nav_year = year if year is not None else current_season.year
     message = None
     message_type = None
     selected_week = None
     selected_game = None
-    current_season = get_current_season()
     if request.method == 'POST':
         if 'create_game' in request.POST:
-            form = CreateGameForm(request.POST)
+            form = CreateGameForm(request.POST, current_season=current_season)
             if form.is_valid():
                 name = form.cleaned_data['name']
                 desc = form.cleaned_data['desc']
                 week = form.cleaned_data['week']
+                if week.season.league_id != league.pk:
+                    return HttpResponseBadRequest('Invalid week.')
                 Game.objects.create(name=name, desc=desc, week=week)
-                return HttpResponseRedirect(f"{reverse('manage_games')}?week={week.id}")
+                return _manage_games_redirect(league, nav_year, week.id)
             else:
                 message = "Please correct the errors below."
                 message_type = "error"
                 selected_week = form.cleaned_data.get('week')
         elif 'add_game_entry' in request.POST:
-            form = GameEntryForm(request.POST)
+            form = GameEntryForm(request.POST, current_season=current_season)
             if form.is_valid():
                 week = form.cleaned_data['week']
                 golfers = form.cleaned_data['golfers']
                 selected_week = week  # Preserve selected week
+                if week.season.league_id != league.pk:
+                    return HttpResponseBadRequest('Invalid week.')
                 game = Game.objects.filter(week=week).first()
                 if not game:
                     message = f"No game has been created for Week {week.number}. Please create a game first."
@@ -3422,16 +3640,18 @@ def manage_games(request):
                             week=week,
                             game=game
                         )
-                    return HttpResponseRedirect(f"{reverse('manage_games')}?week={week.id}")
+                    return _manage_games_redirect(league, nav_year, week.id)
             else:
                 message = "Please correct the errors below."
                 message_type = "error"
                 selected_week = form.cleaned_data.get('week')
         elif 'add_game_winner' in request.POST:
-            form = GameWinnerForm(request.POST)
+            form = GameWinnerForm(request.POST, current_season=current_season)
             if form.is_valid():
                 week = form.cleaned_data['week']
                 winner = form.cleaned_data['winner']
+                if week.season.league_id != league.pk:
+                    return HttpResponseBadRequest('Invalid week.')
                 game = Game.objects.filter(week=week).first()
                 if not game:
                     message = f"No game has been created for Week {week.number}. Please create a game first."
@@ -3442,7 +3662,7 @@ def manage_games(request):
                         game_entry = GameEntry.objects.get(golfer=winner, week=week, game=game)
                         game_entry.winner = True
                         game_entry.save()
-                        return HttpResponseRedirect(f"{reverse('manage_games')}?week={week.id}")
+                        return _manage_games_redirect(league, nav_year, week.id)
                     else:
                         message = f"{winner.name} is not in {game.name} for Week {week.number}"
                         message_type = "error"
@@ -3451,9 +3671,9 @@ def manage_games(request):
                 message_type = "error"
                 selected_week = form.cleaned_data.get('week')
         # Always re-initialize forms with selected_week for persistence
-        form = GameEntryForm(initial_week=selected_week)
-        winner_form = GameWinnerForm(initial_week=selected_week)
-        create_form = CreateGameForm()
+        form = GameEntryForm(initial_week=selected_week, current_season=current_season)
+        winner_form = GameWinnerForm(initial_week=selected_week, current_season=current_season)
+        create_form = CreateGameForm(current_season=current_season)
     else:
         # GET: check for ?week= param
         week_id = request.GET.get('week')
@@ -3461,19 +3681,21 @@ def manage_games(request):
         if week_id:
             try:
                 selected_week = Week.objects.get(pk=week_id)
+                if selected_week.season.league_id != league.pk:
+                    selected_week = None
             except Exception:
                 selected_week = None
         if not selected_week:
             # Set default week in form data for GET
-            default_week = get_next_week()
+            default_week = get_next_week(current_season)
             if default_week:
                 selected_week = default_week
         form_data = {}
         if selected_week:
             form_data['week'] = selected_week.id
-        form = GameEntryForm(data=form_data, initial_week=selected_week)
-        winner_form = GameWinnerForm(initial_week=selected_week)
-        create_form = CreateGameForm()
+        form = GameEntryForm(data=form_data, initial_week=selected_week, current_season=current_season)
+        winner_form = GameWinnerForm(initial_week=selected_week, current_season=current_season)
+        create_form = CreateGameForm(current_season=current_season)
     # Get game entries for current season
     game_entries = {}
     if current_season:
@@ -3501,8 +3723,7 @@ def manage_games(request):
                     if data['winners']:
                         data['winner_payout'] = data['total_pot'] / len(data['winners'])
                 game_entries[week] = game_data
-    # Get all games
-    games = Game.objects.all().order_by('name')
+    games = Game.objects.filter(week__season=current_season).order_by('name')
     context = {
         'form': form,
         'winner_form': winner_form,
@@ -3517,12 +3738,15 @@ def manage_games(request):
     return render(request, 'manage_games.html', context)
 
 
-def blank_scorecards(request):
+@league_manager_required
+def blank_scorecards(request, league_slug=None, year=None):
     """View for blank scorecards for the next week to be played"""
-    
-    # Get the next week
-    week = get_next_week()
-    
+    season, league = _management_season(league_slug, year)
+    if not season:
+        return redirect_home(league, year)
+
+    week = get_next_week(season)
+
     if not week:
         return render(request, 'blank_scorecards.html', {
             'error': 'No next week found. The season may be complete or not started.'
@@ -3810,27 +4034,36 @@ def get_top_n_with_ties(queryset, field, n, reverse=False):
     return result
 
 
-def historics(request):
+def historics(request, league_slug=None):
     """
-    All-time league statistics and leaderboards across all seasons
+    All-time league statistics and leaderboards across all seasons (scoped to one league).
     """
     import json
     from django.db.models import Avg, Count, Min, Max, Q, F
     from collections import defaultdict
-    
-    # All rounds (excluding subs)
-    rounds = Round.objects.filter(subbing_for__isnull=True).select_related('golfer', 'week', 'handicap').order_by('week__date')
-    all_scores = Score.objects.filter(round__subbing_for__isnull=True).select_related('hole', 'week', 'golfer').order_by('hole__number', 'week__date')
-    weeks = Week.objects.filter(rained_out=False)
-    
+
+    league = resolve_league(league_slug)
+    league_golfers = Golfer.objects.filter(
+        Q(team__season__league=league) | Q(round__week__season__league=league)
+    ).distinct()
+
+    # All rounds (excluding subs) — scoped to this league
+    rounds = Round.objects.filter(
+        subbing_for__isnull=True,
+        week__season__league=league,
+    ).select_related('golfer', 'week', 'handicap').order_by('week__date')
+    all_scores = Score.objects.filter(
+        round__subbing_for__isnull=True,
+        week__season__league=league,
+    ).select_related('hole', 'week', 'golfer').order_by('hole__number', 'week__date')
+    weeks = Week.objects.filter(season__league=league, rained_out=False)
+
     # Money/Earnings (all-time) using SkinEntry.winner
-    skin_entries = SkinEntry.objects.all()
     # Use per-week season fee since all-time can span seasons with different fees
     total_skins_wagered = 0
     for wk in weeks:
         total_skins_wagered += SkinEntry.objects.filter(week=wk).count() * (wk.season.skins_entry_fee if getattr(wk.season, 'playing_skins', False) else 0)
     # Aggregate skins won by golfer using winner field
-    winning_skins = SkinEntry.objects.filter(winner=True)
     golfer_skins_won = defaultdict(float)
     # For money, need to know payout per week
     for week in weeks:
@@ -3841,7 +4074,6 @@ def historics(request):
             skin_winner_payout = week_skins_pot / week_winners.count()
             for entry in week_winners:
                 golfer_skins_won[entry.golfer.name] += skin_winner_payout
-    game_entries = GameEntry.objects.all()
     total_games_wagered = 0
     for wk in weeks:
         total_games_wagered += GameEntry.objects.filter(week=wk).count() * (wk.season.game_entry_fee if getattr(wk.season, 'playing_games', False) else 0)
@@ -3916,8 +4148,12 @@ def historics(request):
     top_double_golfers = []
     top_triple_golfers = []
     top_worse_golfers = []
-    for golfer in Golfer.objects.all():
-        scores = Score.objects.filter(golfer=golfer, round__subbing_for__isnull=True)
+    for golfer in league_golfers:
+        scores = Score.objects.filter(
+            golfer=golfer,
+            round__subbing_for__isnull=True,
+            week__season__league=league,
+        )
         holes_played = scores.count()
         if holes_played >= 90:
             birdies = scores.filter(score=F('hole__par') - 1).count()
@@ -3991,7 +4227,7 @@ def historics(request):
     # Most consistent (lowest std dev of net, min 10 rounds)
     import math
     golfer_stddev = {}
-    for golfer in Golfer.objects.all():
+    for golfer in league_golfers:
         golfer_rounds = rounds.filter(golfer=golfer)
         if golfer_rounds.count() >= 10:
             net_scores = list(golfer_rounds.values_list('net', flat=True))
@@ -4014,13 +4250,41 @@ def historics(request):
         prev = stddev
 
     # Calculate total birdies and eagles for the season
-    total_birdies = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') - 1).count()
-    total_eagles = Score.objects.filter(round__subbing_for__isnull=True, score__lte=F('hole__par') - 2).count()
-    total_pars = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par')).count()
-    total_bogeys = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') + 1).count()
-    total_doubles = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') + 2).count()
-    total_triples = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') + 3).count()
-    total_worse = Score.objects.filter(round__subbing_for__isnull=True, score__gte=F('hole__par') + 4).count()
+    total_birdies = Score.objects.filter(
+        round__subbing_for__isnull=True,
+        week__season__league=league,
+        score=F('hole__par') - 1,
+    ).count()
+    total_eagles = Score.objects.filter(
+        round__subbing_for__isnull=True,
+        week__season__league=league,
+        score__lte=F('hole__par') - 2,
+    ).count()
+    total_pars = Score.objects.filter(
+        round__subbing_for__isnull=True,
+        week__season__league=league,
+        score=F('hole__par'),
+    ).count()
+    total_bogeys = Score.objects.filter(
+        round__subbing_for__isnull=True,
+        week__season__league=league,
+        score=F('hole__par') + 1,
+    ).count()
+    total_doubles = Score.objects.filter(
+        round__subbing_for__isnull=True,
+        week__season__league=league,
+        score=F('hole__par') + 2,
+    ).count()
+    total_triples = Score.objects.filter(
+        round__subbing_for__isnull=True,
+        week__season__league=league,
+        score=F('hole__par') + 3,
+    ).count()
+    total_worse = Score.objects.filter(
+        round__subbing_for__isnull=True,
+        week__season__league=league,
+        score__gte=F('hole__par') + 4,
+    ).count()
 
     # Calculate total wagered by golfer (skins + games)
     golfer_total_wagered = {}
@@ -4066,7 +4330,12 @@ def historics(request):
         })
         prev = earnings['total_earned']
 
+    show_money_historics = Season.objects.filter(league=league).filter(
+        Q(playing_skins=True) | Q(playing_games=True)
+    ).exists()
+
     context = {
+        'show_money_historics': show_money_historics,
         'earnings_leaderboard': top_earnings,
         'best_gross_rounds': best_gross_rounds,
         'worst_gross_rounds': worst_gross_rounds,
@@ -4094,14 +4363,15 @@ def historics(request):
 
 
 @league_manager_required
-def manage_weeks(request):
+def manage_weeks(request, league_slug=None, year=None):
     from .models import Season, Week
     from django.shortcuts import render, redirect
     from django.contrib import messages
     from django.utils.dateparse import parse_date
     from datetime import timedelta
 
-    season = get_current_season()
+    season, league = _management_season(league_slug, year)
+    nav_year = year if year is not None else (season.year if season else None)
     if not season:
         return render(request, 'manage_weeks.html', {
             'weeks': [],
@@ -4118,8 +4388,11 @@ def manage_weeks(request):
     if selected_week_id:
         try:
             selected_week = Week.objects.get(id=selected_week_id)
-            prev_week = Week.objects.filter(season=season, date__lt=selected_week.date).order_by('-date').first()
-            next_week = Week.objects.filter(season=season, date__gt=selected_week.date).order_by('date').first()
+            if selected_week.season_id != season.pk:
+                selected_week = None
+            if selected_week:
+                prev_week = Week.objects.filter(season=season, date__lt=selected_week.date).order_by('-date').first()
+                next_week = Week.objects.filter(season=season, date__gt=selected_week.date).order_by('date').first()
         except Week.DoesNotExist:
             selected_week = None
 
@@ -4131,6 +4404,13 @@ def manage_weeks(request):
                 week = Week.objects.get(id=week_id)
             except Week.DoesNotExist:
                 messages.error(request, 'Week not found.')
+                if league is not None and nav_year is not None:
+                    return redirect(reverse('manage_weeks_with_league_year', kwargs={'league_slug': league.slug, 'year': nav_year}))
+                return redirect('manage_weeks')
+            if week.season_id != season.pk:
+                messages.error(request, 'Week not found.')
+                if league is not None and nav_year is not None:
+                    return redirect(reverse('manage_weeks_with_league_year', kwargs={'league_slug': league.slug, 'year': nav_year}))
                 return redirect('manage_weeks')
             new_date = request.POST.get('date')
             is_front = request.POST.get('is_front') == 'true'
@@ -4163,16 +4443,25 @@ def manage_weeks(request):
                         messages.info(request, f'Background task started: Regenerating matchups for week {week.number}.')
                 else:
                     messages.warning(request, f'Not all matchups are entered for week {week.number}. No background tasks started.')
-            return redirect(f'{reverse("manage_weeks")}?selected_week={week.id}')
+            return _manage_weeks_redirect(league, nav_year, week.id)
         elif action in ['bump', 'flip']:
             bulk_week_id = request.POST.get('bulk_week_id')
             if not bulk_week_id:
                 messages.error(request, 'Please select a week for bulk action.')
+                if league is not None and nav_year is not None:
+                    return redirect(reverse('manage_weeks_with_league_year', kwargs={'league_slug': league.slug, 'year': nav_year}))
                 return redirect('manage_weeks')
             try:
                 bulk_week = Week.objects.get(id=bulk_week_id)
             except Week.DoesNotExist:
                 messages.error(request, 'Selected week not found.')
+                if league is not None and nav_year is not None:
+                    return redirect(reverse('manage_weeks_with_league_year', kwargs={'league_slug': league.slug, 'year': nav_year}))
+                return redirect('manage_weeks')
+            if bulk_week.season_id != season.pk:
+                messages.error(request, 'Selected week not found.')
+                if league is not None and nav_year is not None:
+                    return redirect(reverse('manage_weeks_with_league_year', kwargs={'league_slug': league.slug, 'year': nav_year}))
                 return redirect('manage_weeks')
             if action == 'bump':
                 affected = Week.objects.filter(season=season, date__gte=bulk_week.date)
@@ -4201,7 +4490,7 @@ def manage_weeks(request):
                             # Do not warn the user if not all matchups are entered; just skip background task
                             pass
                 messages.success(request, f'Weeks {bulk_week.number} and later had front/back flipped.')
-            return redirect(f'{reverse("manage_weeks")}?selected_week={bulk_week.id}')
+            return _manage_weeks_redirect(league, nav_year, bulk_week.id)
 
     context = {
         'weeks': weeks,

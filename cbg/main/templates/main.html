@@ -42,10 +42,20 @@
     <div class="col-lg-8">
       <div class="py-4 mb-3 text-center border-bottom" style="background: #f8f9fa; border-radius: 12px;">
         <h1 class="fw-bold mb-1" style="font-size: 2.7rem; letter-spacing: 1px; color: #18453B;">
-          Chatterbox Golf League
+          {% if season %}{{ season.league.name }}{% elif league %}{{ league.name }}{% else %}Chatterbox Golf{% endif %}
         </h1>
         <div class="mb-2" style="font-size: 1.1rem; color: #6c757d;">
-          Lake Michigan Hills &mdash; Official League Site
+          {% if season %}
+            {% if season.course_config %}
+              {{ season.course_config.course.name }}
+            {% else %}
+              Season {{ season.year }} &middot; course not assigned
+            {% endif %}
+          {% elif league %}
+            No season yet &middot; create one to get started
+          {% else %}
+            Official league site
+          {% endif %}
         </div>
         {% if season_options %}
         <div class="mt-3">
@@ -58,10 +68,14 @@
           </select>
         </div>
         <script>
-          document.getElementById('season-selector').addEventListener('change', function() {
+            document.getElementById('season-selector').addEventListener('change', function() {
             const selectedYear = this.value;
             if (selectedYear) {
+              {% if league_slug %}
+              window.location.href = '/' + '{{ league_slug|escapejs }}' + '/' + selectedYear + '/';
+              {% else %}
               window.location.href = '/' + selectedYear + '/';
+              {% endif %}
             }
           });
         </script>
@@ -71,7 +85,7 @@
   </div>
 
   <!-- Next Game Section - Only show for current season and not during playoffs (Weeks 19-20) -->
-  {% if not year or year == current_season.year %}
+  {% if not year or not current_season or year == current_season.year %}
     {% if next_week and next_week.number < 19 %}
     {% if initialized and season.playing_games and next_game %}
     <div class="row justify-content-center mb-4">
@@ -444,7 +458,7 @@
     {% endif %}
 
     <!-- Last Week Results - Only show for current season -->
-    {% if not year or year == current_season.year %}
+    {% if not year or not current_season or year == current_season.year %}
       {% if last_week %}
         {% if season.playing_skins or season.playing_games %}
       <div class="container">
@@ -524,7 +538,7 @@
     {% endif %}
 
     <!-- Next Week Schedule - Only show for current season -->
-    {% if not year or year == current_season.year %}
+    {% if not year or not current_season or year == current_season.year %}
       {% if next_week and next_week.number < 19 %}
       {% if next_week_schedule %}
       <div class="container">
@@ -604,7 +618,7 @@
           </div>
           <div class="col-12 mt-3">
             <div class="text-center">
-              <a href="{% url 'blank_scorecards' %}" class="btn btn-outline-info">
+              <a href="{% if league_slug and league_nav_year %}{% url 'blank_scorecards_with_league_year' league_slug=league_slug year=league_nav_year %}{% else %}{% url 'blank_scorecards' %}{% endif %}" class="btn btn-outline-info">
                 <i class="fas fa-print me-2"></i>Print Blank Scorecards
               </a>
             </div>
@@ -631,8 +645,18 @@
     
   {% else %}
     <div class="row text-center">
-      <h2 class="text-center">The Season Has Not Started</h2>
-      <p>Check back soon for the start of the season</p>
+      {% if year %}
+        <h2 class="text-center">No season for {{ year }}</h2>
+        <p class="text-muted">This league does not have a season for {{ year }} yet.</p>
+        {% if user.is_superuser or is_league_manager %}
+        <p class="mt-3">
+          <a href="{% if league_slug and league_nav_year %}{% url 'create_season_with_league_year' league_slug=league_slug year=league_nav_year %}{% else %}{% url 'create_season' %}{% endif %}" class="btn btn-primary">Create season</a>
+        </p>
+        {% endif %}
+      {% else %}
+        <h2 class="text-center">The Season Has Not Started</h2>
+        <p>Check back soon for the start of the season</p>
+      {% endif %}
     </div>
   {% endif %}
 </div>

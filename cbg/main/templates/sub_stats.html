@@ -23,7 +23,7 @@
                 <div class="card-body p-5">
                     <h5 class="card-title text-muted">No Sub Golfers</h5>
                     <p class="card-text text-muted">No golfers have subbed in the {{ season.year }} season yet.</p>
-                    <a href="{% url 'main' %}" class="btn btn-primary">Back to Home</a>
+                    <a href="{% if league_slug and league_nav_year %}{% url 'main_with_league_year' league_slug=league_slug year=league_nav_year %}{% elif league_nav_year %}{% url 'main_with_year' year=league_nav_year %}{% else %}{% url 'main' %}{% endif %}" class="btn btn-primary">Back to Home</a>
                 </div>
             </div>
         </div>

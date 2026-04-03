@@ -7,7 +7,12 @@ from django.utils.text import slugify
 
 class Golfer(models.Model):
     name = models.CharField(max_length=40)
-    
+    leagues = models.ManyToManyField(
+        'League',
+        blank=True,
+        related_name='golfers',
+    )
+
     class Meta:
         ordering = ['name']
         verbose_name = 'Golfer'
@@ -115,7 +120,7 @@ class Season(models.Model):
         ]
     
     def __str__(self):
-        return f'{self.year}'
+        return f'{self.league.name} {self.year}'
 
 
 class Team(models.Model):
@@ -129,9 +134,9 @@ class Team(models.Model):
     def __str__(self):
         golfers = self.golfers.all()
         if len(golfers) == 2:
-            return f"{golfers[0].name} and {golfers[1].name}"
+            return f"{self.season.league.name} {self.season.year} - {golfers[0].name} and {golfers[1].name}"
         else:
-            return f"Team {self.pk}"
+            return f"{self.season.league.name} {self.season.year} - Team {self.pk}"
 
 
 class Week(models.Model):
@@ -143,7 +148,7 @@ class Week(models.Model):
     num_scores = models.IntegerField(null=True, blank=True)
     
     class Meta:
-        ordering = ['-date']
+        ordering = ['season__league__name', 'season__year', '-date']
         verbose_name = 'Week'
         verbose_name_plural = 'Weeks'
     
@@ -174,9 +179,9 @@ class Week(models.Model):
     def __str__(self):
         #print date in format 2022-01-01 with week number
         if self.rained_out:
-            return f'{self.date.strftime("%Y-%m-%d")} (Week {self.number}) - Rained Out'
+            return f'{self.season.league.name} {self.season.year} - {self.date.strftime("%Y-%m-%d")} (Week {self.number}) - Rained Out'
         else:
-            return f'{self.date.strftime("%Y-%m-%d")} (Week {self.number})'
+            return f'{self.season.league.name} {self.season.year} - {self.date.strftime("%Y-%m-%d")} (Week {self.number})'
 
 
 class Game(models.Model):
@@ -190,7 +195,7 @@ class Game(models.Model):
         verbose_name_plural = 'Games'
     
     def __str__(self):
-        return self.name
+        return f'{self.season.league.name} {self.season.year} - {self.name}'
 
 
 class GameEntry(models.Model):
@@ -205,7 +210,7 @@ class GameEntry(models.Model):
         verbose_name_plural = 'Game Entries'
     
     def __str__(self):
-        return f'{self.game.name} - {self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
+        return f'{self.game.season.league.name} {self.game.season.year} - {self.game.name} - {self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
 
 
 class SkinEntry(models.Model):
@@ -219,7 +224,7 @@ class SkinEntry(models.Model):
         verbose_name_plural = 'Skin Entries'
     
     def __str__(self):
-        return f'{self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
+        return f'{self.season.league.name} {self.season.year} - {self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
 
 
 class Hole(models.Model):
@@ -278,8 +283,8 @@ class Matchup(models.Model):
     def __str__(self):
         teams = self.teams.all()
         if len(teams) >= 2:
-            return f'{self.week.date.strftime("%Y-%m-%d")} - {teams[0]} vs {teams[1]}'
-        return f'{self.week.date.strftime("%Y-%m-%d")} - Matchup'
+            return f'{self.week.season.league.name} {self.week.season.year} - {self.week.date.strftime("%Y-%m-%d")} - {teams[0]} vs {teams[1]}'
+        return f'{self.week.season.league.name} {self.week.season.year} - {self.week.date.strftime("%Y-%m-%d")} - Matchup'
 
 class Sub(models.Model):
     week = models.ForeignKey(Week, on_delete=models.CASCADE)
@@ -301,10 +306,10 @@ class Sub(models.Model):
     
     def __str__(self):
         if self.no_sub:
-            return f'{self.week.date.strftime("%Y-%m-%d")} - {self.absent_golfer.name} (No Sub)'
+            return f'{self.week.season.league.name} {self.week.season.year} - {self.week.date.strftime("%Y-%m-%d")} - {self.absent_golfer.name} (No Sub)'
         elif self.sub_golfer:
-            return f'{self.week.date.strftime("%Y-%m-%d")} - {self.sub_golfer.name} for {self.absent_golfer.name}'
-        return f'{self.week.date.strftime("%Y-%m-%d")} - {self.absent_golfer.name}'
+            return f'{self.week.season.league.name} {self.week.season.year} - {self.week.date.strftime("%Y-%m-%d")} - {self.sub_golfer.name} for {self.absent_golfer.name}'
+        return f'{self.week.season.league.name} {self.week.season.year} - {self.week.date.strftime("%Y-%m-%d")} - {self.absent_golfer.name}'
 
 class Points(models.Model):
     golfer = models.ForeignKey(Golfer, on_delete=models.CASCADE)
@@ -346,7 +351,7 @@ class Round(models.Model):
     def __str__(self):
         sub_text = " (SUB)" if self.is_sub else ""
         subbing_text = f" for {self.subbing_for.name}" if self.subbing_for else ""
-        return f"{self.golfer.name}{sub_text}{subbing_text} - {self.week.date.strftime('%Y-%m-%d')} - Gross: {self.gross}, Net: {self.net}"
+        return f"{self.week.season.league.name} {self.week.season.year} - {self.golfer.name}{sub_text}{subbing_text} - {self.week.date.strftime('%Y-%m-%d')} - Gross: {self.gross}, Net: {self.net}"
         
 class GolferMatchup(models.Model):
     week = models.ForeignKey(Week, related_name='week', on_delete=models.CASCADE)
@@ -366,7 +371,7 @@ class GolferMatchup(models.Model):
         verbose_name_plural = 'Golfer Matchups'
     
     def __str__(self):
-        return f'{self.week.date.strftime("%Y-%m-%d")} - {self.golfer.name} vs {self.opponent.name}'
+        return f'{self.week.season.league.name} {self.week.season.year} - {self.week.date.strftime("%Y-%m-%d")} - {self.golfer.name} vs {self.opponent.name}'
     
 class RandomDrawnTeam(models.Model):
     # This model is used to store the random drawn team that plays in place of an absent team that could not find subs
@@ -381,4 +386,4 @@ class RandomDrawnTeam(models.Model):
         verbose_name_plural = 'Random Drawn Teams'
     
     def __str__(self):
-        return f'{self.week.date.strftime("%Y-%m-%d")} - {self.drawn_team} plays for {self.absent_team}'
+        return f'{self.week.season.league.name} {self.week.season.year} - {self.week.date.strftime("%Y-%m-%d")} - {self.drawn_team} plays for {self.absent_team}'
