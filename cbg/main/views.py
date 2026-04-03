@@ -11,7 +11,8 @@ from main.models import Team, Score, Sub, Week
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib import messages
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.decorators import user_passes_test, login_required
+from django.core.exceptions import PermissionDenied
 from django.utils.dateparse import parse_date
 from datetime import timedelta
 from main.permissions import league_manager_required
@@ -260,42 +261,85 @@ def create_season(request, league_slug=None, year=None):
     if request.method == 'POST':
         form = SeasonForm(request.POST, user=request.user)
         if form.is_valid():
-            print('Valid Form\n')
-            
-            # Get form data
-            year = form.cleaned_data['year']
+            year_val = form.cleaned_data['year']
             weeks = form.cleaned_data['weeks']
             start_date = form.cleaned_data['start_date']
             start_with = form.cleaned_data.get('start_with', 'front')
             league = form.cleaned_data['league']
             course_config = form.cleaned_data['course_config']
-            
+            season_defaults = {
+                'course_config': course_config,
+                'playing_skins': form.cleaned_data['playing_skins'],
+                'skins_type': form.cleaned_data['skins_type'],
+                'skins_entry_fee': form.cleaned_data['skins_entry_fee'],
+                'playing_games': form.cleaned_data['playing_games'],
+                'game_entry_fee': form.cleaned_data['game_entry_fee'],
+                'players_per_team': form.cleaned_data['players_per_team'],
+            }
             season, created = Season.objects.get_or_create(
-                year=year,
+                year=year_val,
                 league=league,
-                defaults={'course_config': course_config},
+                defaults=season_defaults,
             )
             if not created:
-                season.course_config = course_config
-                season.save(update_fields=['course_config'])
-            
-            # Print info for debugging
-            print(f'Year: {year} Type {type(year)}')
-            print(f'Weeks: {weeks} Type {type(weeks)}')
-            print(f'Start Date: {start_date} Type {type(start_date)}')
-            print(f'Start With: {start_with}')
+                for key, value in season_defaults.items():
+                    setattr(season, key, value)
+                season.save()
             create_weeks(season, weeks, start_date, start_with)
+            messages.success(request, f'Season {year_val} for {league.name} saved.')
+            if league.slug:
+                return redirect(
+                    'main_with_league_year',
+                    league_slug=league.slug,
+                    year=year_val,
+                )
+            return redirect('main_with_year', year=year_val)
 
-        else:
-            print('Invalid Form\n')
-            print(form.errors)
-    
     else:
         form = SeasonForm(user=request.user)
         if league_ctx and form.fields['league'].queryset.filter(pk=league_ctx.pk).exists():
             form.initial['league'] = league_ctx.pk
 
     return render(request, 'create_season.html', {'form': form})
+
+
+@login_required
+def edit_season(request, league_slug=None, year=None, season_id=None):
+    """Update course layout and gameplay settings for an existing season."""
+    if season_id is not None:
+        season = get_object_or_404(Season.objects.select_related('league'), pk=season_id)
+    else:
+        league_obj = get_object_or_404(League, slug=league_slug)
+        season = get_object_or_404(Season.objects.select_related('league'), league=league_obj, year=year)
+    if not request.user.is_superuser and not season.league.managers.filter(pk=request.user.pk).exists():
+        raise PermissionDenied
+
+    if request.method == 'POST':
+        form = SeasonSettingsForm(request.POST, instance=season, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(
+                request,
+                f'Updated settings for {season.league.name} {season.year}.',
+            )
+            if season.league.slug:
+                return redirect(
+                    'main_with_league_year',
+                    league_slug=season.league.slug,
+                    year=season.year,
+                )
+            return redirect('main_with_year', year=season.year)
+    else:
+        form = SeasonSettingsForm(instance=season, user=request.user)
+
+    return render(
+        request,
+        'edit_season.html',
+        {
+            'form': form,
+            'season': season,
+        },
+    )
 
 
 @user_passes_test(lambda u: u.is_superuser)

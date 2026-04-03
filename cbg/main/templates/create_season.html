@@ -2,12 +2,14 @@
 
 {% block page_content %}
   <div class="container">
-    <h1 class="text-center my-4">Create Season</h1>
-    <form method="post" class="col-md-6 offset-md-3">
+    <h1 class="text-center my-4">Create season</h1>
+    <form method="post" class="col-md-8 offset-md-2 col-lg-6 offset-lg-3">
         {% csrf_token %}
         {% if form.non_field_errors %}
           <div class="alert alert-danger">{{ form.non_field_errors }}</div>
         {% endif %}
+
+        <h2 class="h5 mt-4 mb-3 text-secondary">Basics</h2>
         <div class="mb-3">
             <label for="{{ form.league.id_for_label }}" class="form-label">{{ form.league.label }}</label>
             {{ form.league }}
@@ -23,6 +25,8 @@
             {{ form.year }}
             {% if form.year.errors %}<div class="text-danger small">{{ form.year.errors }}</div>{% endif %}
         </div>
+
+        <h2 class="h5 mt-4 mb-3 text-secondary">Schedule</h2>
         <div class="mb-3">
             <label for="{{ form.weeks.id_for_label }}" class="form-label">{{ form.weeks.label }}</label>
             {{ form.weeks }}
@@ -38,7 +42,40 @@
             {{ form.start_with }}
             {% if form.start_with.errors %}<div class="text-danger small">{{ form.start_with.errors }}</div>{% endif %}
         </div>
-        <button type="submit" class="btn btn-primary">Create Season</button>
+
+        <h2 class="h5 mt-4 mb-3 text-secondary">Teams &amp; games</h2>
+        <div class="mb-3">
+            <label for="{{ form.players_per_team.id_for_label }}" class="form-label">{{ form.players_per_team.label }}</label>
+            {{ form.players_per_team }}
+            {% if form.players_per_team.errors %}<div class="text-danger small">{{ form.players_per_team.errors }}</div>{% endif %}
+        </div>
+        <div class="mb-3 form-check">
+            {{ form.playing_skins }}
+            <label class="form-check-label" for="{{ form.playing_skins.id_for_label }}">{{ form.playing_skins.label }}</label>
+            {% if form.playing_skins.errors %}<div class="text-danger small">{{ form.playing_skins.errors }}</div>{% endif %}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.skins_type.id_for_label }}" class="form-label">{{ form.skins_type.label }}</label>
+            {{ form.skins_type }}
+            {% if form.skins_type.errors %}<div class="text-danger small">{{ form.skins_type.errors }}</div>{% endif %}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.skins_entry_fee.id_for_label }}" class="form-label">{{ form.skins_entry_fee.label }}</label>
+            {{ form.skins_entry_fee }}
+            {% if form.skins_entry_fee.errors %}<div class="text-danger small">{{ form.skins_entry_fee.errors }}</div>{% endif %}
+        </div>
+        <div class="mb-3 form-check">
+            {{ form.playing_games }}
+            <label class="form-check-label" for="{{ form.playing_games.id_for_label }}">{{ form.playing_games.label }}</label>
+            {% if form.playing_games.errors %}<div class="text-danger small">{{ form.playing_games.errors }}</div>{% endif %}
+        </div>
+        <div class="mb-3">
+            <label for="{{ form.game_entry_fee.id_for_label }}" class="form-label">{{ form.game_entry_fee.label }}</label>
+            {{ form.game_entry_fee }}
+            {% if form.game_entry_fee.errors %}<div class="text-danger small">{{ form.game_entry_fee.errors }}</div>{% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Create season</button>
     </form>
   </div>
 {% endblock %}

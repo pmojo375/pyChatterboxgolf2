@@ -33,6 +33,24 @@ class SeasonForm(forms.Form):
         ("back", "Back Nine"),
     ]
     start_with = forms.ChoiceField(label="Start With", choices=START_CHOICES, initial="front")
+    playing_skins = forms.BooleanField(
+        required=False,
+        initial=False,
+        label='Playing skins',
+    )
+    skins_type = forms.ChoiceField(
+        label='Skins type',
+        choices=Season.SKINS_TYPE_CHOICES,
+        initial='GROSS',
+    )
+    skins_entry_fee = forms.IntegerField(label='Skins entry fee', min_value=0, initial=5)
+    playing_games = forms.BooleanField(
+        required=False,
+        initial=False,
+        label='Playing games',
+    )
+    game_entry_fee = forms.IntegerField(label='Game entry fee', min_value=0, initial=2)
+    players_per_team = forms.IntegerField(label='Players per team', min_value=1, max_value=20, initial=2)
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -49,6 +67,11 @@ class SeasonForm(forms.Form):
         )
         for name in ('league', 'course_config', 'year', 'weeks', 'start_date', 'start_with'):
             self.fields[name].widget.attrs.setdefault('class', 'form-control')
+        self.fields['start_date'].widget.attrs.setdefault('type', 'date')
+        for name in ('skins_type', 'skins_entry_fee', 'game_entry_fee', 'players_per_team'):
+            self.fields[name].widget.attrs.setdefault('class', 'form-control')
+        self.fields['playing_skins'].widget.attrs.setdefault('class', 'form-check-input')
+        self.fields['playing_games'].widget.attrs.setdefault('class', 'form-check-input')
 
         if not self.is_bound:
             default_league = get_default_league()
@@ -62,6 +85,45 @@ class SeasonForm(forms.Form):
         if league and user and getattr(user, 'is_authenticated', False) and not user.is_superuser:
             if not league.managers.filter(pk=user.pk).exists():
                 raise ValidationError({'league': 'You can only create seasons for leagues you manage.'})
+        return cleaned
+
+
+class SeasonSettingsForm(forms.ModelForm):
+    """Update an existing season’s course layout and gameplay settings."""
+
+    class Meta:
+        model = Season
+        fields = [
+            'course_config',
+            'playing_skins',
+            'skins_type',
+            'skins_entry_fee',
+            'playing_games',
+            'game_entry_fee',
+            'players_per_team',
+        ]
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._user = user
+        self.fields['course_config'].queryset = CourseConfig.objects.select_related('course').order_by(
+            'course__name', 'name'
+        )
+        self.fields['course_config'].required = True
+        self.fields['course_config'].widget.attrs.setdefault('class', 'form-select')
+        self.fields['skins_type'].widget.attrs.setdefault('class', 'form-select')
+        for name in ('skins_entry_fee', 'game_entry_fee', 'players_per_team'):
+            self.fields[name].widget.attrs.setdefault('class', 'form-control')
+        self.fields['playing_skins'].widget.attrs.setdefault('class', 'form-check-input')
+        self.fields['playing_games'].widget.attrs.setdefault('class', 'form-check-input')
+
+    def clean(self):
+        cleaned = super().clean()
+        league = getattr(self.instance, 'league', None)
+        user = self._user
+        if league and user and getattr(user, 'is_authenticated', False) and not user.is_superuser:
+            if not league.managers.filter(pk=user.pk).exists():
+                raise ValidationError('You can only edit seasons for leagues you manage.')
         return cleaned
 
 
