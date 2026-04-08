@@ -11,12 +11,13 @@ from main.models import Team, Score, Sub, Week
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib import messages
+from django.conf import settings
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.core.exceptions import PermissionDenied
 from django.utils.dateparse import parse_date
 from datetime import timedelta
 from main.permissions import league_manager_required
-from main.league_scope import resolve_league
+from main.league_scope import resolve_league, get_default_league
 from main.url_helpers import redirect_home, redirect_sub_stats_detail
 from main.tasks import calculate_handicaps_async, generate_rounds_async, generate_matchups_async, recalculate_all_async, process_week_async, set_skin_winners_async
 from main.skins import calculate_skin_winners
@@ -364,6 +365,21 @@ def add_league(request):
 
 def main(request, year=None, league_slug=None):
     if year is None and league_slug is None and League.objects.exists():
+        if (
+            getattr(settings, 'INDEX_REDIRECT_TO_DEFAULT_LEAGUE', False)
+            and not request.GET.get('chooser')
+        ):
+            league = get_default_league()
+            if league and league.slug:
+                latest = (
+                    Season.objects.filter(league=league).order_by('-year').first()
+                )
+                if latest:
+                    return redirect(
+                        'main_with_league_year',
+                        league_slug=league.slug,
+                        year=latest.year,
+                    )
         ctx = {'league_rows': _league_chooser_rows()}
         if request.user.is_superuser:
             ctx['add_league_form'] = LeagueForm()
