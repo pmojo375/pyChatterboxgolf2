@@ -140,6 +140,17 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Default league slug (must match League.slug). Used for legacy paths and index redirect.
+DEFAULT_LEAGUE_SLUG = config('DEFAULT_LEAGUE_SLUG', default='chatterbox')
+
+# When True, GET / sends users to /<DEFAULT_LEAGUE_SLUG>/<latest-season-year>/ instead of the chooser.
+# Append ?chooser=1 to / to open the league picker anyway.
+INDEX_REDIRECT_TO_DEFAULT_LEAGUE = config(
+    'INDEX_REDIRECT_TO_DEFAULT_LEAGUE',
+    default=True,
+    cast=bool,
+)
+
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']

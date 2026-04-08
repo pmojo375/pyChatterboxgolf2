@@ -3,21 +3,23 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from .models import League, Season
 from .helper import get_current_season
+from .league_scope import resolve_league as resolve_league_from_slug
+
 
 def _resolve_league(kwargs):
-    # Future: when you add slugged URLs, this kicks in automatically
-    if 'league_slug' in kwargs:
-        return get_object_or_404(League, slug=kwargs['league_slug'])
-    # Today: resolve via an explicit year param if the view has one
-    if 'year' in kwargs and kwargs['year'] is not None:
-        season = get_object_or_404(Season, year=kwargs['year'])
+    slug = kwargs.get('league_slug')
+    if slug:
+        return get_object_or_404(League, slug=slug)
+    year = kwargs.get('year')
+    league = resolve_league_from_slug(None)
+    if year is not None and league is not None:
+        season = Season.objects.filter(league=league, year=year).first()
+        if season:
+            return season.league
+    season = get_current_season(league=league) if league else get_current_season()
+    if season and getattr(season, 'league_id', None):
         return season.league
-    # Fallback: current season's league (keeps existing URLs working)
-    season = get_current_season()
-    if not season or not season.league_id:
-        # Safety: only superuser can proceed when we can't determine a league
-        return None
-    return season.league
+    return league
 
 def league_manager_required(view_func):
     @login_required

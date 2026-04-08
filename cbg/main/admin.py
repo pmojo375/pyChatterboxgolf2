@@ -5,15 +5,25 @@ from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole
 
 
 class GolferAdmin(admin.ModelAdmin):
-    list_display = ('name', 'get_teams_count', 'get_seasons_played')
-    search_fields = ('name',)
+    list_display = ('name', 'get_leagues', 'get_teams_count', 'get_seasons_played')
+    search_fields = ('name', 'leagues__name')
+    list_filter = ('leagues',)
+    filter_horizontal = ('leagues',)
     list_per_page = 50
-    
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('leagues', 'team_set__season')
+
+    def get_leagues(self, obj):
+        names = [lg.name for lg in obj.leagues.all()]
+        return ', '.join(sorted(names)) if names else '—'
+    get_leagues.short_description = 'Leagues'
+
     def get_teams_count(self, obj):
         return obj.team_set.count()
     get_teams_count.short_description = 'Teams'
     get_teams_count.admin_order_field = 'team__count'
-    
+
     def get_seasons_played(self, obj):
         seasons = set()
         for team in obj.team_set.all():

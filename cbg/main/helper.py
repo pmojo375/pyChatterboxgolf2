@@ -4,6 +4,8 @@ from django.utils import timezone
 import random
 import math
 
+from main.league_scope import get_default_league
+
 
 # Handicap rulesets (hardcoded defaults; structure-ready for future model-driven rules)
 DEFAULT_MEMBER_HCP_RULES = {
@@ -59,32 +61,32 @@ def get_game(week):
     return game
 
 
-def get_current_season(year=None):
-    """Gets the season object for a specific year or the most recent season if no year is specified
+def get_current_season(year=None, league=None):
+    """Season for a league and optional calendar year, or the latest season for that league.
 
     Parameters
     ----------
     year : int, optional
-        The year to get the season for. If None, returns the most recent season.
+        Calendar year. If None, returns the most recent season for the league.
+    league : League, optional
+        League to scope seasons. If None, uses :func:`get_default_league`.
 
     Returns
     -------
-    Season
-        The season object for the specified year or the most recent season, or None if no season exists
+    Season or None
     """
 
+    if league is None:
+        league = get_default_league()
+    if league is None:
+        return None
+    qs = Season.objects.filter(league=league)
     if year is not None:
-        # Get season for specific year
-        if Season.objects.filter(year=year).exists():
-            return Season.objects.get(year=year)
-        else:
+        try:
+            return qs.get(year=year)
+        except Season.DoesNotExist:
             return None
-    else:
-        # Get the most recent season
-        if Season.objects.exists():
-            return Season.objects.all().order_by('-year')[0]
-        else:
-            return None
+    return qs.order_by('-year').first()
 
 
 def get_last_week(season=None):

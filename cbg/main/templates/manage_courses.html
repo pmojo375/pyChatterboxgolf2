@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block page_content %}
+  <div class="container py-4">
+    <h1 class="text-center mb-2">Courses &amp; layouts</h1>
+    <p class="text-center text-muted mb-4">
+      Manage physical courses and tee/layout definitions. Not tied to a league.
+      <a href="{% url 'set_holes' %}">Set holes</a> after a layout exists.
+    </p>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %} col-md-10 offset-md-1" role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+
+        <section class="card shadow-sm mb-4">
+          <div class="card-header">
+            <h2 class="h5 mb-0">{% if editing_course %}Edit course{% else %}Add course{% endif %}</h2>
+          </div>
+          <div class="card-body">
+            <form method="post" class="row g-3">
+              {% csrf_token %}
+              <input type="hidden" name="form" value="course">
+              {% if editing_course %}
+                <input type="hidden" name="course_id" value="{{ editing_course.pk }}">
+              {% endif %}
+              <div class="col-md-4">
+                <label class="form-label" for="{{ course_form.name.id_for_label }}">Name</label>
+                {{ course_form.name }}
+                {% if course_form.name.errors %}<div class="text-danger small">{{ course_form.name.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="{{ course_form.city.id_for_label }}">City</label>
+                {{ course_form.city }}
+                {% if course_form.city.errors %}<div class="text-danger small">{{ course_form.city.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="{{ course_form.state.id_for_label }}">State</label>
+                {{ course_form.state }}
+                {% if course_form.state.errors %}<div class="text-danger small">{{ course_form.state.errors }}</div>{% endif %}
+              </div>
+              {% if course_form.non_field_errors %}
+                <div class="col-12"><div class="alert alert-danger">{{ course_form.non_field_errors }}</div></div>
+              {% endif %}
+              <div class="col-12 d-flex gap-2 align-items-center">
+                <button type="submit" class="btn btn-primary">{% if editing_course %}Update course{% else %}Add course{% endif %}</button>
+                {% if editing_course %}
+                  <a href="{% url 'manage_courses' %}" class="btn btn-outline-secondary">Cancel</a>
+                {% endif %}
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="mb-4">
+          <h2 class="h5 mb-3">All courses</h2>
+          <div class="table-responsive">
+            <table class="table table-striped table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Name</th>
+                  <th>City</th>
+                  <th>State</th>
+                  <th style="width: 9rem;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in courses %}
+                  <tr>
+                    <td>{{ c.name }}</td>
+                    <td>{{ c.city }}</td>
+                    <td>{{ c.state }}</td>
+                    <td class="text-nowrap">
+                      <a class="btn btn-sm btn-outline-primary" href="{% url 'manage_courses' %}?edit_course={{ c.pk }}">Edit</a>
+                      <form method="post" class="d-inline" onsubmit="return confirm('Delete this course? Layouts and holes are removed if no season uses them.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="form" value="delete_course">
+                        <input type="hidden" name="course_id" value="{{ c.pk }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="4" class="text-muted">No courses yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card shadow-sm mb-4">
+          <div class="card-header">
+            <h2 class="h5 mb-0">{% if editing_config %}Edit layout{% else %}Add layout{% endif %}</h2>
+          </div>
+          <div class="card-body">
+            <form method="post" class="row g-3">
+              {% csrf_token %}
+              <input type="hidden" name="form" value="config">
+              {% if editing_config %}
+                <input type="hidden" name="config_id" value="{{ editing_config.pk }}">
+              {% endif %}
+              <div class="col-md-6">
+                <label class="form-label" for="{{ config_form.course.id_for_label }}">Course</label>
+                {{ config_form.course }}
+                {% if config_form.course.errors %}<div class="text-danger small">{{ config_form.course.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ config_form.name.id_for_label }}">Layout name</label>
+                {{ config_form.name }}
+                {% if config_form.name.errors %}<div class="text-danger small">{{ config_form.name.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ config_form.effective_start.id_for_label }}">Effective start</label>
+                {{ config_form.effective_start }}
+                {% if config_form.effective_start.errors %}<div class="text-danger small">{{ config_form.effective_start.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="{{ config_form.effective_end.id_for_label }}">Effective end</label>
+                {{ config_form.effective_end }}
+                {% if config_form.effective_end.errors %}<div class="text-danger small">{{ config_form.effective_end.errors }}</div>{% endif %}
+              </div>
+              <p class="col-12 small text-muted mb-0">At least one of start or end date is required; end must be on or after start if both are set.</p>
+              {% if config_form.non_field_errors %}
+                <div class="col-12"><div class="alert alert-danger">{{ config_form.non_field_errors }}</div></div>
+              {% endif %}
+              <div class="col-12 d-flex gap-2 align-items-center">
+                <button type="submit" class="btn btn-primary">{% if editing_config %}Update layout{% else %}Add layout{% endif %}</button>
+                {% if editing_config %}
+                  <a href="{% url 'manage_courses' %}" class="btn btn-outline-secondary">Cancel</a>
+                {% endif %}
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section>
+          <h2 class="h5 mb-3">All layouts</h2>
+          <div class="table-responsive">
+            <table class="table table-striped table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Course</th>
+                  <th>Layout</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th style="width: 9rem;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cfg in configs %}
+                  <tr>
+                    <td>{{ cfg.course.name }}</td>
+                    <td>{{ cfg.name }}</td>
+                    <td>{% if cfg.effective_start %}{{ cfg.effective_start|date:"Y-m-d" }}{% else %}—{% endif %}</td>
+                    <td>{% if cfg.effective_end %}{{ cfg.effective_end|date:"Y-m-d" }}{% else %}—{% endif %}</td>
+                    <td class="text-nowrap">
+                      <a class="btn btn-sm btn-outline-primary" href="{% url 'manage_courses' %}?edit_config={{ cfg.pk }}">Edit</a>
+                      <form method="post" class="d-inline" onsubmit="return confirm('Delete this layout? Holes go with it if no season uses this layout.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="form" value="delete_config">
+                        <input type="hidden" name="config_id" value="{{ cfg.pk }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="5" class="text-muted">No layouts yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+{% endblock %}

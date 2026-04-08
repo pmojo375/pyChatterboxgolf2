@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from main.tasks import test_task, process_week_async, generate_matchups_async, calculate_handicaps_async, generate_rounds_async
 from main.models import Week, Season
+from main.helper import get_current_season
 
 
 class Command(BaseCommand):
@@ -100,17 +101,15 @@ class Command(BaseCommand):
                 )
                 return
                 
-            # Check if season exists
-            try:
-                season = Season.objects.get(year=options['season_year'])
-                self.stdout.write(f'Calculating handicaps for season {season.year}')
-            except Season.DoesNotExist:
+            season = get_current_season(year=options['season_year'])
+            if not season:
                 self.stdout.write(
                     self.style.ERROR(f'Season with year {options["season_year"]} does not exist')
                 )
                 return
-                
-            result = calculate_handicaps_async.delay(options['season_year'])
+            self.stdout.write(f'Calculating handicaps for season {season.year}')
+
+            result = calculate_handicaps_async.delay(season.pk)
             self.stdout.write(f'Task ID: {result.id}')
             self.stdout.write('Waiting for result...')
             task_result = result.get(timeout=60)
@@ -125,19 +124,17 @@ class Command(BaseCommand):
                 )
                 return
                 
-            # Check if season exists
-            try:
-                season = Season.objects.get(year=options['season_year'])
-                self.stdout.write(f'Generating rounds for season {season.year}')
-                result = generate_rounds_async.delay(options['season_year'])
-                self.stdout.write(f'Task ID: {result.id}')
-                self.stdout.write('Waiting for result...')
-                task_result = result.get(timeout=60)
-                self.stdout.write(
-                    self.style.SUCCESS(f'Task result: {task_result}')
-                )
-            except Season.DoesNotExist:
+            season = get_current_season(year=options['season_year'])
+            if not season:
                 self.stdout.write(
                     self.style.ERROR(f'Season with year {options["season_year"]} does not exist')
                 )
                 return
+            self.stdout.write(f'Generating rounds for season {season.year}')
+            result = generate_rounds_async.delay(season.pk)
+            self.stdout.write(f'Task ID: {result.id}')
+            self.stdout.write('Waiting for result...')
+            task_result = result.get(timeout=60)
+            self.stdout.write(
+                self.style.SUCCESS(f'Task result: {task_result}')
+            )

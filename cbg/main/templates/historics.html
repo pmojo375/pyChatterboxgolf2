@@ -3,12 +3,12 @@
 <div class="container-fluid">
     <div class="row text-center p-5 bg-gradient-primary text-white mb-5">
         <div class="col">
-            <h1 class="display-4 fw-bold mb-3">All-Time League Historics</h1>
-            <p class="lead opacity-75">Stats and records across all seasons</p>
+            <h1 class="display-4 fw-bold mb-3">{% if current_league %}{{ current_league.name }} &mdash; {% endif %}All-Time Historics</h1>
+            <p class="lead opacity-75">Stats and records across all seasons{% if current_league %} for this league{% endif %}</p>
         </div>
     </div>
 
-    {% if season.playing_skins or season.playing_games %}
+    {% if show_money_historics %}
     <!-- Money/Earnings Section -->
     <div class="row mb-5">
         <div class="col-12">

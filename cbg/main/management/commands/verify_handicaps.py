@@ -27,9 +27,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         season_year = options.get("season")
         if season_year:
-            try:
-                season = Season.objects.get(year=season_year)
-            except Season.DoesNotExist:
+            season = get_current_season(year=season_year)
+            if not season:
                 self.stderr.write(self.style.ERROR(f"Season {season_year} not found"))
                 return
         else:
