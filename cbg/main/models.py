@@ -195,7 +195,7 @@ class Game(models.Model):
         verbose_name_plural = 'Games'
     
     def __str__(self):
-        return f'{self.season.league.name} {self.season.year} - {self.name}'
+        return f'{self.week.season.league.name} {self.week.season.year} - {self.name}'
 
 
 class GameEntry(models.Model):
@@ -224,7 +224,7 @@ class SkinEntry(models.Model):
         verbose_name_plural = 'Skin Entries'
     
     def __str__(self):
-        return f'{self.season.league.name} {self.season.year} - {self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
+        return f'{self.week.season.league.name} {self.week.season.year} - {self.golfer.name} - {self.week.date.strftime("%Y-%m-%d")}'
 
 
 class Hole(models.Model):
