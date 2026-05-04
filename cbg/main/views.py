@@ -811,6 +811,33 @@ def enter_schedule(request, league_slug=None, year=None):
     return render(request, 'enter_schedule.html', {'form': form, 'message': message, 'message_type': message_type})
 
 
+
+def season_schedule(request, year=None, league_slug=None):
+    league = resolve_league(league_slug)
+    season = get_current_season(year, league) if year else get_current_season(league=league)
+    if not season:
+        return redirect_home(league, year)
+
+    weeks = Week.objects.filter(season=season).order_by('number')
+    matchups_by_week = {
+        week.id: list(
+            Matchup.objects.filter(week=week)
+            .prefetch_related('teams__golfers')
+            .order_by('id')
+        )
+        for week in weeks
+    }
+
+    return render(
+        request,
+        'season_schedule.html',
+        {
+            'season': season,
+            'weeks': weeks,
+            'matchups_by_week': matchups_by_week,
+        },
+    )
+
 def golfer_stats(request, golfer_id, year=None, league_slug=None):
     import json
     from django.db.models import Avg, Count, Q, Min, Max

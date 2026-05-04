@@ -95,6 +95,15 @@
             {% endif %}
           </li>
           {% endif %}
+          <li class="nav-item">
+            {% if league_slug and league_nav_year %}
+            <a class="nav-link" href="{% url 'season_schedule_with_league_year' league_slug=league_slug year=league_nav_year %}">Schedule</a>
+            {% elif league_nav_year %}
+            <a class="nav-link" href="{% url 'season_schedule_with_year' league_nav_year %}">Schedule</a>
+            {% else %}
+            <a class="nav-link" href="{% url 'season_schedule' %}">Schedule</a>
+            {% endif %}
+          </li>
           {% if multiple_seasons %}
           <li class="nav-item">
             {% if league_slug %}

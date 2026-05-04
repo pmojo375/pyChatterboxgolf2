@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% load scorecard_filters %}
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0">{{ season.league.name }} {{ season.year }} Schedule</h3>
+    </div>
+    <div class="card-body">
+      {% for week in weeks %}
+      <div class="mb-4">
+        <h5 class="mb-2">
+          Week {{ week.number }} — {{ week.date|date:"M d, Y" }}
+          {% if week.rained_out %}<span class="badge bg-warning text-dark">Rained Out</span>{% endif %}
+        </h5>
+        {% with matchups=matchups_by_week|get_item:week.id %}
+          {% if matchups %}
+            <ul class="list-group">
+              {% for matchup in matchups %}
+                <li class="list-group-item">
+                  {% for team in matchup.teams.all %}
+                    {% if not forloop.first %}<strong class="mx-2">vs</strong>{% endif %}
+                    {% for golfer in team.golfers.all %}
+                      {{ golfer.name }}{% if not forloop.last %} / {% endif %}
+                    {% endfor %}
+                  {% endfor %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-muted mb-0">No matchups entered.</p>
+          {% endif %}
+        {% endwith %}
+      </div>
+      {% empty %}
+      <p class="text-muted">No weeks are configured for this season.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
