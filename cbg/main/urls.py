@@ -24,6 +24,7 @@ urlpatterns = [
     path('<slug:league_slug>/<year:year>/sub_stats/', views.sub_stats, name='sub_stats_with_league_year'),
     path('<slug:league_slug>/<year:year>/sub_stats/<int:golfer_id>/', views.sub_stats, name='sub_stats_detail_with_league_year'),
     path('<slug:league_slug>/<year:year>/league_stats/', views.league_stats, name='league_stats_with_league_year'),
+    path('<slug:league_slug>/<year:year>/schedule/', views.season_schedule, name='season_schedule_with_league_year'),
     # League-scoped management (year = season calendar year)
     path('<slug:league_slug>/<year:year>/add_round/', views.add_scores, name='add_round_with_league_year'),
     path('<slug:league_slug>/<year:year>/add_golfer/', views.add_golfer, name='add_golfer_with_league_year'),
@@ -48,6 +49,7 @@ urlpatterns = [
     path('sub_stats/', views.sub_stats, name="sub_stats"),
     path('sub_stats/<int:golfer_id>/', views.sub_stats, name="sub_stats_detail"),
     path('league_stats/', views.league_stats, name="league_stats"),
+    path('schedule/', views.season_schedule, name='season_schedule'),
     path('set_rainout', views.set_rainout, name='set_rainout'),
     path('create_season', views.create_season, name='create_season'),
     path('edit_season/<int:season_id>/', views.edit_season, name='edit_season'),
@@ -71,6 +73,7 @@ urlpatterns = [
     path('<year:year>/sub_stats/', views.sub_stats, name="sub_stats_with_year"),
     path('<year:year>/sub_stats/<int:golfer_id>/', views.sub_stats, name="sub_stats_detail_with_year"),
     path('<year:year>/league_stats/', views.league_stats, name="league_stats_with_year"),
+    path('<year:year>/schedule/', views.season_schedule, name='season_schedule_with_year'),
     path('historics/', views.historics, name='historics'),
     
     # Week patterns (must come after year patterns to avoid conflicts)

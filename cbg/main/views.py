@@ -811,6 +811,56 @@ def enter_schedule(request, league_slug=None, year=None):
     return render(request, 'enter_schedule.html', {'form': form, 'message': message, 'message_type': message_type})
 
 
+
+def season_schedule(request, year=None, league_slug=None):
+    league = resolve_league(league_slug)
+    if league is None:
+        league = get_default_league() or League.objects.order_by('name').first()
+
+    requested_league_id = request.GET.get('league')
+    if requested_league_id and not league_slug:
+        league = League.objects.filter(pk=requested_league_id).first() or league
+
+    requested_year = request.GET.get('year')
+    if requested_year and year is None:
+        try:
+            year = int(requested_year)
+        except (TypeError, ValueError):
+            year = None
+
+    season = get_current_season(year, league) if year else get_current_season(league=league)
+
+    league_options = League.objects.all().order_by('name')
+    season_options = Season.objects.none()
+    if league:
+        season_options = Season.objects.filter(league=league).order_by('-year')
+
+    weeks = Week.objects.none()
+    matchups_by_week = {}
+    if season:
+        weeks = Week.objects.filter(season=season).order_by('number')
+        season_matchups = (
+            Matchup.objects.filter(week__season=season)
+            .select_related('week')
+            .prefetch_related('teams__golfers')
+            .order_by('week__number', 'id')
+        )
+        for matchup in season_matchups:
+            matchups_by_week.setdefault(matchup.week_id, []).append(matchup)
+
+    return render(
+        request,
+        'season_schedule.html',
+        {
+            'league': league,
+            'season': season,
+            'weeks': weeks,
+            'matchups_by_week': matchups_by_week,
+            'league_options': league_options,
+            'season_options': season_options,
+        },
+    )
+
 def golfer_stats(request, golfer_id, year=None, league_slug=None):
     import json
     from django.db.models import Avg, Count, Q, Min, Max
