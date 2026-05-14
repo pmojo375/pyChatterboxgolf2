@@ -4,6 +4,15 @@ from django.db import transaction
 from main.models import Score, GolferMatchup, Sub, Team, Matchup
 from main.tasks import process_week_async, generate_matchups_async
 
+def _calculate_scores_needed_for_week(week):
+    """
+    Calculate expected score rows for a week and guarantee a positive value.
+    """
+    total_golfers = Team.objects.filter(season=week.season).count() * 2
+    no_sub_golfer_count = Sub.objects.filter(week=week, no_sub=True).count()
+    scores_needed = (total_golfers - no_sub_golfer_count) * 9
+    return max(9, scores_needed)
+
 @receiver(post_save, sender=Score)
 def score_updated(sender, instance, created, **kwargs):
     # 'instance' is the Score object that was saved
@@ -14,9 +23,7 @@ def score_updated(sender, instance, created, **kwargs):
     
     # check if the scores are for full rounds (divisible by 9)
     if number_of_scores % 9 == 0:
-        no_sub_golfer_count = Sub.objects.filter(week=week, no_sub=True).count()
-        
-        scores_needed = ((Team.objects.filter(season=week.season).count() * 2) - no_sub_golfer_count) * 9
+        scores_needed = _calculate_scores_needed_for_week(week)
         
         if number_of_scores == scores_needed:
             # Use on_commit to ensure the Score save is committed before processing
@@ -35,8 +42,7 @@ def sub_updated(sender, instance, created, **kwargs):
     
     # Use on_commit to ensure the Sub save is committed before updating week and generating matchups
     def update_week_and_matchups():
-        no_sub_golfer_count = Sub.objects.filter(week=instance.week, no_sub=True).count()
-        scores_needed = ((Team.objects.filter(season=instance.week.season).count() * 2) - no_sub_golfer_count) * 9
+        scores_needed = _calculate_scores_needed_for_week(instance.week)
         
         instance.week.num_scores = scores_needed
         instance.week.save()
@@ -51,8 +57,7 @@ def sub_deleted(sender, instance, **kwargs):
     
     # Use on_commit to ensure the Sub delete is committed before updating week and generating matchups
     def update_week_and_matchups():
-        no_sub_golfer_count = Sub.objects.filter(week=instance.week, no_sub=True).count()
-        scores_needed = ((Team.objects.filter(season=instance.week.season).count() * 2) - no_sub_golfer_count) * 9
+        scores_needed = _calculate_scores_needed_for_week(instance.week)
         
         instance.week.num_scores = scores_needed
         instance.week.save()
