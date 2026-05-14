@@ -167,13 +167,15 @@ class Week(models.Model):
                 )
     
     def save(self, *args, **kwargs):
-        # Calculate default number of scores based on season's team count
-        if self.num_scores is None:  # Only calculate if not already set
-            self.num_scores = (
+        # Calculate/repair number of scores based on season team count.
+        # num_scores should always be a positive value for playable weeks.
+        if self.num_scores is None or self.num_scores <= 0:
+            calculated_scores = (
                 Team.objects.filter(season=self.season).count()
                 * 9
-                * (self.season.players_per_team)
+                * self.season.players_per_team
             )
+            self.num_scores = max(9, calculated_scores)
         super().save(*args, **kwargs)
         
     def __str__(self):
