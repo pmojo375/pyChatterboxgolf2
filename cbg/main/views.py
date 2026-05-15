@@ -819,37 +819,14 @@ def season_schedule(request, year=None, league_slug=None):
         return redirect_home(league, year)
 
     weeks = Week.objects.filter(season=season).order_by('number')
-    matchups_by_week = {}
-    for week in weeks:
-        display_rows = []
-        team_matchups = list(
+    matchups_by_week = {
+        week.id: list(
             Matchup.objects.filter(week=week)
             .prefetch_related('teams__golfers')
             .order_by('id')
         )
-
-        if team_matchups:
-            for matchup in team_matchups:
-                teams = list(matchup.teams.all())
-                if len(teams) != 2:
-                    continue
-                team1_names = ' / '.join(g.name for g in teams[0].golfers.all())
-                team2_names = ' / '.join(g.name for g in teams[1].golfers.all())
-                if team1_names and team2_names:
-                    display_rows.append(f'{team1_names} vs {team2_names}')
-        else:
-            # Fallback for datasets with golfer-level matchups but missing team-level Matchup rows.
-            derived_schedule = get_golfer_schedule(week) or []
-            for row in derived_schedule:
-                high_match = row.get('high_match') if isinstance(row, dict) else None
-                low_match = row.get('low_match') if isinstance(row, dict) else None
-
-                if high_match and len(high_match) == 2:
-                    display_rows.append(f"{high_match[0][0]} vs {high_match[1][0]}")
-                if low_match and len(low_match) == 2 and low_match[0][0] and low_match[1][0]:
-                    display_rows.append(f"{low_match[0][0]} vs {low_match[1][0]}")
-
-        matchups_by_week[week.id] = display_rows
+        for week in weeks
+    }
 
     return render(
         request,
