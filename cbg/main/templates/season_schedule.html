@@ -17,14 +17,7 @@
           {% if matchups %}
             <ul class="list-group">
               {% for matchup in matchups %}
-                <li class="list-group-item">
-                  {% for team in matchup.teams.all %}
-                    {% if not forloop.first %}<strong class="mx-2">vs</strong>{% endif %}
-                    {% for golfer in team.golfers.all %}
-                      {{ golfer.name }}{% if not forloop.last %} / {% endif %}
-                    {% endfor %}
-                  {% endfor %}
-                </li>
+                <li class="list-group-item">{{ matchup }}</li>
               {% endfor %}
             </ul>
           {% else %}
