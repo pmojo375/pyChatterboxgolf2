@@ -271,7 +271,7 @@
     </div>
     
     <!-- Standings Section -->
-    <div class="row">
+    <div class="row{% if not has_second_half_scores %} justify-content-center{% endif %}">
       {% if has_second_half_scores %}
         <!-- Second Half Standings FIRST -->
         <div class="col-lg-6 col-md-12 mb-4">
