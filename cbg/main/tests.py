@@ -730,3 +730,131 @@ class AddSubViewTests(TestCase):
             self.assertEqual(sub.week, self.week)
         else:
             self.fail('Sub not created')
+
+
+class PersonalDashboardTests(TestCase):
+    def setUp(self):
+        self.league = _test_league()
+        self.season_2024 = Season.objects.create(year=2024, league=self.league)
+        self.season_2025 = Season.objects.create(year=2025, league=self.league)
+        self.veteran = Golfer.objects.create(name='Veteran Golfer')
+        self.rookie = Golfer.objects.create(name='Rookie Golfer')
+        self.teammate = Golfer.objects.create(name='Veteran Partner')
+
+        team_2024 = Team.objects.create(season=self.season_2024)
+        team_2024.golfers.add(self.veteran, self.teammate)
+        team_2025 = Team.objects.create(season=self.season_2025)
+        team_2025.golfers.add(self.rookie, Golfer.objects.create(name='Rookie Partner'))
+
+    def test_golfer_on_season_team(self):
+        from main.golfer_dashboard import golfer_on_season_team
+
+        self.assertTrue(golfer_on_season_team(self.veteran, self.season_2024))
+        self.assertFalse(golfer_on_season_team(self.veteran, self.season_2025))
+        self.assertTrue(golfer_on_season_team(self.rookie, self.season_2025))
+
+    def test_build_personal_dashboard_only_for_season_team(self):
+        from main.golfer_dashboard import build_personal_dashboard
+
+        veteran_2024 = build_personal_dashboard(
+            self.veteran,
+            self.season_2024,
+            has_second_half_scores=False,
+            first_half_standings=[
+                {
+                    'golfer1': self.veteran.name,
+                    'golfer2': self.teammate.name,
+                    'first': 10,
+                }
+            ],
+            second_half_standings=[],
+            full_standings=[],
+        )
+        self.assertIsNotNone(veteran_2024)
+        self.assertEqual(veteran_2024['ranks']['first_half'], 1)
+
+        veteran_2025 = build_personal_dashboard(
+            self.veteran,
+            self.season_2025,
+            has_second_half_scores=False,
+            first_half_standings=[],
+            second_half_standings=[],
+            full_standings=[],
+        )
+        self.assertIsNone(veteran_2025)
+
+    def test_next_matchup_for_upcoming_week(self):
+        from main.golfer_dashboard import build_personal_dashboard
+        from main.models import GolferMatchup, Handicap, Week
+
+        week = Week.objects.create(
+            date=timezone.now(),
+            season=self.season_2025,
+            number=1,
+            rained_out=False,
+            is_front=True,
+        )
+        opponent = Golfer.objects.create(name='Next Opponent')
+        Handicap.objects.create(golfer=self.rookie, week=week, handicap=11)
+        Handicap.objects.create(golfer=opponent, week=week, handicap=8)
+        GolferMatchup.objects.create(
+            week=week,
+            golfer=self.rookie,
+            opponent=opponent,
+            is_A=True,
+        )
+
+        dashboard = build_personal_dashboard(
+            self.rookie,
+            self.season_2025,
+            has_second_half_scores=False,
+            first_half_standings=[],
+            second_half_standings=[],
+            full_standings=[],
+            next_week=week,
+        )
+        self.assertEqual(dashboard['next_matchup']['opponent_name'], 'Next Opponent')
+        self.assertTrue(dashboard['next_matchup']['is_playing'])
+        self.assertEqual(dashboard['next_matchup']['strokes_direction'], 'giving')
+        self.assertEqual(dashboard['next_matchup']['strokes_count'], 3)
+
+    def test_next_matchup_from_team_schedule_fallback(self):
+        from main.golfer_dashboard import build_personal_dashboard
+        from main.models import Matchup, Week
+
+        partner = Golfer.objects.get(name='Rookie Partner')
+        week = Week.objects.create(
+            date=timezone.now(),
+            season=self.season_2025,
+            number=2,
+            rained_out=False,
+            is_front=True,
+        )
+        other_team = Team.objects.create(season=self.season_2025)
+        opp_a = Golfer.objects.create(name='Opp A')
+        opp_b = Golfer.objects.create(name='Opp B')
+        other_team.golfers.add(opp_a, opp_b)
+
+        matchup = Matchup.objects.create(week=week)
+        team_2025 = Team.objects.filter(season=self.season_2025, golfers=self.rookie).first()
+        matchup.teams.add(team_2025, other_team)
+
+        schedule = [{
+            'high_match': ((self.rookie.name, 12.0), (opp_a.name, 9.0)),
+            'low_match': ((partner.name, 14.0), (opp_b.name, 13.0)),
+        }]
+
+        dashboard = build_personal_dashboard(
+            self.rookie,
+            self.season_2025,
+            has_second_half_scores=False,
+            first_half_standings=[],
+            second_half_standings=[],
+            full_standings=[],
+            next_week=week,
+            next_week_schedule=schedule,
+        )
+        self.assertEqual(dashboard['next_matchup']['opponent_name'], 'Opp A')
+        self.assertTrue(dashboard['next_matchup']['is_playing'])
+        self.assertEqual(dashboard['next_matchup']['strokes_direction'], 'getting')
+        self.assertEqual(dashboard['next_matchup']['strokes_count'], 3)

@@ -255,7 +255,8 @@
           {% if user.is_authenticated %}
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-user-circle me-1"></i> {{ user.username }}
+                <i class="fas fa-user-circle me-1"></i>
+                {% if user.golfer_profile %}{{ user.golfer_profile.name }}{% else %}{{ user.username }}{% endif %}
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                 <li>
