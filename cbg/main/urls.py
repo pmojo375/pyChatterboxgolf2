@@ -79,5 +79,6 @@ urlpatterns = [
     # Week patterns (must come after year patterns to avoid conflicts)
     path('<int:week>/', views.scorecards, name="scorecards"),
     path('manage_weeks/', views.manage_weeks, name='manage_weeks'),
+    path('accounts/settings/', views.account_settings, name='account_settings'),
     path("accounts/", include("django.contrib.auth.urls")),
 ]

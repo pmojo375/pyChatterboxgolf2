@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib import messages
 from django.conf import settings
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.core.exceptions import PermissionDenied
 from django.utils.dateparse import parse_date
@@ -4697,3 +4698,32 @@ def manage_weeks(request, league_slug=None, year=None):
         'next_week': next_week,
     }
     return render(request, 'manage_weeks.html', context)
+
+
+@login_required
+def account_settings(request):
+    username_form = UsernameChangeForm(user=request.user)
+    password_form = StyledPasswordChangeForm(user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'username':
+            username_form = UsernameChangeForm(user=request.user, data=request.POST)
+            if username_form.is_valid():
+                username_form.save()
+                messages.success(request, 'Username updated successfully.')
+                return redirect('account_settings')
+        elif action == 'password':
+            password_form = StyledPasswordChangeForm(user=request.user, data=request.POST)
+            if password_form.is_valid():
+                password_form.save()
+                update_session_auth_hash(request, password_form.user)
+                messages.success(request, 'Password updated successfully.')
+                return redirect('account_settings')
+
+    golfer = get_logged_in_golfer(request.user)
+    return render(request, 'account_settings.html', {
+        'username_form': username_form,
+        'password_form': password_form,
+        'golfer_name': golfer.name if golfer else None,
+    })

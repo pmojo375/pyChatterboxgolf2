@@ -1,4 +1,5 @@
-from django.test import TestCase
+from django.test import TestCase, Client
+from django.contrib.auth.models import User
 from django.db.models import Sum
 from django.utils import timezone
 from main.models import *
@@ -858,3 +859,70 @@ class PersonalDashboardTests(TestCase):
         self.assertTrue(dashboard['next_matchup']['is_playing'])
         self.assertEqual(dashboard['next_matchup']['strokes_direction'], 'getting')
         self.assertEqual(dashboard['next_matchup']['strokes_count'], 3)
+
+
+class AccountSettingsTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='golfer1', password='oldpass123')
+        self.golfer = Golfer.objects.create(name='Test Golfer', user=self.user)
+        self.other_user = User.objects.create_user(username='taken', password='pass123')
+
+    def test_requires_login(self):
+        response = self.client.get(reverse('account_settings'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_get_shows_page(self):
+        self.client.login(username='golfer1', password='oldpass123')
+        response = self.client.get(reverse('account_settings'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Account Settings')
+        self.assertContains(response, 'Test Golfer')
+        self.assertContains(response, 'Google account linking')
+
+    def test_change_username(self):
+        self.client.login(username='golfer1', password='oldpass123')
+        response = self.client.post(reverse('account_settings'), {
+            'action': 'username',
+            'new_username': 'newname',
+            'current_password': 'oldpass123',
+        })
+        self.assertRedirects(response, reverse('account_settings'))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, 'newname')
+
+    def test_change_username_rejects_duplicate(self):
+        self.client.login(username='golfer1', password='oldpass123')
+        response = self.client.post(reverse('account_settings'), {
+            'action': 'username',
+            'new_username': 'taken',
+            'current_password': 'oldpass123',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, 'golfer1')
+
+    def test_change_username_rejects_wrong_password(self):
+        self.client.login(username='golfer1', password='oldpass123')
+        response = self.client.post(reverse('account_settings'), {
+            'action': 'username',
+            'new_username': 'newname',
+            'current_password': 'wrong',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, 'golfer1')
+
+    def test_change_password(self):
+        self.client.login(username='golfer1', password='oldpass123')
+        response = self.client.post(reverse('account_settings'), {
+            'action': 'password',
+            'old_password': 'oldpass123',
+            'new_password1': 'NewPass456!',
+            'new_password2': 'NewPass456!',
+        })
+        self.assertRedirects(response, reverse('account_settings'))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewPass456!'))
+        self.assertTrue(self.client.login(username='golfer1', password='NewPass456!'))
