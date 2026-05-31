@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib import messages
 from django.conf import settings
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.core.exceptions import PermissionDenied
 from django.utils.dateparse import parse_date
@@ -21,6 +22,7 @@ from main.league_scope import resolve_league, get_default_league
 from main.url_helpers import redirect_home, redirect_sub_stats_detail
 from main.tasks import calculate_handicaps_async, generate_rounds_async, generate_matchups_async, recalculate_all_async, process_week_async, set_skin_winners_async
 from main.skins import calculate_skin_winners
+from main.golfer_dashboard import build_personal_dashboard, get_logged_in_golfer
 
 HoleFormSet = formset_factory(form=HoleForm, min_num=18, max_num=18, validate_min=True)
 
@@ -515,6 +517,25 @@ def main(request, year=None, league_slug=None):
     
     # Get the actual current season (most recent) for comparison
     actual_current_season = get_current_season(league=league)
+
+    personal_dashboard = None
+    logged_in_golfer = get_logged_in_golfer(request.user)
+    if logged_in_golfer and season:
+        is_current_season = (
+            actual_current_season is not None
+            and season.league_id == actual_current_season.league_id
+            and season.year == actual_current_season.year
+        )
+        personal_dashboard = build_personal_dashboard(
+            logged_in_golfer,
+            season,
+            has_second_half_scores=has_second_half_scores,
+            first_half_standings=first_half_standings,
+            second_half_standings=second_half_standings,
+            full_standings=full_standings,
+            next_week=next_week if is_current_season else None,
+            next_week_schedule=next_week_schedule if is_current_season else None,
+        )
     
     context = {
         'initialized': initialized,
@@ -542,6 +563,7 @@ def main(request, year=None, league_slug=None):
         'year': year,
         'season_options': season_options,
         'current_season': actual_current_season,
+        'personal_dashboard': personal_dashboard,
     }
     
     return render(request, 'main.html', context)
@@ -4676,3 +4698,32 @@ def manage_weeks(request, league_slug=None, year=None):
         'next_week': next_week,
     }
     return render(request, 'manage_weeks.html', context)
+
+
+@login_required
+def account_settings(request):
+    username_form = UsernameChangeForm(user=request.user)
+    password_form = StyledPasswordChangeForm(user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'username':
+            username_form = UsernameChangeForm(user=request.user, data=request.POST)
+            if username_form.is_valid():
+                username_form.save()
+                messages.success(request, 'Username updated successfully.')
+                return redirect('account_settings')
+        elif action == 'password':
+            password_form = StyledPasswordChangeForm(user=request.user, data=request.POST)
+            if password_form.is_valid():
+                password_form.save()
+                update_session_auth_hash(request, password_form.user)
+                messages.success(request, 'Password updated successfully.')
+                return redirect('account_settings')
+
+    golfer = get_logged_in_golfer(request.user)
+    return render(request, 'account_settings.html', {
+        'username_form': username_form,
+        'password_form': password_form,
+        'golfer_name': golfer.name if golfer else None,
+    })

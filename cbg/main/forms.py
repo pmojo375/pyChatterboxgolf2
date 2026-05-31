@@ -1,4 +1,6 @@
 from django import forms
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from main.models import *
@@ -524,3 +526,41 @@ class GameWinnerForm(forms.Form):
                 self.fields['winner'].queryset = Golfer.objects.none()
         else:
             self.fields['winner'].queryset = Golfer.objects.none()
+
+
+class UsernameChangeForm(forms.Form):
+    new_username = forms.CharField(label='New username', max_length=150)
+    current_password = forms.CharField(
+        label='Current password',
+        widget=forms.PasswordInput,
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+
+    def clean_new_username(self):
+        username = self.cleaned_data['new_username']
+        if User.objects.filter(username=username).exclude(pk=self.user.pk).exists():
+            raise ValidationError('This username is already taken.')
+        return username
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get('current_password')
+        if password and not self.user.check_password(password):
+            raise ValidationError({'current_password': 'Incorrect password.'})
+        return cleaned_data
+
+    def save(self):
+        self.user.username = self.cleaned_data['new_username']
+        self.user.save(update_fields=['username'])
+
+
+class StyledPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
