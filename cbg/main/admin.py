@@ -5,8 +5,9 @@ from .models import Golfer, Season, Team, Week, Game, GameEntry, SkinEntry, Hole
 
 
 class GolferAdmin(admin.ModelAdmin):
-    list_display = ('name', 'get_leagues', 'get_teams_count', 'get_seasons_played')
-    search_fields = ('name', 'leagues__name')
+    list_display = ('name', 'user', 'get_leagues', 'get_teams_count', 'get_seasons_played')
+    search_fields = ('name', 'leagues__name', 'user__username')
+    raw_id_fields = ('user',)
     list_filter = ('leagues',)
     filter_horizontal = ('leagues',)
     list_per_page = 50

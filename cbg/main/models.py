@@ -7,6 +7,13 @@ from django.utils.text import slugify
 
 class Golfer(models.Model):
     name = models.CharField(max_length=40)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='golfer_profile',
+    )
     leagues = models.ManyToManyField(
         'League',
         blank=True,
