@@ -1076,14 +1076,10 @@ def create_virtual_matchups_for_team(week, present_team, team_A_golfer, team_B_g
         virtual_team = random_drawn_team_obj.drawn_team
         print(f'Using existing virtual team: {virtual_team} for absent team: {absent_team}')
     else:
-        # Get all teams that actually played this week (have golfer matchups)
-        playing_teams = Team.objects.filter(
-            season=week.season,
-            golfers__golfermatchup__week=week
-        ).exclude(id=present_team.id).exclude(id=absent_team.id).distinct()
+        playing_teams = get_eligible_drawn_teams(week, exclude_teams=[present_team, absent_team])
         
         if not playing_teams.exists():
-            print(f'No teams available for virtual matchup for team {present_team}')
+            print(f'No teams with both golfers present available for virtual matchup for team {present_team}')
             return
             
         # Randomly select a team
@@ -1163,6 +1159,26 @@ def process_week(week):
             generate_round(golfer_matchup)
         
         
+def get_eligible_drawn_teams(week, exclude_teams=None):
+    """
+    Get teams eligible to be randomly drawn as virtual opponents for a week.
+    A team is eligible if both golfers are present (no absence/sub records) and
+    the team played that week (has golfer matchups).
+    """
+    exclude_ids = [team.id for team in (exclude_teams or []) if team]
+    teams_with_absences = Team.objects.filter(
+        season=week.season,
+        golfers__absent__week=week,
+    ).values_list('id', flat=True).distinct()
+
+    return Team.objects.filter(
+        season=week.season,
+        golfers__golfermatchup__week=week,
+    ).exclude(id__in=exclude_ids).exclude(
+        id__in=teams_with_absences
+    ).distinct()
+
+
 def get_playing_golfers_for_week(week):
     """
     Get all golfers who are actually playing in a given week (including subs)
