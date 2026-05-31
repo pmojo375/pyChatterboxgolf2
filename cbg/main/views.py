@@ -1984,6 +1984,43 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
     total_birdies = Score.objects.filter(round__subbing_for__isnull=True, score=F('hole__par') - 1).count()
     total_eagles = Score.objects.filter(round__subbing_for__isnull=True, score__lte=F('hole__par') - 2).count()
 
+    yearly_hole_table_data = [
+        {
+            'year': yk,
+            'holes': [
+                {
+                    'hole_num': hole_num,
+                    'avg_score': yearly_hole_stats[yk][hole_num]['avg_score'] if yearly_hole_stats[yk][hole_num]['avg_score'] else None,
+                    'par': yearly_hole_stats[yk][hole_num]['par'] if yearly_hole_stats[yk][hole_num]['par'] else None,
+                    'vs_par': (yearly_hole_stats[yk][hole_num]['avg_score'] - yearly_hole_stats[yk][hole_num]['par']) if (yearly_hole_stats[yk][hole_num]['avg_score'] is not None and yearly_hole_stats[yk][hole_num]['par'] is not None) else None,
+                    'trend': hole_trends.get(yk, {}).get(hole_num) if yk in hole_trends else None,
+                    'is_best': False,
+                    'is_worst': False,
+                }
+                for hole_num in range(1, 19)
+            ]
+        }
+        for yk in sorted(yearly_hole_stats.keys()) if yearly_hole_stats
+    ]
+
+    if len(yearly_hole_table_data) >= 2:
+        for hole_idx in range(18):
+            values = [
+                (row_idx, row['holes'][hole_idx]['vs_par'])
+                for row_idx, row in enumerate(yearly_hole_table_data)
+                if row['holes'][hole_idx]['vs_par'] is not None
+            ]
+            if len(values) >= 2:
+                vs_pars = [v for _, v in values]
+                min_val = min(vs_pars)
+                max_val = max(vs_pars)
+                if min_val != max_val:
+                    for row_idx, vs_par in values:
+                        if vs_par == min_val:
+                            yearly_hole_table_data[row_idx]['holes'][hole_idx]['is_best'] = True
+                        if vs_par == max_val:
+                            yearly_hole_table_data[row_idx]['holes'][hole_idx]['is_worst'] = True
+
     context = {
         'golfer': golfer,
         'season': season,
@@ -2045,23 +2082,7 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         'hole_trends': hole_trends,
         'sorted_years': sorted(yearly_hole_stats.keys()) if yearly_hole_stats else [],
         
-        # Create flattened data for easier template rendering
-        'yearly_hole_table_data': [
-            {
-                'year': yk,
-                'holes': [
-                    {
-                        'hole_num': hole_num,
-                        'avg_score': yearly_hole_stats[yk][hole_num]['avg_score'] if yearly_hole_stats[yk][hole_num]['avg_score'] else None,
-                        'par': yearly_hole_stats[yk][hole_num]['par'] if yearly_hole_stats[yk][hole_num]['par'] else None,
-                        'vs_par': (yearly_hole_stats[yk][hole_num]['avg_score'] - yearly_hole_stats[yk][hole_num]['par']) if (yearly_hole_stats[yk][hole_num]['avg_score'] is not None and yearly_hole_stats[yk][hole_num]['par'] is not None) else None,
-                        'trend': hole_trends.get(yk, {}).get(hole_num) if yk in hole_trends else None
-                    }
-                    for hole_num in range(1, 19)
-                ]
-            }
-            for yk in sorted(yearly_hole_stats.keys()) if yearly_hole_stats
-        ],
+        'yearly_hole_table_data': yearly_hole_table_data,
         
         # Wager statistics
         'wager_stats': wager_stats,

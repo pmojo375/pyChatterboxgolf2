@@ -516,8 +516,14 @@
                     <h5 class="mb-0">Yearly Hole-by-Hole Performance vs Par</h5>
                 </div>
                 <div class="card-body">
+                    <p class="text-muted small mb-2">
+                        <span class="yearly-hole-legend yearly-hole-legend-best">Best year</span>
+                        <span class="mx-2">·</span>
+                        <span class="yearly-hole-legend yearly-hole-legend-worst">Worst year</span>
+                        <span class="text-muted">(per hole, when 2+ years of data)</span>
+                    </p>
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover">
+                        <table class="table table-sm table-hover yearly-hole-table">
                             <thead class="table-success">
                                 <tr>
                                     <th>Year</th>
@@ -531,7 +537,8 @@
                                 <tr>
                                     <td class="fw-bold">{{ year_data.year }}</td>
                                     {% for hole_data in year_data.holes %}
-                                    <td class="text-center">
+                                    <td class="text-center p-1">
+                                        <div class="yearly-hole-cell{% if hole_data.is_best %} yearly-hole-best{% endif %}{% if hole_data.is_worst %} yearly-hole-worst{% endif %}"{% if hole_data.is_best %} title="Best year for this hole"{% elif hole_data.is_worst %} title="Worst year for this hole"{% endif %}>
                                         {% if hole_data.vs_par is not None %}
                                             <span class="fw-bold {% if hole_data.vs_par < 0 %}text-success{% elif hole_data.vs_par > 0 %}text-danger{% else %}text-warning{% endif %}">
                                                 {% if hole_data.vs_par > 0 %}+{% endif %}{{ hole_data.vs_par|floatformat:1 }}
@@ -550,6 +557,7 @@
                                         {% else %}
                                             <span class="text-muted">-</span>
                                         {% endif %}
+                                        </div>
                                     </td>
                                     {% endfor %}
                                 </tr>
@@ -1031,6 +1039,44 @@
 </div>
 
 <style>
+.yearly-hole-cell {
+    padding: 0.25rem;
+    border-radius: 4px;
+    border: 3px solid transparent;
+}
+
+.yearly-hole-cell.yearly-hole-best {
+    border-color: #0a5c36;
+    background-color: #c3e6cb;
+    box-shadow: inset 0 0 0 1px #0a5c36;
+}
+
+.yearly-hole-cell.yearly-hole-worst {
+    border-color: #842029;
+    background-color: #f5c2c7;
+    box-shadow: inset 0 0 0 1px #842029;
+}
+
+.yearly-hole-legend {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.yearly-hole-legend-best {
+    border: 3px solid #0a5c36;
+    background-color: #c3e6cb;
+    color: #0a5c36;
+}
+
+.yearly-hole-legend-worst {
+    border: 3px solid #842029;
+    background-color: #f5c2c7;
+    color: #842029;
+}
+
 /* Completely hide Plotly modebar */
 .js-plotly-plot .plotly .modebar {
     display: none !important;
