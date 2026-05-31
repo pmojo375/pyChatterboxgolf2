@@ -818,7 +818,19 @@ def season_schedule(request, year=None, league_slug=None):
     if not season:
         return redirect_home(league, year)
 
-    weeks = Week.objects.filter(season=season).order_by('number')
+    actual_current_season = get_current_season(league=league)
+    is_active_season = season == actual_current_season
+    next_week = get_next_week(season) if is_active_season else None
+    season_complete = is_active_season and next_week is None
+
+    all_weeks = Week.objects.filter(season=season).order_by('number')
+    if is_active_season and next_week:
+        weeks = all_weeks.filter(number__gte=next_week.number)
+    elif season_complete:
+        weeks = all_weeks.none()
+    else:
+        weeks = all_weeks
+
     matchups_by_week = {}
     for week in weeks:
         display_rows = []
@@ -836,7 +848,7 @@ def season_schedule(request, year=None, league_slug=None):
                 team1_names = ' / '.join(g.name for g in teams[0].golfers.all())
                 team2_names = ' / '.join(g.name for g in teams[1].golfers.all())
                 if team1_names and team2_names:
-                    display_rows.append(f'{team1_names} vs {team2_names}')
+                    display_rows.append({'team1': team1_names, 'team2': team2_names})
         else:
             # Fallback for datasets with golfer-level matchups but missing team-level Matchup rows.
             derived_schedule = get_golfer_schedule(week) or []
@@ -845,9 +857,9 @@ def season_schedule(request, year=None, league_slug=None):
                 low_match = row.get('low_match') if isinstance(row, dict) else None
 
                 if high_match and len(high_match) == 2:
-                    display_rows.append(f"{high_match[0][0]} vs {high_match[1][0]}")
+                    display_rows.append({'team1': high_match[0][0], 'team2': high_match[1][0]})
                 if low_match and len(low_match) == 2 and low_match[0][0] and low_match[1][0]:
-                    display_rows.append(f"{low_match[0][0]} vs {low_match[1][0]}")
+                    display_rows.append({'team1': low_match[0][0], 'team2': low_match[1][0]})
 
         matchups_by_week[week.id] = display_rows
 
@@ -858,6 +870,9 @@ def season_schedule(request, year=None, league_slug=None):
             'season': season,
             'weeks': weeks,
             'matchups_by_week': matchups_by_week,
+            'next_week': next_week,
+            'is_active_season': is_active_season,
+            'season_complete': season_complete,
         },
     )
 

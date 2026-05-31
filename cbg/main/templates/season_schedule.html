@@ -1,34 +1,186 @@
 {% extends 'base.html' %}
 {% load scorecard_filters %}
-{% block content %}
-<div class="container mt-4">
-  <div class="card shadow-sm">
-    <div class="card-header bg-primary text-white">
-      <h3 class="mb-0">{{ season.league.name }} {{ season.year }} Schedule</h3>
-    </div>
-    <div class="card-body">
-      {% for week in weeks %}
-      <div class="mb-4">
-        <h5 class="mb-2">
-          Week {{ week.number }} — {{ week.date|date:"M d, Y" }}
-          {% if week.rained_out %}<span class="badge bg-warning text-dark">Rained Out</span>{% endif %}
-        </h5>
-        {% with matchups=matchups_by_week|get_item:week.id %}
-          {% if matchups %}
-            <ul class="list-group">
-              {% for matchup in matchups %}
-                <li class="list-group-item">{{ matchup }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="text-muted mb-0">No matchups entered.</p>
-          {% endif %}
-        {% endwith %}
-      </div>
-      {% empty %}
-      <p class="text-muted">No weeks are configured for this season.</p>
-      {% endfor %}
+
+{% block extra_head %}
+<style>
+  .schedule-hero h1 {
+    font-size: 2.4rem;
+    letter-spacing: 0.5px;
+    color: #18453B;
+  }
+
+  .week-card {
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .week-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .week-card.next-week {
+    border: 2px solid #228B22;
+    box-shadow: 0 0.25rem 1rem rgba(34, 139, 34, 0.15) !important;
+  }
+
+  .week-card-header {
+    background: #18453B;
+    color: #fff;
+    padding: 1rem 1.25rem;
+  }
+
+  .week-card.next-week .week-card-header {
+    background: linear-gradient(135deg, #228B22 0%, #18453B 100%);
+  }
+
+  .week-number-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-right: 0.75rem;
+  }
+
+  .schedule-table td {
+    vertical-align: middle;
+    padding: 0.85rem 0.75rem;
+  }
+
+  .schedule-table tbody tr:hover {
+    background-color: rgba(24, 69, 59, 0.04);
+  }
+
+  .vs-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: #6c757d;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .empty-state-icon {
+    font-size: 3rem;
+    color: #adb5bd;
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container py-4">
+  <div class="schedule-hero py-4 px-4 mb-4 text-center">
+    <h1 class="fw-bold mb-1">{{ season.league.name }}</h1>
+    <div class="text-muted mb-0" style="font-size: 1.1rem;">
+      {% if is_active_season %}
+        {{ season.year }} Season &middot; Upcoming Schedule
+      {% else %}
+        {{ season.year }} Season Schedule
+      {% endif %}
     </div>
   </div>
+
+  {% if season_complete %}
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body text-center py-5">
+          <i class="fas fa-flag-checkered empty-state-icon mb-3"></i>
+          <h5 class="text-muted">Season Complete</h5>
+          <p class="text-muted mb-0">All weeks for this season have been played.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% elif weeks %}
+  <div class="row g-4">
+    {% for week in weeks %}
+    <div class="col-12">
+      <div class="card week-card shadow-sm{% if next_week and week.id == next_week.id %} next-week{% endif %}">
+        <div class="week-card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="d-flex align-items-center">
+            <span class="week-number-badge">{{ week.number }}</span>
+            <div>
+              <div class="fw-bold" style="font-size: 1.15rem;">
+                Week {{ week.number }}
+                {% if next_week and week.id == next_week.id %}
+                <span class="badge bg-light text-success ms-1">Next Up</span>
+                {% endif %}
+              </div>
+              <div class="small opacity-75">{{ week.date|date:"l, F j, Y" }}</div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <span class="badge {% if week.is_front %}bg-info{% else %}bg-secondary{% endif %}">
+              {% if week.is_front %}Front 9{% else %}Back 9{% endif %}
+            </span>
+            {% if week.rained_out %}
+            <span class="badge bg-warning text-dark">
+              <i class="fas fa-cloud-rain me-1"></i>Rained Out
+            </span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body p-0">
+          {% with matchups=matchups_by_week|get_item:week.id %}
+            {% if matchups %}
+            <div class="table-responsive">
+              <table class="table table-hover mb-0 schedule-table">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col" class="text-center" style="width: 4rem;">#</th>
+                    <th scope="col" class="text-center">Team A</th>
+                    <th scope="col" class="text-center" style="width: 4rem;"></th>
+                    <th scope="col" class="text-center">Team B</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for matchup in matchups %}
+                  <tr>
+                    <td class="text-center fw-bold text-success">{{ forloop.counter }}</td>
+                    <td class="text-center fw-semibold">{{ matchup.team1 }}</td>
+                    <td class="text-center"><span class="vs-badge">vs</span></td>
+                    <td class="text-center fw-semibold">{{ matchup.team2 }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4 px-3">
+              <i class="fas fa-calendar-plus text-muted mb-2" style="font-size: 1.5rem;"></i>
+              <p class="text-muted mb-0">No matchups entered yet.</p>
+            </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm border-0">
+        <div class="card-body text-center py-5">
+          <i class="fas fa-calendar-times empty-state-icon mb-3"></i>
+          <h5 class="text-muted">No Upcoming Weeks</h5>
+          <p class="text-muted mb-0">No weeks are configured for this season.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
