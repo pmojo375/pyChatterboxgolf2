@@ -762,12 +762,16 @@
                     <div class="mb-3">
                         <h6 class="text-success fw-bold mb-1">Theoretical Best Gross</h6>
                         <p class="mb-0 fw-bold text-success">{{ theoretical_rounds.best.total }}</p>
-                        {% if theoretical_rounds.best.vs_actual_best %}
+                        {% if theoretical_rounds.best.vs_actual_best is not None %}
+                        <small class="text-muted d-block">
+                            Actual best 18-hole round: {{ theoretical_rounds.best.actual_best_18 }}
+                            (best front 9 + best back 9)
+                        </small>
                         <small class="text-muted">
-                            {% if theoretical_rounds.best.vs_actual_best < 0 %}
-                                {{ theoretical_rounds.best.vs_actual_best|floatformat:1 }} better than actual best
+                            {% if theoretical_rounds.best.vs_actual_best <= 0 %}
+                                {{ theoretical_rounds.best.vs_actual_best_strokes|floatformat:1 }} strokes better than actual best
                             {% else %}
-                                {{ theoretical_rounds.best.vs_actual_best|floatformat:1 }} worse than actual best
+                                {{ theoretical_rounds.best.vs_actual_best_strokes|floatformat:1 }} strokes worse than actual best
                             {% endif %}
                         </small>
                         {% endif %}
@@ -801,12 +805,16 @@
                     <div class="mb-3">
                         <h6 class="text-danger fw-bold mb-1">Theoretical Worst Gross</h6>
                         <p class="mb-0 fw-bold text-danger">{{ theoretical_rounds.worst.total }}</p>
-                        {% if theoretical_rounds.worst.vs_actual_worst %}
+                        {% if theoretical_rounds.worst.vs_actual_worst is not None %}
+                        <small class="text-muted d-block">
+                            Actual worst 18-hole round: {{ theoretical_rounds.worst.actual_worst_18 }}
+                            (worst front 9 + worst back 9)
+                        </small>
                         <small class="text-muted">
-                            {% if theoretical_rounds.worst.vs_actual_worst > 0 %}
-                                {{ theoretical_rounds.worst.vs_actual_worst|floatformat:1 }} worse than actual worst
+                            {% if theoretical_rounds.worst.vs_actual_worst >= 0 %}
+                                {{ theoretical_rounds.worst.vs_actual_worst_strokes|floatformat:1 }} strokes worse than actual worst
                             {% else %}
-                                {{ theoretical_rounds.worst.vs_actual_worst|floatformat:1 }} better than actual worst
+                                {{ theoretical_rounds.worst.vs_actual_worst_strokes|floatformat:1 }} strokes better than actual worst
                             {% endif %}
                         </small>
                         {% endif %}

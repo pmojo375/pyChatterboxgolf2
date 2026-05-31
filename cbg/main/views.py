@@ -1967,16 +1967,47 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
                     'week': None
                 })
         
+        played_week_ids = set(weeks.values_list('id', flat=True))
+        front_gross_scores = [
+            r.gross for r in rounds
+            if r.gross is not None and r.week.is_front and r.week_id in played_week_ids
+        ]
+        back_gross_scores = [
+            r.gross for r in rounds
+            if r.gross is not None and not r.week.is_front and r.week_id in played_week_ids
+        ]
+        actual_best_18 = None
+        actual_worst_18 = None
+        if front_gross_scores and back_gross_scores:
+            actual_best_18 = min(front_gross_scores) + min(back_gross_scores)
+            actual_worst_18 = max(front_gross_scores) + max(back_gross_scores)
+
+        vs_actual_best = None
+        vs_actual_best_strokes = None
+        if actual_best_18 is not None:
+            vs_actual_best = theoretical_best_total - actual_best_18
+            vs_actual_best_strokes = abs(vs_actual_best)
+
+        vs_actual_worst = None
+        vs_actual_worst_strokes = None
+        if actual_worst_18 is not None:
+            vs_actual_worst = theoretical_worst_total - actual_worst_18
+            vs_actual_worst_strokes = abs(vs_actual_worst)
+
         theoretical_rounds = {
             'best': {
                 'total': theoretical_best_total,
                 'scores': theoretical_best_scores,
-                'vs_actual_best': theoretical_best_total - best_gross_week['gross'] if best_gross_week else None
+                'actual_best_18': actual_best_18,
+                'vs_actual_best': vs_actual_best,
+                'vs_actual_best_strokes': vs_actual_best_strokes,
             },
             'worst': {
                 'total': theoretical_worst_total,
                 'scores': theoretical_worst_scores,
-                'vs_actual_worst': theoretical_worst_total - worst_gross_week['gross'] if worst_gross_week else None
+                'actual_worst_18': actual_worst_18,
+                'vs_actual_worst': vs_actual_worst,
+                'vs_actual_worst_strokes': vs_actual_worst_strokes,
             }
         }
 
