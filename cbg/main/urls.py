@@ -1,4 +1,5 @@
 from django.urls import path, register_converter, include
+from django.views.generic import RedirectView
 from . import views
 from .api import get_matchup_data, get_playing_golfers, get_games_for_week, get_games_by_week, get_game_entries, get_week_matchups
 
@@ -80,5 +81,7 @@ urlpatterns = [
     path('<int:week>/', views.scorecards, name="scorecards"),
     path('manage_weeks/', views.manage_weeks, name='manage_weeks'),
     path('accounts/settings/', views.account_settings, name='account_settings'),
+    path('accounts/3rdparty/', RedirectView.as_view(pattern_name='account_settings', permanent=False)),
     path("accounts/", include("django.contrib.auth.urls")),
+    path('accounts/', include('allauth.urls')),
 ]

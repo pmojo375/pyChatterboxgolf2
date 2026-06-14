@@ -879,7 +879,7 @@ class AccountSettingsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Account Settings')
         self.assertContains(response, 'Test Golfer')
-        self.assertContains(response, 'Google account linking')
+        self.assertContains(response, 'Google Sign-In')
 
     def test_change_username(self):
         self.client.login(username='golfer1', password='oldpass123')

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block extra_head %}
+<title>{% block head_title %}Account{% endblock %} | Chatterbox Golf</title>
+<style>
+  .allauth-content h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #18453B;
+    margin-bottom: 1rem;
+  }
+  .allauth-content h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .allauth-content p {
+    color: #6c757d;
+  }
+  .allauth-content form {
+    margin-top: 1rem;
+  }
+  .allauth-content button,
+  .allauth-content input[type="submit"] {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .allauth-content button[type="submit"],
+  .allauth-content input[type="submit"] {
+    background-color: #198754;
+    color: #fff;
+    border-color: #198754;
+  }
+  .allauth-content button[type="submit"]:hover,
+  .allauth-content input[type="submit"]:hover {
+    background-color: #157347;
+  }
+  .allauth-content label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  .allauth-content .badge {
+    font-size: 0.75em;
+    margin-left: 0.5rem;
+  }
+</style>
+{% block allauth_extra_head %}{% endblock %}
+{% endblock %}
+
+{% block page_content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4 allauth-content">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+      <div class="text-center mt-3">
+        <a href="{% url 'main' %}" class="text-decoration-none"><i class="fas fa-arrow-left me-1"></i>Back to Home</a>
+        {% if user.is_authenticated %}
+        <span class="text-muted mx-2">·</span>
+        <a href="{% url 'account_settings' %}" class="text-decoration-none">Account Settings</a>
+        {% else %}
+        <span class="text-muted mx-2">·</span>
+        <a href="{% url 'login' %}" class="text-decoration-none">Login</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

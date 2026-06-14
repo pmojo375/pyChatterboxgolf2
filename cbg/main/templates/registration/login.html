@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load socialaccount %}
 
 {% block page_content %}
 <div class="container py-5">
@@ -10,6 +11,11 @@
           <h4 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i>Login</h4>
         </div>
         <div class="card-body">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} mb-3">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
           {% if form.errors %}
             <div class="alert alert-danger">
               Please enter a correct username and password. Note that both fields may be case-sensitive.
@@ -27,6 +33,19 @@
             </div>
             <button type="submit" class="btn btn-success w-100">Login</button>
           </form>
+
+          <div class="d-flex align-items-center my-3">
+            <hr class="flex-grow-1">
+            <span class="px-2 text-muted small">or</span>
+            <hr class="flex-grow-1">
+          </div>
+
+          <a href="{% provider_login_url 'google' %}" class="btn btn-outline-dark w-100">
+            <i class="fab fa-google me-2"></i>Sign in with Google
+          </a>
+          <p class="text-muted small text-center mt-2 mb-0">
+            Google sign-in works after you connect it in Account Settings.
+          </p>
         </div>
         <div class="card-footer text-center bg-light">
           <a href="{% url 'main' %}" class="text-decoration-none"><i class="fas fa-arrow-left me-1"></i>Back to Home</a>

@@ -4702,8 +4702,14 @@ def manage_weeks(request, league_slug=None, year=None):
 
 @login_required
 def account_settings(request):
+    from allauth.socialaccount.models import SocialAccount
+
     username_form = UsernameChangeForm(user=request.user)
     password_form = StyledPasswordChangeForm(user=request.user)
+    google_account = SocialAccount.objects.filter(
+        user=request.user,
+        provider='google',
+    ).first()
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -4720,10 +4726,30 @@ def account_settings(request):
                 update_session_auth_hash(request, password_form.user)
                 messages.success(request, 'Password updated successfully.')
                 return redirect('account_settings')
+        elif action == 'disconnect_google':
+            deleted, _ = SocialAccount.objects.filter(
+                user=request.user,
+                provider='google',
+            ).delete()
+            if deleted:
+                messages.success(request, 'Google account disconnected.')
+            return redirect('account_settings')
 
     golfer = get_logged_in_golfer(request.user)
+    google_email = None
+    if google_account and google_account.extra_data:
+        google_email = google_account.extra_data.get('email')
+
     return render(request, 'account_settings.html', {
         'username_form': username_form,
         'password_form': password_form,
         'golfer_name': golfer.name if golfer else None,
+        'google_account': google_account,
+        'google_email': google_email,
+        'google_configured': bool(
+            getattr(settings, 'SOCIALACCOUNT_PROVIDERS', {})
+            .get('google', {})
+            .get('APP', {})
+            .get('client_id')
+        ),
     })

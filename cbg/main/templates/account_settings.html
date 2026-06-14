@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load socialaccount %}
 
 {% block page_content %}
 <div class="container py-5">
@@ -103,10 +104,37 @@
 
       <div class="card shadow-sm border-0 mt-4">
         <div class="card-header bg-dark text-white">
-          <h5 class="mb-0"><i class="fab fa-google me-2"></i>Linked Accounts</h5>
+          <h5 class="mb-0"><i class="fab fa-google me-2"></i>Google Sign-In</h5>
         </div>
         <div class="card-body">
-          <p class="text-muted mb-0">Google account linking will be available here in a future update.</p>
+          {% if google_account %}
+            <p class="mb-2">
+              <span class="badge bg-success">Connected</span>
+              {% if google_email %}
+                <span class="ms-2">{{ google_email }}</span>
+              {% endif %}
+            </p>
+            <p class="text-muted small mb-3">
+              You can sign in with Google from the login page, or continue using your username and password.
+            </p>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="disconnect_google">
+              <button type="submit" class="btn btn-outline-danger btn-sm">Disconnect Google</button>
+            </form>
+          {% elif google_configured %}
+            <p class="text-muted small mb-3">
+              Link your Google account for one-click sign-in. You must be logged in with your league username first.
+            </p>
+            <a href="{% provider_login_url 'google' process='connect' %}" class="btn btn-outline-dark">
+              <i class="fab fa-google me-2"></i>Connect Google Account
+            </a>
+          {% else %}
+            <p class="text-muted mb-0">
+              Google sign-in is not configured on this server yet. Ask your league admin to set
+              <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code>.
+            </p>
+          {% endif %}
         </div>
       </div>
 
