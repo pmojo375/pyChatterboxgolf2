@@ -1,6 +1,15 @@
 from django import template
+from main.helper import conventional_round as _conventional_round
 
 register = template.Library()
+
+@register.filter
+def conventional_round(value):
+    """Round handicap the same way point calculations do (0.5 rounds up)."""
+    try:
+        return _conventional_round(float(value))
+    except (ValueError, TypeError):
+        return value
 
 @register.filter
 def index(list_obj, index):

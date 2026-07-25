@@ -786,8 +786,8 @@
                         <td class="text-center fw-bold text-info">{{ forloop.counter }}</td>
                         <td class="text-center">
                           <div class="d-flex flex-column">
-                            <span class="fw-semibold">{{ matchup.high_match.0.0 }}{% if matchup.high_match.0.1 != 999 %} <span class="text-muted">({{ matchup.high_match.0.1 }})</span>{% endif %}</span>
-                            <span class="fw-semibold">{{ matchup.low_match.0.0 }}{% if matchup.low_match.0.1 != 999 %} <span class="text-muted">({{ matchup.low_match.0.1 }})</span>{% endif %}</span>
+                            <span class="fw-semibold">{{ matchup.high_match.0.0 }}{% if matchup.high_match.0.1 != 999 %} <span class="text-muted">({{ matchup.high_match.0.1|conventional_round }})</span>{% endif %}</span>
+                            <span class="fw-semibold">{{ matchup.low_match.0.0 }}{% if matchup.low_match.0.1 != 999 %} <span class="text-muted">({{ matchup.low_match.0.1|conventional_round }})</span>{% endif %}</span>
                           </div>
                         </td>
                         <td class="text-center">
@@ -795,8 +795,8 @@
                         </td>
                         <td class="text-center">
                           <div class="d-flex flex-column">
-                            <span class="fw-semibold">{{ matchup.high_match.1.0 }}{% if matchup.high_match.1.1 != 999 %} <span class="text-muted">({{ matchup.high_match.1.1 }})</span>{% endif %}</span>
-                            <span class="fw-semibold">{{ matchup.low_match.1.0 }}{% if matchup.low_match.1.1 != 999 %} <span class="text-muted">({{ matchup.low_match.1.1 }})</span>{% endif %}</span>
+                            <span class="fw-semibold">{{ matchup.high_match.1.0 }}{% if matchup.high_match.1.1 != 999 %} <span class="text-muted">({{ matchup.high_match.1.1|conventional_round }})</span>{% endif %}</span>
+                            <span class="fw-semibold">{{ matchup.low_match.1.0 }}{% if matchup.low_match.1.1 != 999 %} <span class="text-muted">({{ matchup.low_match.1.1|conventional_round }})</span>{% endif %}</span>
                           </div>
                         </td>
                       </tr>
@@ -806,8 +806,8 @@
                         <td class="text-center fw-bold text-info">{{ forloop.counter }}</td>
                         <td class="text-center">
                           <div class="d-flex flex-column">
-                            <span class="fw-semibold">{{ matchup.high_match.0.0 }}{% if matchup.high_match.0.1 != 999 %} <span class="text-muted">({{ matchup.high_match.0.1 }})</span>{% endif %}</span>
-                            <span class="fw-semibold">{{ matchup.low_match.0.0 }}{% if matchup.low_match.0.1 != 999 %} <span class="text-muted">({{ matchup.low_match.0.1 }})</span>{% endif %}</span>
+                            <span class="fw-semibold">{{ matchup.high_match.0.0 }}{% if matchup.high_match.0.1 != 999 %} <span class="text-muted">({{ matchup.high_match.0.1|conventional_round }})</span>{% endif %}</span>
+                            <span class="fw-semibold">{{ matchup.low_match.0.0 }}{% if matchup.low_match.0.1 != 999 %} <span class="text-muted">({{ matchup.low_match.0.1|conventional_round }})</span>{% endif %}</span>
                           </div>
                         </td>
                         <td class="text-center">
@@ -815,8 +815,8 @@
                         </td>
                         <td class="text-center">
                           <div class="d-flex flex-column">
-                            <span class="fw-semibold">{{ matchup.high_match.1.0 }}{% if matchup.high_match.1.1 != 999 %} <span class="text-muted">({{ matchup.high_match.1.1 }})</span>{% endif %}</span>
-                            <span class="fw-semibold">{{ matchup.low_match.1.0 }}{% if matchup.low_match.1.1 != 999 %} <span class="text-muted">({{ matchup.low_match.1.1 }})</span>{% endif %}</span>
+                            <span class="fw-semibold">{{ matchup.high_match.1.0 }}{% if matchup.high_match.1.1 != 999 %} <span class="text-muted">({{ matchup.high_match.1.1|conventional_round }})</span>{% endif %}</span>
+                            <span class="fw-semibold">{{ matchup.low_match.1.0 }}{% if matchup.low_match.1.1 != 999 %} <span class="text-muted">({{ matchup.low_match.1.1|conventional_round }})</span>{% endif %}</span>
                           </div>
                         </td>
                       </tr>
