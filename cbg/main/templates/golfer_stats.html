@@ -70,6 +70,94 @@
         {% endif %}
     </div>
 
+    <!-- Front 9 / Back 9 Averages -->
+    {% if front_nine_stats.rounds or back_nine_stats.rounds %}
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Front 9 Averages</h5>
+                    <small class="opacity-75">{{ front_nine_stats.rounds }} week{{ front_nine_stats.rounds|pluralize }}</small>
+                </div>
+                <div class="card-body">
+                    {% if front_nine_stats.rounds %}
+                    <div class="row text-center">
+                        <div class="col-6 col-md-3 mb-3">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Gross</h6>
+                            <h4 class="text-primary fw-bold mb-0">{{ front_nine_stats.avg_gross }}</h4>
+                        </div>
+                        <div class="col-6 col-md-3 mb-3">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Net</h6>
+                            <h4 class="text-success fw-bold mb-0">{{ front_nine_stats.avg_net }}</h4>
+                        </div>
+                        <div class="col-6 col-md-3 mb-3">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Points</h6>
+                            <h4 class="text-warning fw-bold mb-0">{{ front_nine_stats.avg_points }}</h4>
+                        </div>
+                        <div class="col-6 col-md-3 mb-3">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Luck</h6>
+                            {% if front_nine_stats.avg_luck is not None %}
+                            <h4 class="fw-bold mb-0 {% if front_nine_stats.avg_luck > 0 %}text-success{% elif front_nine_stats.avg_luck < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                                {% if front_nine_stats.avg_luck > 0 %}+{% endif %}{{ front_nine_stats.avg_luck }}
+                            </h4>
+                            {% else %}
+                            <h4 class="text-muted fw-bold mb-0">-</h4>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if front_nine_stats.avg_field_points is not None %}
+                    <p class="text-muted small mb-0 text-center">Avg field points: {{ front_nine_stats.avg_field_points }}</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted mb-0">No front 9 rounds played</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Back 9 Averages</h5>
+                    <small class="opacity-75">{{ back_nine_stats.rounds }} week{{ back_nine_stats.rounds|pluralize }}</small>
+                </div>
+                <div class="card-body">
+                    {% if back_nine_stats.rounds %}
+                    <div class="row text-center">
+                        <div class="col-6 col-md-3 mb-3">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Gross</h6>
+                            <h4 class="text-primary fw-bold mb-0">{{ back_nine_stats.avg_gross }}</h4>
+                        </div>
+                        <div class="col-6 col-md-3 mb-3">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Net</h6>
+                            <h4 class="text-success fw-bold mb-0">{{ back_nine_stats.avg_net }}</h4>
+                        </div>
+                        <div class="col-6 col-md-3 mb-3">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Points</h6>
+                            <h4 class="text-warning fw-bold mb-0">{{ back_nine_stats.avg_points }}</h4>
+                        </div>
+                        <div class="col-6 col-md-3 mb-3">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-1">Luck</h6>
+                            {% if back_nine_stats.avg_luck is not None %}
+                            <h4 class="fw-bold mb-0 {% if back_nine_stats.avg_luck > 0 %}text-success{% elif back_nine_stats.avg_luck < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                                {% if back_nine_stats.avg_luck > 0 %}+{% endif %}{{ back_nine_stats.avg_luck }}
+                            </h4>
+                            {% else %}
+                            <h4 class="text-muted fw-bold mb-0">-</h4>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if back_nine_stats.avg_field_points is not None %}
+                    <p class="text-muted small mb-0 text-center">Avg field points: {{ back_nine_stats.avg_field_points }}</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted mb-0">No back 9 rounds played</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {% if season.playing_skins or season.playing_games %}
     <!-- Wager Statistics -->
     <div class="row mb-5">
@@ -790,6 +878,90 @@
         </div>
     </div>
 
+    <!-- Front 9 / Back 9 Best & Worst Weeks -->
+    {% if front_nine_stats.rounds or back_nine_stats.rounds %}
+    <div class="row mb-5">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Front 9 Best &amp; Worst</h5>
+                </div>
+                <div class="card-body">
+                    {% if front_nine_stats.rounds %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-success fw-bold mb-2">Best</h6>
+                            {% if front_nine_stats.best_gross_week %}
+                            <p class="mb-2"><span class="fw-semibold">Gross:</span> {{ front_nine_stats.best_gross_week.gross }} <span class="text-muted">(Week {{ front_nine_stats.best_gross_week.week }})</span></p>
+                            {% endif %}
+                            {% if front_nine_stats.best_net_week %}
+                            <p class="mb-2"><span class="fw-semibold">Net:</span> {{ front_nine_stats.best_net_week.net }} <span class="text-muted">(Week {{ front_nine_stats.best_net_week.week }})</span></p>
+                            {% endif %}
+                            {% if front_nine_stats.best_points_week %}
+                            <p class="mb-0"><span class="fw-semibold">Points:</span> {{ front_nine_stats.best_points_week.points }} <span class="text-muted">(Week {{ front_nine_stats.best_points_week.week }})</span></p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-danger fw-bold mb-2">Worst</h6>
+                            {% if front_nine_stats.worst_gross_week %}
+                            <p class="mb-2"><span class="fw-semibold">Gross:</span> {{ front_nine_stats.worst_gross_week.gross }} <span class="text-muted">(Week {{ front_nine_stats.worst_gross_week.week }})</span></p>
+                            {% endif %}
+                            {% if front_nine_stats.worst_net_week %}
+                            <p class="mb-2"><span class="fw-semibold">Net:</span> {{ front_nine_stats.worst_net_week.net }} <span class="text-muted">(Week {{ front_nine_stats.worst_net_week.week }})</span></p>
+                            {% endif %}
+                            {% if front_nine_stats.worst_points_week %}
+                            <p class="mb-0"><span class="fw-semibold">Points:</span> {{ front_nine_stats.worst_points_week.points }} <span class="text-muted">(Week {{ front_nine_stats.worst_points_week.week }})</span></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No front 9 rounds played</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Back 9 Best &amp; Worst</h5>
+                </div>
+                <div class="card-body">
+                    {% if back_nine_stats.rounds %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-success fw-bold mb-2">Best</h6>
+                            {% if back_nine_stats.best_gross_week %}
+                            <p class="mb-2"><span class="fw-semibold">Gross:</span> {{ back_nine_stats.best_gross_week.gross }} <span class="text-muted">(Week {{ back_nine_stats.best_gross_week.week }})</span></p>
+                            {% endif %}
+                            {% if back_nine_stats.best_net_week %}
+                            <p class="mb-2"><span class="fw-semibold">Net:</span> {{ back_nine_stats.best_net_week.net }} <span class="text-muted">(Week {{ back_nine_stats.best_net_week.week }})</span></p>
+                            {% endif %}
+                            {% if back_nine_stats.best_points_week %}
+                            <p class="mb-0"><span class="fw-semibold">Points:</span> {{ back_nine_stats.best_points_week.points }} <span class="text-muted">(Week {{ back_nine_stats.best_points_week.week }})</span></p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-danger fw-bold mb-2">Worst</h6>
+                            {% if back_nine_stats.worst_gross_week %}
+                            <p class="mb-2"><span class="fw-semibold">Gross:</span> {{ back_nine_stats.worst_gross_week.gross }} <span class="text-muted">(Week {{ back_nine_stats.worst_gross_week.week }})</span></p>
+                            {% endif %}
+                            {% if back_nine_stats.worst_net_week %}
+                            <p class="mb-2"><span class="fw-semibold">Net:</span> {{ back_nine_stats.worst_net_week.net }} <span class="text-muted">(Week {{ back_nine_stats.worst_net_week.week }})</span></p>
+                            {% endif %}
+                            {% if back_nine_stats.worst_points_week %}
+                            <p class="mb-0"><span class="fw-semibold">Points:</span> {{ back_nine_stats.worst_points_week.points }} <span class="text-muted">(Week {{ back_nine_stats.worst_points_week.week }})</span></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No back 9 rounds played</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Theoretical Best/Worst Rounds -->
     {% if theoretical_rounds %}
     <div class="row mb-5">
@@ -804,6 +976,24 @@
                     <div class="mb-3">
                         <h6 class="text-success fw-bold mb-1">Theoretical Best Gross</h6>
                         <p class="mb-0 fw-bold text-success">{{ theoretical_rounds.best.total }}</p>
+                        {% if theoretical_rounds.best.actual_best_front or theoretical_rounds.best.actual_best_back %}
+                        <div class="row mt-2 mb-1">
+                            {% if theoretical_rounds.best.actual_best_front %}
+                            <div class="col-6">
+                                <small class="text-muted d-block">Actual best Front 9</small>
+                                <span class="fw-bold text-success">{{ theoretical_rounds.best.actual_best_front.gross }}</span>
+                                <small class="text-muted">(Week {{ theoretical_rounds.best.actual_best_front.week }})</small>
+                            </div>
+                            {% endif %}
+                            {% if theoretical_rounds.best.actual_best_back %}
+                            <div class="col-6">
+                                <small class="text-muted d-block">Actual best Back 9</small>
+                                <span class="fw-bold text-success">{{ theoretical_rounds.best.actual_best_back.gross }}</span>
+                                <small class="text-muted">(Week {{ theoretical_rounds.best.actual_best_back.week }})</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         {% if theoretical_rounds.best.vs_actual_best is not None %}
                         <small class="text-muted d-block">
                             Actual best 18-hole round: {{ theoretical_rounds.best.actual_best_18 }}
@@ -847,6 +1037,24 @@
                     <div class="mb-3">
                         <h6 class="text-danger fw-bold mb-1">Theoretical Worst Gross</h6>
                         <p class="mb-0 fw-bold text-danger">{{ theoretical_rounds.worst.total }}</p>
+                        {% if theoretical_rounds.worst.actual_worst_front or theoretical_rounds.worst.actual_worst_back %}
+                        <div class="row mt-2 mb-1">
+                            {% if theoretical_rounds.worst.actual_worst_front %}
+                            <div class="col-6">
+                                <small class="text-muted d-block">Actual worst Front 9</small>
+                                <span class="fw-bold text-danger">{{ theoretical_rounds.worst.actual_worst_front.gross }}</span>
+                                <small class="text-muted">(Week {{ theoretical_rounds.worst.actual_worst_front.week }})</small>
+                            </div>
+                            {% endif %}
+                            {% if theoretical_rounds.worst.actual_worst_back %}
+                            <div class="col-6">
+                                <small class="text-muted d-block">Actual worst Back 9</small>
+                                <span class="fw-bold text-danger">{{ theoretical_rounds.worst.actual_worst_back.gross }}</span>
+                                <small class="text-muted">(Week {{ theoretical_rounds.worst.actual_worst_back.week }})</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         {% if theoretical_rounds.worst.vs_actual_worst is not None %}
                         <small class="text-muted d-block">
                             Actual worst 18-hole round: {{ theoretical_rounds.worst.actual_worst_18 }}

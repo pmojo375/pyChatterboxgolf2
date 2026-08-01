@@ -1158,8 +1158,44 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
                 'field_avg': round(week_round.field_avg_points, 1) if week_round.field_avg_points is not None else None,
                 'luck': round(week_round.luck, 1) if week_round.luck is not None else None,
                 'handicap': float(week_round.handicap.handicap) if week_round.handicap else 0,
-                'opponent': week_matchup.opponent.name if week_matchup else 'N/A'
+                'opponent': week_matchup.opponent.name if week_matchup else 'N/A',
+                'is_front': week.is_front,
             })
+
+    def _side_stats(side_weeks):
+        """Front-9 or back-9 averages and best/worst weeks from weekly_stats rows."""
+        empty = {
+            'avg_gross': None,
+            'avg_net': None,
+            'avg_points': None,
+            'avg_field_points': None,
+            'avg_luck': None,
+            'rounds': 0,
+            'best_gross_week': None,
+            'worst_gross_week': None,
+            'best_net_week': None,
+            'worst_net_week': None,
+            'best_points_week': None,
+            'worst_points_week': None,
+        }
+        if not side_weeks:
+            return empty
+        field_vals = [s['field_avg'] for s in side_weeks if s['field_avg'] is not None]
+        luck_vals = [s for s in side_weeks if s['luck'] is not None]
+        return {
+            'avg_gross': round(sum(s['gross'] for s in side_weeks) / len(side_weeks), 1),
+            'avg_net': round(sum(s['net'] for s in side_weeks) / len(side_weeks), 1),
+            'avg_points': round(sum(s['points'] for s in side_weeks) / len(side_weeks), 1),
+            'avg_field_points': round(sum(field_vals) / len(field_vals), 1) if field_vals else None,
+            'avg_luck': round(sum(s['luck'] for s in luck_vals) / len(luck_vals), 1) if luck_vals else None,
+            'rounds': len(side_weeks),
+            'best_gross_week': min(side_weeks, key=lambda x: x['gross']),
+            'worst_gross_week': max(side_weeks, key=lambda x: x['gross']),
+            'best_net_week': min(side_weeks, key=lambda x: x['net']),
+            'worst_net_week': max(side_weeks, key=lambda x: x['net']),
+            'best_points_week': max(side_weeks, key=lambda x: x['points']),
+            'worst_points_week': min(side_weeks, key=lambda x: x['points']),
+        }
     
     # Calculate season statistics
     if weekly_stats:
@@ -1180,6 +1216,9 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         worst_points_week = min(weekly_stats, key=lambda x: x['points'])
         luckiest_week = max(luck_weeks, key=lambda x: x['luck']) if luck_weeks else None
         unluckiest_week = min(luck_weeks, key=lambda x: x['luck']) if luck_weeks else None
+
+        front_nine_stats = _side_stats([s for s in weekly_stats if s['is_front']])
+        back_nine_stats = _side_stats([s for s in weekly_stats if not s['is_front']])
         
         # Performance vs opponent stats
         wins = sum(1 for perf in performance_vs_opponent if perf['result'] == 'Win')
@@ -1214,6 +1253,8 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         avg_field_points = avg_luck = None
         best_gross_week = worst_gross_week = best_net_week = worst_net_week = best_points_week = worst_points_week = None
         luckiest_week = unluckiest_week = None
+        front_nine_stats = _side_stats([])
+        back_nine_stats = _side_stats([])
         wins = losses = ties = win_percentage = 0
         handicap_trend_text = "N/A"
         handicap_trend_positive = False
@@ -2015,19 +2056,27 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
                 })
         
         played_week_ids = set(weeks.values_list('id', flat=True))
-        front_gross_scores = [
-            r.gross for r in rounds
+        front_rounds = [
+            {'gross': r.gross, 'week': r.week.number}
+            for r in rounds
             if r.gross is not None and r.week.is_front and r.week_id in played_week_ids
         ]
-        back_gross_scores = [
-            r.gross for r in rounds
+        back_rounds = [
+            {'gross': r.gross, 'week': r.week.number}
+            for r in rounds
             if r.gross is not None and not r.week.is_front and r.week_id in played_week_ids
         ]
+        actual_best_front = min(front_rounds, key=lambda x: x['gross']) if front_rounds else None
+        actual_worst_front = max(front_rounds, key=lambda x: x['gross']) if front_rounds else None
+        actual_best_back = min(back_rounds, key=lambda x: x['gross']) if back_rounds else None
+        actual_worst_back = max(back_rounds, key=lambda x: x['gross']) if back_rounds else None
+
         actual_best_18 = None
         actual_worst_18 = None
-        if front_gross_scores and back_gross_scores:
-            actual_best_18 = min(front_gross_scores) + min(back_gross_scores)
-            actual_worst_18 = max(front_gross_scores) + max(back_gross_scores)
+        if actual_best_front and actual_best_back:
+            actual_best_18 = actual_best_front['gross'] + actual_best_back['gross']
+        if actual_worst_front and actual_worst_back:
+            actual_worst_18 = actual_worst_front['gross'] + actual_worst_back['gross']
 
         vs_actual_best = None
         vs_actual_best_strokes = None
@@ -2048,6 +2097,8 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
                 'actual_best_18': actual_best_18,
                 'vs_actual_best': vs_actual_best,
                 'vs_actual_best_strokes': vs_actual_best_strokes,
+                'actual_best_front': actual_best_front,
+                'actual_best_back': actual_best_back,
             },
             'worst': {
                 'total': theoretical_worst_total,
@@ -2055,6 +2106,8 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
                 'actual_worst_18': actual_worst_18,
                 'vs_actual_worst': vs_actual_worst,
                 'vs_actual_worst_strokes': vs_actual_worst_strokes,
+                'actual_worst_front': actual_worst_front,
+                'actual_worst_back': actual_worst_back,
             }
         }
 
@@ -2113,6 +2166,10 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         'total_points': round(total_points, 1),
         'avg_field_points': round(avg_field_points, 1) if avg_field_points is not None else None,
         'avg_luck': round(avg_luck, 1) if avg_luck is not None else None,
+
+        # Front 9 / Back 9 splits
+        'front_nine_stats': front_nine_stats,
+        'back_nine_stats': back_nine_stats,
         
         # Best/Worst weeks
         'best_gross_week': best_gross_week,
