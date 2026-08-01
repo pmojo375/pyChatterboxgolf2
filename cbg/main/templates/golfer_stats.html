@@ -44,6 +44,30 @@
                 </div>
             </div>
         </div>
+        {% if avg_field_points is not None %}
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Avg Field Points</h6>
+                    <h2 class="text-info fw-bold mb-0">{{ avg_field_points }}</h2>
+                    <small class="text-muted">vs every golfer each week</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if avg_luck is not None %}
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stats-card text-center border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <h6 class="card-title text-muted text-uppercase fw-bold mb-2">Avg Luck</h6>
+                    <h2 class="fw-bold mb-0 {% if avg_luck > 0 %}text-success{% elif avg_luck < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                        {% if avg_luck > 0 %}+{% endif %}{{ avg_luck }}
+                    </h2>
+                    <small class="text-muted">points vs field average</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     {% if season.playing_skins or season.playing_games %}
@@ -716,6 +740,15 @@
                         <p class="mb-0">{{ best_points_week.points }} (Week {{ best_points_week.week }})</p>
                     </div>
                     {% endif %}
+                    {% if luckiest_week %}
+                    <div class="mb-3">
+                        <h6 class="text-success fw-bold mb-1">Luckiest Matchup</h6>
+                        <p class="mb-0">
+                            {% if luckiest_week.luck > 0 %}+{% endif %}{{ luckiest_week.luck }}
+                            vs field (Week {{ luckiest_week.week }}{% if luckiest_week.opponent %}, vs {{ luckiest_week.opponent }}{% endif %})
+                        </p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -741,6 +774,15 @@
                     <div class="mb-3">
                         <h6 class="text-danger fw-bold mb-1">Fewest Points</h6>
                         <p class="mb-0">{{ worst_points_week.points }} (Week {{ worst_points_week.week }})</p>
+                    </div>
+                    {% endif %}
+                    {% if unluckiest_week %}
+                    <div class="mb-3">
+                        <h6 class="text-danger fw-bold mb-1">Unluckiest Matchup</h6>
+                        <p class="mb-0">
+                            {{ unluckiest_week.luck }}
+                            vs field (Week {{ unluckiest_week.week }}{% if unluckiest_week.opponent %}, vs {{ unluckiest_week.opponent }}{% endif %})
+                        </p>
                     </div>
                     {% endif %}
                 </div>
@@ -858,6 +900,8 @@
                                     <th scope="col" class="text-center">Gross</th>
                                     <th scope="col" class="text-center">Net</th>
                                     <th scope="col" class="text-center">Points</th>
+                                    <th scope="col" class="text-center">Field Avg</th>
+                                    <th scope="col" class="text-center">Luck</th>
                                     <th scope="col" class="text-center">Handicap</th>
                                     <th scope="col" class="text-center">Result</th>
                                     <th scope="col" class="text-center">Opponent vs Handicap</th>
@@ -871,6 +915,12 @@
                                     <td class="text-center fw-bold text-primary">{{ stat.gross }}</td>
                                     <td class="text-center fw-bold text-success">{{ stat.net }}</td>
                                     <td class="text-center fw-bold text-warning">{{ stat.points }}</td>
+                                    <td class="text-center fw-bold text-info">
+                                        {% if stat.field_avg is not None %}{{ stat.field_avg }}{% else %}<span class="text-muted">-</span>{% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold {% if stat.luck is not None and stat.luck > 0 %}text-success{% elif stat.luck is not None and stat.luck < 0 %}text-danger{% else %}text-secondary{% endif %}">
+                                        {% if stat.luck is not None %}{% if stat.luck > 0 %}+{% endif %}{{ stat.luck }}{% else %}<span class="text-muted">-</span>{% endif %}
+                                    </td>
                                     <td class="text-center text-muted">{{ stat.handicap|floatformat:2 }}</td>
                                     <td class="text-center">
                                         {% for perf in performance_vs_opponent %}

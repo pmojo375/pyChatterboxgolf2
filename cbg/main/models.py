@@ -349,6 +349,11 @@ class Round(models.Model):
     net = models.IntegerField(validators=[MinValueValidator(1)])
     round_points = models.FloatField(validators=[MinValueValidator(0)])
     total_points = models.FloatField(validators=[MinValueValidator(0)])
+    # Average points this golfer would have earned vs every other golfer who posted
+    # scores that week (normal scoring rules; used to judge matchup luck).
+    field_avg_points = models.FloatField(null=True, blank=True)
+    # total_points - field_avg_points; positive = lucky matchup draw
+    luck = models.FloatField(null=True, blank=True)
     subbing_for = models.ForeignKey(Golfer, null=True, blank=True, on_delete=models.SET_NULL, related_name='rounds_subbed_for')
 
     class Meta:

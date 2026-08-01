@@ -1118,7 +1118,8 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
             total_points = week_round.total_points if week_round.total_points else 0
             points_data.append({
                 'week': week.number,
-                'points': float(total_points)
+                'points': float(total_points),
+                'field_avg': float(week_round.field_avg_points) if week_round.field_avg_points is not None else None,
             })
             
             # Gross and net scores
@@ -1154,6 +1155,8 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
                 'gross': week_round.gross or 0,
                 'net': week_round.net or 0,
                 'points': week_round.total_points or 0,
+                'field_avg': round(week_round.field_avg_points, 1) if week_round.field_avg_points is not None else None,
+                'luck': round(week_round.luck, 1) if week_round.luck is not None else None,
                 'handicap': float(week_round.handicap.handicap) if week_round.handicap else 0,
                 'opponent': week_matchup.opponent.name if week_matchup else 'N/A'
             })
@@ -1164,6 +1167,10 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         avg_net = sum(stat['net'] for stat in weekly_stats) / len(weekly_stats)
         avg_points = sum(stat['points'] for stat in weekly_stats) / len(weekly_stats)
         total_points = sum(stat['points'] for stat in weekly_stats)
+        field_avg_vals = [stat['field_avg'] for stat in weekly_stats if stat['field_avg'] is not None]
+        luck_weeks = [stat for stat in weekly_stats if stat['luck'] is not None]
+        avg_field_points = sum(field_avg_vals) / len(field_avg_vals) if field_avg_vals else None
+        avg_luck = sum(stat['luck'] for stat in luck_weeks) / len(luck_weeks) if luck_weeks else None
         
         best_gross_week = min(weekly_stats, key=lambda x: x['gross'])
         worst_gross_week = max(weekly_stats, key=lambda x: x['gross'])
@@ -1171,6 +1178,8 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         worst_net_week = max(weekly_stats, key=lambda x: x['net'])
         best_points_week = max(weekly_stats, key=lambda x: x['points'])
         worst_points_week = min(weekly_stats, key=lambda x: x['points'])
+        luckiest_week = max(luck_weeks, key=lambda x: x['luck']) if luck_weeks else None
+        unluckiest_week = min(luck_weeks, key=lambda x: x['luck']) if luck_weeks else None
         
         # Performance vs opponent stats
         wins = sum(1 for perf in performance_vs_opponent if perf['result'] == 'Win')
@@ -1202,7 +1211,9 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
             handicap_trend_positive = False
     else:
         avg_gross = avg_net = avg_points = total_points = 0
+        avg_field_points = avg_luck = None
         best_gross_week = worst_gross_week = best_net_week = worst_net_week = best_points_week = worst_points_week = None
+        luckiest_week = unluckiest_week = None
         wins = losses = ties = win_percentage = 0
         handicap_trend_text = "N/A"
         handicap_trend_positive = False
@@ -1251,22 +1262,36 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         charts['handicap'] = json.dumps(handicap_chart)
     
     if points_data:
-        # Points per week chart
+        # Points per week chart with field average overlay
+        points_chart_data = [{
+            'x': [d['week'] for d in points_data],
+            'y': [round(d['points'], 2) for d in points_data],
+            'type': 'bar',
+            'name': 'Points',
+            'marker': {'color': '#2ca02c'},
+            'hovertemplate': 'Week: %{x}<br>Points: %{y:.2f}<extra></extra>'
+        }]
+        field_avg_series = [d for d in points_data if d.get('field_avg') is not None]
+        if field_avg_series:
+            points_chart_data.append({
+                'x': [d['week'] for d in field_avg_series],
+                'y': [round(d['field_avg'], 2) for d in field_avg_series],
+                'type': 'scatter',
+                'mode': 'lines+markers',
+                'name': 'Field Avg',
+                'line': {'color': '#17a2b8', 'width': 3},
+                'marker': {'size': 7},
+                'hovertemplate': 'Week: %{x}<br>Field Avg: %{y:.2f}<extra></extra>'
+            })
         points_chart = {
-            'data': [{
-                'x': [d['week'] for d in points_data],
-                'y': [round(d['points'], 2) for d in points_data],
-                'type': 'bar',
-                'name': 'Points',
-                'marker': {'color': '#2ca02c'},
-                'hovertemplate': 'Week: %{x}<br>Points: %{y:.2f}<extra></extra>'
-            }],
+            'data': points_chart_data,
             'layout': {
-                'title': 'Points per Week',
+                'title': 'Points per Week vs Field Average',
                 'xaxis': {'title': 'Week'},
                 'yaxis': {'title': 'Points'},
                 'height': 400,
-                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 50}
+                'margin': {'l': 50, 'r': 50, 't': 80, 'b': 80},
+                'legend': {'orientation': 'h', 'y': -0.2},
             }
         }
         charts['points'] = json.dumps(points_chart)
@@ -2086,6 +2111,8 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         'avg_net': round(avg_net, 1),
         'avg_points': round(avg_points, 1),
         'total_points': round(total_points, 1),
+        'avg_field_points': round(avg_field_points, 1) if avg_field_points is not None else None,
+        'avg_luck': round(avg_luck, 1) if avg_luck is not None else None,
         
         # Best/Worst weeks
         'best_gross_week': best_gross_week,
@@ -2094,6 +2121,8 @@ def golfer_stats(request, golfer_id, year=None, league_slug=None):
         'worst_net_week': worst_net_week,
         'best_points_week': best_points_week,
         'worst_points_week': worst_points_week,
+        'luckiest_week': luckiest_week,
+        'unluckiest_week': unluckiest_week,
         
         # Match play stats
         'wins': wins,

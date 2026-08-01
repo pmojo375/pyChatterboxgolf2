@@ -469,10 +469,10 @@ class PointsAdmin(admin.ModelAdmin):
 
 
 class RoundAdmin(admin.ModelAdmin):
-    list_display = ('get_golfer', 'get_week', 'get_matchup', 'gross', 'net', 'round_points', 'total_points', 'is_sub', 'get_subbing_for')
+    list_display = ('get_golfer', 'get_week', 'get_matchup', 'gross', 'net', 'round_points', 'total_points', 'field_avg_points', 'luck', 'is_sub', 'get_subbing_for')
     list_filter = ('week__season', 'week', 'is_sub', 'golfer')
     search_fields = ('golfer__name', 'week__date', 'subbing_for__name')
-    readonly_fields = ('gross', 'net', 'round_points', 'total_points')
+    readonly_fields = ('gross', 'net', 'round_points', 'total_points', 'field_avg_points', 'luck')
     list_per_page = 50
     date_hierarchy = 'week__date'
     
@@ -485,7 +485,7 @@ class RoundAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Scores and Points', {
-            'fields': ('gross', 'net', 'round_points', 'total_points'),
+            'fields': ('gross', 'net', 'round_points', 'total_points', 'field_avg_points', 'luck'),
             'classes': ('collapse',)
         }),
         ('Related Data', {

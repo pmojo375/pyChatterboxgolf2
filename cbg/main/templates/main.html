@@ -129,6 +129,24 @@
                     <div class="fs-4 fw-bold text-warning">{{ personal_dashboard.last_round.points }}</div>
                   </div>
                 </div>
+                {% if personal_dashboard.last_round.field_avg_points is not None or personal_dashboard.last_round.luck is not None %}
+                <div class="row text-center g-2 mb-2 pt-2 border-top">
+                  {% if personal_dashboard.last_round.field_avg_points is not None %}
+                  <div class="col-6">
+                    <div class="small text-muted">Field Avg</div>
+                    <div class="fs-5 fw-bold text-info" title="Average points vs every golfer who played that week">{{ personal_dashboard.last_round.field_avg_points }}</div>
+                  </div>
+                  {% endif %}
+                  {% if personal_dashboard.last_round.luck is not None %}
+                  <div class="col-6">
+                    <div class="small text-muted">Luck</div>
+                    <div class="fs-5 fw-bold {% if personal_dashboard.last_round.luck > 0 %}text-success{% elif personal_dashboard.last_round.luck < 0 %}text-danger{% else %}text-secondary{% endif %}" title="Points earned vs field average (positive = lucky matchup)">
+                      {% if personal_dashboard.last_round.luck > 0 %}+{% endif %}{{ personal_dashboard.last_round.luck }}
+                    </div>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endif %}
                 {% if personal_dashboard.last_round.opponent_name %}
                 <div class="small">
                   vs {{ personal_dashboard.last_round.opponent_name }}
@@ -237,6 +255,20 @@
                   <div class="small text-muted">Avg Pts</div>
                   <div class="fw-bold fs-5 text-warning">{{ personal_dashboard.stats.avg_points }}</div>
                 </div>
+                {% if personal_dashboard.stats.avg_field_points is not None %}
+                <div class="col-4 col-sm-3">
+                  <div class="small text-muted">Avg Field</div>
+                  <div class="fw-bold fs-5 text-info" title="Season average of weekly field averages">{{ personal_dashboard.stats.avg_field_points }}</div>
+                </div>
+                {% endif %}
+                {% if personal_dashboard.stats.avg_luck is not None %}
+                <div class="col-4 col-sm-3">
+                  <div class="small text-muted">Avg Luck</div>
+                  <div class="fw-bold fs-5 {% if personal_dashboard.stats.avg_luck > 0 %}text-success{% elif personal_dashboard.stats.avg_luck < 0 %}text-danger{% else %}text-secondary{% endif %}" title="Season average luck (points vs field avg)">
+                    {% if personal_dashboard.stats.avg_luck > 0 %}+{% endif %}{{ personal_dashboard.stats.avg_luck }}
+                  </div>
+                </div>
+                {% endif %}
                 {% if personal_dashboard.stats.current_handicap is not None %}
                 <div class="col-4 col-sm-3">
                   <div class="small text-muted">Handicap</div>

@@ -1,6 +1,6 @@
 from celery import shared_task
 from main.models import GolferMatchup, Score, Matchup, Week, Season, Team, Sub
-from main.helper import generate_golfer_matchups, process_week, calculate_and_save_handicaps_for_season, generate_rounds, generate_round
+from main.helper import generate_golfer_matchups, process_week, calculate_and_save_handicaps_for_season, generate_rounds, generate_round, update_field_averages_for_week
 import logging
 from main.skins import calculate_skin_winners
 from main.models import SkinEntry
@@ -80,7 +80,8 @@ def recalculate_all_async(season_id):
                 if actual_scores == expected_scores:
                     # Generate rounds for each golfer matchup
                     for golfer_matchup in golfer_matchups:
-                        generate_round(golfer_matchup)
+                        generate_round(golfer_matchup, update_field_avg=False)
+                    update_field_averages_for_week(week)
                     round_weeks.append(week.number)
                     logger.info(f"Rounds generated for week {week.number} (all scores entered)")
                     # Trigger skins winner setter after rounds are generated

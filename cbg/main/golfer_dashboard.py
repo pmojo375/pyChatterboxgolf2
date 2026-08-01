@@ -334,6 +334,8 @@ def build_personal_dashboard(
         'avg_net': None,
         'avg_points': None,
         'total_points': None,
+        'avg_field_points': None,
+        'avg_luck': None,
         'current_handicap': None,
         'wins': 0,
         'losses': 0,
@@ -346,11 +348,17 @@ def build_personal_dashboard(
             avg_net=Avg('net'),
             avg_points=Avg('total_points'),
             total_points=Sum('total_points'),
+            avg_field_points=Avg('field_avg_points'),
+            avg_luck=Avg('luck'),
         )
         stats['avg_gross'] = round(aggregates['avg_gross'], 1)
         stats['avg_net'] = round(aggregates['avg_net'], 1)
         stats['avg_points'] = round(aggregates['avg_points'], 1)
         stats['total_points'] = round(aggregates['total_points'], 1)
+        if aggregates['avg_field_points'] is not None:
+            stats['avg_field_points'] = round(aggregates['avg_field_points'], 1)
+        if aggregates['avg_luck'] is not None:
+            stats['avg_luck'] = round(aggregates['avg_luck'], 1)
 
         latest_hcp = (
             Handicap.objects.filter(golfer=golfer, week__season=season)
@@ -407,6 +415,16 @@ def build_personal_dashboard(
             'gross': last_round_obj.gross,
             'net': last_round_obj.net,
             'points': round(last_round_obj.total_points, 1),
+            'field_avg_points': (
+                round(last_round_obj.field_avg_points, 1)
+                if last_round_obj.field_avg_points is not None
+                else None
+            ),
+            'luck': (
+                round(last_round_obj.luck, 1)
+                if last_round_obj.luck is not None
+                else None
+            ),
             'opponent_name': opponent_name,
             'match_result': match_result,
             'was_sub': last_round_obj.is_sub,
